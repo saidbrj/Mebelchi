@@ -1,5 +1,14 @@
 # Factory Visit Checklist — Layer-1 Primitive Verification
 
+## ADDED for the dump visit (June 12)
+
+1. **One folder per cabinet/project** — without grouping, cross-panel joint matching is impossible. Include door, drawer and corner projects (Ø35 hinge ground truth still missing).
+2. **Hardware purchase list** — promotes/demotes core catalogue defaults (CORE_DOCTRINE R12).
+3. **Ø15 cam seats: why two depths (11.0 vs 12.5mm)?** Which connector SKU ↔ which depth.
+4. **Quarter-millimetre coordinates** (e.g. X=907.250 marking holes in SHKOF): ask whether Bazis emits sub-0.1mm positions on *structural* drills too, or only on marks. Drives the mm10→mm100 core decision — count them in the dump with `swj008_inventory.py` before deciding.
+
+---
+
 Generated from the failing primitive proofs (`15_PRIMITIVES_STEP2.md`). Each row is a
 spec value the dummy could not confirm. Bring back the number **and its source**
 (datasheet photo / drilling card / Bazis export), enter it in
