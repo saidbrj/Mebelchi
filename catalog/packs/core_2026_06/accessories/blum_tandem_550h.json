@@ -1,0 +1,26 @@
+{
+ "id": "blum_tandem_550h",
+ "brand": "Blum",
+ "tier": "premium",
+ "family": "runner_concealed",
+ "name": "TANDEM 550H runner",
+ "category": "slides",
+ "source_doc": "Catalogue and technical manual 2024-2025 en.pdf",
+ "pdf_pages": [
+  438,
+  440
+ ],
+ "skus": [
+  "550H4500",
+  "T51.1700"
+ ],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/blum_tandem_550h_p438-438.png",
+  "media/blum_tandem_550h_p440-440.png"
+ ],
+ "function_group": "F7_drawer_runner",
+ "role": "substitute"
+}

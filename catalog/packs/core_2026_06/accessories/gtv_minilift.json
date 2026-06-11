@@ -1,0 +1,23 @@
+{
+ "id": "gtv_minilift",
+ "brand": "GTV",
+ "tier": "core",
+ "family": "lift_stay",
+ "name": "MINILIFT stay lift",
+ "category": "lifts",
+ "source_doc": "Furniture-Accessories-2025-PL-EN-UA-HU-6.pdf",
+ "pdf_pages": [
+  116
+ ],
+ "skus": [
+  "PD-MINILIFTNEW-LIGHT"
+ ],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/gtv_minilift_p116-116.png"
+ ],
+ "function_group": "F9_flap_lift",
+ "role": "substitute"
+}

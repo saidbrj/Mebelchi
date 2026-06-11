@@ -1,0 +1,26 @@
+{
+ "id": "blum_blumotion_doors",
+ "brand": "Blum",
+ "tier": "premium",
+ "family": "soft_close_addon",
+ "name": "BLUMOTION 971A for doors (add-on)",
+ "category": "hinges",
+ "source_doc": "Catalogue and technical manual 2024-2025 en.pdf",
+ "pdf_pages": [
+  86,
+  106
+ ],
+ "skus": [
+  "971A0500",
+  "973A0500"
+ ],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/blum_blumotion_doors_p106-106.png",
+  "media/blum_blumotion_doors_p86-086.png"
+ ],
+ "function_group": "F6_door_motion",
+ "role": "substitute"
+}

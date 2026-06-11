@@ -1,0 +1,25 @@
+{
+ "id": "blum_cliptop_blumotion_inset",
+ "brand": "Blum",
+ "tier": "premium",
+ "family": "hinge_cup35",
+ "name": "CLIP top BLUMOTION 110° inset",
+ "category": "hinges",
+ "source_doc": "Catalogue and technical manual 2024-2025 en.pdf",
+ "pdf_pages": [
+  80,
+  122
+ ],
+ "skus": [
+  "71B3750"
+ ],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/blum_cliptop_blumotion_inset_p122-122.png",
+  "media/blum_cliptop_blumotion_inset_p80-080.png"
+ ],
+ "function_group": "F5_door_hinged",
+ "role": "substitute"
+}

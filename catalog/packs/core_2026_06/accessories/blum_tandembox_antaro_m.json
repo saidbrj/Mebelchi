@@ -1,0 +1,25 @@
+{
+ "id": "blum_tandembox_antaro_m",
+ "brand": "Blum",
+ "tier": "premium",
+ "family": "drawer_box",
+ "name": "TANDEMBOX antaro, M height set",
+ "category": "drawer_systems",
+ "source_doc": "Catalogue and technical manual 2024-2025 en.pdf",
+ "pdf_pages": [
+  300,
+  302
+ ],
+ "skus": [
+  "378M..."
+ ],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/blum_tandembox_antaro_m_p300-300.png",
+  "media/blum_tandembox_antaro_m_p302-302.png"
+ ],
+ "function_group": "F8_drawer_box",
+ "role": "substitute"
+}

@@ -1,0 +1,25 @@
+{
+ "id": "het_shelf_supports",
+ "brand": "Hettich",
+ "tier": "upper",
+ "family": "shelf_support",
+ "name": "Shelf supports range",
+ "category": "brackets_fittings_connectors",
+ "source_doc": "TA_2020_18565_en.pdf",
+ "pdf_pages": [
+  810,
+  811,
+  814,
+  815
+ ],
+ "skus": [],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/het_shelf_supports_p810-0810.png",
+  "media/het_shelf_supports_p811-0811.png"
+ ],
+ "function_group": "F3_shelf_adjustable",
+ "role": "substitute"
+}

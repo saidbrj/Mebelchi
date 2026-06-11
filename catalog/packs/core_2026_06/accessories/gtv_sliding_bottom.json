@@ -1,0 +1,23 @@
+{
+ "id": "gtv_sliding_bottom",
+ "brand": "GTV",
+ "tier": "core",
+ "family": "sliding_door",
+ "name": "Bottom-running sliding system",
+ "category": "sliding",
+ "source_doc": "Furniture-Accessories-2025-PL-EN-UA-HU-6.pdf",
+ "pdf_pages": [
+  612,
+  613
+ ],
+ "skus": [],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/gtv_sliding_bottom_p612-612.png",
+  "media/gtv_sliding_bottom_p613-613.png"
+ ],
+ "function_group": "F12_wardrobe",
+ "role": "substitute"
+}

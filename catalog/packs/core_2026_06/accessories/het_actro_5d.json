@@ -1,0 +1,24 @@
+{
+ "id": "het_actro_5d",
+ "brand": "Hettich",
+ "tier": "upper",
+ "family": "runner_premium",
+ "name": "Actro 5D runner",
+ "category": "slides",
+ "source_doc": "TA_2020_18565_en.pdf",
+ "pdf_pages": [
+  340,
+  342,
+  344
+ ],
+ "skus": [],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/het_actro_5d_p340-0340.png",
+  "media/het_actro_5d_p342-0342.png"
+ ],
+ "function_group": "F7_drawer_runner",
+ "role": "substitute"
+}

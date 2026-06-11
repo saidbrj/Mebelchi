@@ -1,0 +1,21 @@
+{
+ "id": "gtv_rear_stabilizer",
+ "brand": "GTV",
+ "tier": "core",
+ "family": "rear_stabilizer",
+ "name": "Rear wall stabilizer (wide cabinets)",
+ "category": "brackets_fittings_connectors",
+ "source_doc": "Furniture-Accessories-2025-PL-EN-UA-HU-6.pdf",
+ "pdf_pages": [
+  267
+ ],
+ "skus": [],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/gtv_rear_stabilizer_p267-267.png"
+ ],
+ "function_group": "F4_back_panel",
+ "role": "default"
+}

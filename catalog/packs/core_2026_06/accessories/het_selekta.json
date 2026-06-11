@@ -1,0 +1,24 @@
+{
+ "id": "het_selekta",
+ "brand": "Hettich",
+ "tier": "upper",
+ "family": "hinge_plate_system",
+ "name": "Selekta mounting/plate system",
+ "category": "hinges",
+ "source_doc": "TA_2020_18565_en.pdf",
+ "pdf_pages": [
+  142,
+  143,
+  145
+ ],
+ "skus": [],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/het_selekta_p142-0142.png",
+  "media/het_selekta_p143-0143.png"
+ ],
+ "function_group": "F5_door_hinged",
+ "role": "alternative"
+}

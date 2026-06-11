@@ -1,0 +1,28 @@
+{
+ "id": "gtv_bb_slide_h45",
+ "brand": "GTV",
+ "tier": "core",
+ "family": "runner_ball",
+ "name": "Ball-bearing slide H45 (lengths 250–550)",
+ "category": "slides",
+ "source_doc": "Furniture-Accessories-2025-PL-EN-UA-HU-6.pdf",
+ "pdf_pages": [
+  146,
+  147,
+  148
+ ],
+ "skus": [
+  "PK-L-H45-250-B",
+  "PK-L-H45-300-GX",
+  "PK-0-H45-250"
+ ],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/gtv_bb_slide_h45_p146-146.png",
+  "media/gtv_bb_slide_h45_p147-147.png"
+ ],
+ "function_group": "F7_drawer_runner",
+ "role": "default"
+}

@@ -1,0 +1,23 @@
+{
+ "id": "het_avantech_you",
+ "brand": "Hettich",
+ "tier": "upper",
+ "family": "drawer_box_premium",
+ "name": "AvanTech YOU drawer set",
+ "category": "drawer_systems",
+ "source_doc": "TA_2020_18565_en.pdf",
+ "pdf_pages": [
+  237,
+  238
+ ],
+ "skus": [],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/het_avantech_you_p237-0237.png",
+  "media/het_avantech_you_p238-0238.png"
+ ],
+ "function_group": "F8_drawer_box",
+ "role": "substitute"
+}

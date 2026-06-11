@@ -1,0 +1,23 @@
+{
+ "id": "gtv_handle_rail",
+ "brand": "GTV",
+ "tier": "core",
+ "family": "handle",
+ "name": "Rail/profile handles (128/160/192)",
+ "category": "handles",
+ "source_doc": "Furniture-Accessories-2025-PL-EN-UA-HU-6.pdf",
+ "pdf_pages": [
+  372,
+  373
+ ],
+ "skus": [],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/gtv_handle_rail_p372-372.png",
+  "media/gtv_handle_rail_p373-373.png"
+ ],
+ "function_group": "F14_grip",
+ "role": "default"
+}

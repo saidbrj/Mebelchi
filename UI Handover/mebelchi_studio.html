@@ -1,0 +1,2234 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="theme-color" content="#e8e3d7">
+<title>Mebelchi · Studio</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap&subset=cyrillic" rel="stylesheet">
+<style>
+  :root {
+    --bg: #e8e3d7;
+    --bg-soft: #f0ebde;
+    --bg-card: #ffffff;
+    --bg-card-tint: rgba(255, 255, 255, 0.88);
+    --ink: #1c1c1a;
+    --ink-soft: #4a4a48;
+    --ink-muted: #7a7972;
+    --ink-faint: #aaa8a0;
+    --line: rgba(28, 28, 26, 0.08);
+    --line-soft: rgba(28, 28, 26, 0.05);
+    --accent: #1c1c1a;
+    --warn: #b85b1d;
+    --warn-bg: rgba(184, 91, 29, 0.08);
+    --shadow-sm: 0 1px 3px rgba(0,0,0,0.04), 0 1px 2px rgba(0,0,0,0.03);
+    --shadow-md: 0 4px 14px rgba(0,0,0,0.06), 0 1px 4px rgba(0,0,0,0.04);
+    --shadow-lg: 0 8px 30px rgba(0,0,0,0.08), 0 4px 8px rgba(0,0,0,0.04);
+    --shadow-xl: 0 20px 60px rgba(0,0,0,0.12);
+    --font-sans: 'IBM Plex Sans', system-ui, -apple-system, sans-serif;
+    --font-mono: 'IBM Plex Mono', ui-monospace, monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+  html, body {
+    height: 100%;
+    overflow: hidden;
+    font-family: var(--font-sans);
+    color: var(--ink);
+    background: #1a1a1c;
+    -webkit-user-select: none;
+    user-select: none;
+    overscroll-behavior: none;
+  }
+  body {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    padding: 0;
+  }
+
+  .phone {
+    width: 100%;
+    height: 100%;
+    max-width: 480px;
+    max-height: 1000px;
+    background: var(--bg);
+    position: relative;
+    overflow: hidden;
+    border-radius: 0;
+  }
+  @media (min-width: 520px) {
+    body { padding: 24px; background: #18181a; }
+    .phone {
+      border-radius: 40px;
+      max-height: 900px;
+      box-shadow: 0 30px 80px rgba(0,0,0,0.4), 0 0 0 1px rgba(255,255,255,0.04);
+    }
+  }
+
+  canvas {
+    width: 100%;
+    height: 100%;
+    display: block;
+    touch-action: none;
+  }
+
+  /* ============== Header ============== */
+  .hdr {
+    position: absolute;
+    top: 18px;
+    left: 18px;
+    right: 18px;
+    display: grid;
+    grid-template-columns: 1fr auto 1fr;
+    align-items: start;
+    z-index: 30;
+    pointer-events: none;
+  }
+  .brand {
+    font-family: var(--font-sans);
+    font-weight: 600;
+    font-size: 14px;
+    letter-spacing: 0.06em;
+    color: var(--ink);
+    display: flex;
+    align-items: baseline;
+    gap: 6px;
+  }
+  .brand .tag {
+    font-weight: 400;
+    font-size: 10px;
+    letter-spacing: 0.16em;
+    color: var(--ink-faint);
+    text-transform: uppercase;
+  }
+  .wall-pill {
+    pointer-events: auto;
+    background: var(--bg-card-tint);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    padding: 9px 16px;
+    border-radius: 999px;
+    font-size: 17px;
+    font-weight: 500;
+    color: var(--ink);
+    box-shadow: var(--shadow-sm);
+    border: 0.5px solid var(--line);
+    cursor: pointer;
+    transition: transform 100ms cubic-bezier(0.2,0.9,0.3,1), background 120ms;
+    justify-self: center;
+    font-feature-settings: "tnum" 1;
+    letter-spacing: 0.01em;
+  }
+  .wall-pill:active { transform: scale(0.96); background: var(--bg-card); }
+  .wall-pill .unit {
+    font-size: 11px;
+    color: var(--ink-muted);
+    margin-left: 2px;
+    letter-spacing: 0.03em;
+  }
+  .wall-pill .dots-mini {
+    display: inline-flex;
+    gap: 3px;
+    margin-right: 8px;
+    vertical-align: middle;
+  }
+  .wall-pill .dot-mini {
+    width: 4px;
+    height: 4px;
+    border-radius: 50%;
+    background: rgba(28,28,26,0.2);
+  }
+  .wall-pill .dot-mini.active { background: var(--ink); }
+  .price-block {
+    text-align: right;
+    font-family: var(--font-sans);
+  }
+  .price-block .lbl {
+    font-size: 9px;
+    letter-spacing: 0.14em;
+    color: var(--ink-muted);
+    text-transform: uppercase;
+    margin-bottom: 2px;
+    font-weight: 400;
+  }
+  .price-block .price {
+    font-size: 19px;
+    font-weight: 500;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+    font-feature-settings: "tnum" 1;
+  }
+  .price-block .cur {
+    font-size: 11px;
+    font-weight: 400;
+    color: var(--ink-muted);
+    margin-left: 2px;
+  }
+
+  /* ============== Variant dots ============== */
+  .dots {
+    position: absolute;
+    top: 80px;
+    left: 50%;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 5px;
+    z-index: 20;
+    pointer-events: none;
+    transition: opacity 240ms;
+  }
+  .dot {
+    width: 5px;
+    height: 5px;
+    border-radius: 50%;
+    background: rgba(28,28,26,0.18);
+    transition: all 200ms;
+  }
+  .dot.active { width: 16px; border-radius: 3px; background: var(--ink); }
+  .dots.hide { opacity: 0; }
+
+  /* ============== Adjacency warning ============== */
+  .warning {
+    position: absolute;
+    top: 96px;
+    left: 50%;
+    transform: translateX(-50%);
+    background: var(--warn-bg);
+    color: var(--warn);
+    padding: 6px 13px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 500;
+    z-index: 19;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 280ms;
+    border: 0.5px solid rgba(184, 91, 29, 0.2);
+    white-space: nowrap;
+  }
+  .warning.show { opacity: 1; }
+
+  /* ============== Toast ============== */
+  .toast {
+    position: absolute;
+    bottom: 140px;
+    left: 50%;
+    transform: translate(-50%, 8px);
+    background: var(--ink);
+    color: var(--bg-card);
+    padding: 9px 16px;
+    border-radius: 999px;
+    font-size: 12px;
+    font-weight: 500;
+    z-index: 40;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 200ms, transform 200ms cubic-bezier(0.2,0.9,0.3,1);
+    box-shadow: var(--shadow-md);
+    white-space: nowrap;
+    max-width: calc(100% - 80px);
+  }
+  .toast.show { opacity: 1; transform: translate(-50%, 0); }
+
+  /* ============== Selection pill (floating) ============== */
+  .sel-pill {
+    position: absolute;
+    bottom: 110px;
+    left: 18px;
+    right: 18px;
+    background: var(--bg-card);
+    border-radius: 22px;
+    padding: 14px 16px 16px;
+    z-index: 35;
+    box-shadow: var(--shadow-lg);
+    border: 0.5px solid var(--line);
+    opacity: 0;
+    transform: translateY(20px);
+    transition: opacity 280ms, transform 280ms cubic-bezier(0.2,0.9,0.3,1);
+    pointer-events: none;
+  }
+  .sel-pill.show { opacity: 1; transform: translateY(0); pointer-events: auto; }
+  .sel-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    margin-bottom: 12px;
+  }
+  .sel-name {
+    font-size: 11px;
+    color: var(--ink-muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-weight: 500;
+    font-family: var(--font-mono);
+  }
+  .sel-close {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    background: var(--bg-soft);
+    color: var(--ink-muted);
+    font-size: 16px;
+    line-height: 1;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    border: none;
+    transition: all 120ms;
+  }
+  .sel-close:active { transform: scale(0.92); background: var(--ink); color: var(--bg-card); }
+  .sel-width {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    margin-bottom: 14px;
+  }
+  .w-btn {
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    background: var(--bg-soft);
+    border: 0.5px solid var(--line);
+    color: var(--ink);
+    font-size: 20px;
+    font-weight: 500;
+    line-height: 1;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 100ms;
+  }
+  .w-btn:active { transform: scale(0.9); background: var(--ink); color: var(--bg-card); }
+  .w-val {
+    flex: 1;
+    text-align: center;
+    font-size: 24px;
+    font-weight: 500;
+    color: var(--ink);
+    letter-spacing: -0.01em;
+    font-feature-settings: "tnum" 1;
+  }
+  .w-val .unit {
+    font-size: 12px;
+    font-weight: 400;
+    color: var(--ink-muted);
+    margin-left: 2px;
+  }
+  .sel-divider {
+    height: 0.5px;
+    background: var(--line);
+    margin: 4px -16px 12px;
+  }
+  .sel-row-label {
+    font-size: 10px;
+    color: var(--ink-muted);
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+    font-weight: 500;
+    font-family: var(--font-mono);
+  }
+  .sel-swatches {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 8px;
+    margin-bottom: 12px;
+  }
+  .mini-swatch {
+    aspect-ratio: 1;
+    border-radius: 8px;
+    border: 1.5px solid transparent;
+    cursor: pointer;
+    transition: transform 100ms, border-color 100ms;
+    position: relative;
+    overflow: hidden;
+  }
+  .mini-swatch:active { transform: scale(0.92); }
+  .mini-swatch.active { border-color: var(--ink); }
+  .sel-hints {
+    font-size: 10px;
+    color: var(--ink-muted);
+    letter-spacing: 0.02em;
+    text-align: center;
+    font-style: italic;
+  }
+
+  /* ============== View toggle ============== */
+  .view-toggle {
+    position: absolute;
+    top: 64px;
+    right: 18px;
+    z-index: 25;
+    display: flex;
+    background: var(--bg-card-tint);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border-radius: 999px;
+    padding: 3px;
+    box-shadow: var(--shadow-sm);
+    border: 0.5px solid var(--line);
+  }
+  .vt-btn {
+    padding: 5px 12px;
+    border: none;
+    background: transparent;
+    color: var(--ink-muted);
+    font-size: 11px;
+    font-weight: 500;
+    letter-spacing: 0.05em;
+    border-radius: 999px;
+    cursor: pointer;
+    transition: all 200ms;
+    font-family: var(--font-mono);
+  }
+  .vt-btn.active { background: var(--ink); color: var(--bg-card); }
+  .vt-btn:active { transform: scale(0.94); }
+
+  /* ============== Plan grid overlay (2D mode) ============== */
+  .plan-grid {
+    position: absolute;
+    inset: 0;
+    z-index: 5;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 480ms 100ms;
+    background-image:
+      linear-gradient(to right, rgba(28,28,26,0.05) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(28,28,26,0.05) 1px, transparent 1px);
+    background-size: 30px 30px;
+  }
+  .plan-grid.show { opacity: 1; }
+  .plan-grid::after {
+    content: '';
+    position: absolute;
+    inset: 0;
+    background-image:
+      linear-gradient(to right, rgba(28,28,26,0.1) 1px, transparent 1px),
+      linear-gradient(to bottom, rgba(28,28,26,0.1) 1px, transparent 1px);
+    background-size: 150px 150px;
+  }
+
+  /* ============== Bottom bar ============== */
+  .bot {
+    position: absolute;
+    left: 14px;
+    right: 14px;
+    bottom: 22px;
+    z-index: 28;
+    display: grid;
+    grid-template-columns: auto 1fr auto;
+    gap: 10px;
+    align-items: center;
+  }
+  .material-btn {
+    background: var(--bg-card-tint);
+    backdrop-filter: blur(14px);
+    -webkit-backdrop-filter: blur(14px);
+    border: 0.5px solid var(--line);
+    color: var(--ink);
+    border-radius: 999px;
+    padding: 10px 14px 10px 10px;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    box-shadow: var(--shadow-sm);
+    transition: transform 100ms;
+    font-family: var(--font-sans);
+  }
+  .material-btn:active { transform: scale(0.96); }
+  .material-btn .swatch {
+    width: 26px;
+    height: 26px;
+    border-radius: 50%;
+    border: 0.5px solid var(--line);
+    background: #f5f1e7;
+    flex-shrink: 0;
+  }
+  .material-btn .material-text { text-align: left; }
+  .material-btn .lbl {
+    font-size: 8px;
+    color: var(--ink-muted);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-weight: 500;
+    line-height: 1.1;
+  }
+  .material-btn .name {
+    font-size: 13px;
+    color: var(--ink);
+    font-weight: 500;
+    line-height: 1.2;
+    margin-top: 1px;
+    white-space: nowrap;
+  }
+  .save-btn {
+    background: var(--ink);
+    color: var(--bg);
+    border: none;
+    border-radius: 999px;
+    padding: 14px 18px;
+    font-size: 13px;
+    font-weight: 500;
+    cursor: pointer;
+    font-family: var(--font-sans);
+    transition: transform 100ms;
+    letter-spacing: 0.01em;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    box-shadow: var(--shadow-md);
+  }
+  .save-btn:active { transform: scale(0.98); }
+  .variant-counter {
+    text-align: right;
+    cursor: pointer;
+    padding: 4px 4px 4px 4px;
+    transition: transform 100ms;
+  }
+  .variant-counter:active { transform: scale(0.92); }
+  .variant-counter .lbl {
+    font-size: 8px;
+    color: var(--ink-muted);
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    font-weight: 500;
+    line-height: 1.1;
+  }
+  .variant-counter .vnum {
+    font-size: 14px;
+    color: var(--ink);
+    font-weight: 500;
+    font-feature-settings: "tnum" 1;
+    font-family: var(--font-mono);
+    margin-top: 2px;
+  }
+
+  /* ============== Material drawer ============== */
+  .drawer {
+    position: absolute;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    background: var(--bg-card);
+    border-radius: 28px 28px 0 0;
+    padding: 12px 18px 28px;
+    z-index: 50;
+    transform: translateY(110%);
+    transition: transform 320ms cubic-bezier(0.2,0.9,0.3,1);
+    border-top: 0.5px solid var(--line);
+    box-shadow: var(--shadow-xl);
+  }
+  .drawer.show { transform: translateY(0); }
+  .drawer .pill-handle {
+    width: 38px;
+    height: 4px;
+    background: rgba(28,28,26,0.18);
+    border-radius: 2px;
+    margin: 0 auto 16px;
+  }
+  .drawer h3 {
+    font-size: 11px;
+    color: var(--ink-muted);
+    font-weight: 500;
+    margin-bottom: 14px;
+    letter-spacing: 0.1em;
+    text-transform: uppercase;
+    font-family: var(--font-mono);
+  }
+  .palette-grid {
+    display: grid;
+    grid-template-columns: repeat(3, 1fr);
+    gap: 10px;
+  }
+  .palette-card {
+    aspect-ratio: 1.15 / 1;
+    border-radius: 14px;
+    border: 1.5px solid transparent;
+    cursor: pointer;
+    position: relative;
+    overflow: hidden;
+    transition: transform 100ms, border-color 120ms;
+  }
+  .palette-card:active { transform: scale(0.96); }
+  .palette-card.active { border-color: var(--ink); }
+  .palette-card .pal-row {
+    width: 100%;
+    height: 100%;
+    display: flex;
+  }
+  .palette-card .pal-row > div { flex: 1; }
+  .palette-card .pal-lbl {
+    position: absolute;
+    bottom: 6px;
+    left: 8px;
+    right: 8px;
+    font-size: 10px;
+    font-weight: 500;
+    color: var(--ink);
+    background: rgba(255,255,255,0.86);
+    padding: 3px 6px;
+    border-radius: 6px;
+    text-align: center;
+    backdrop-filter: blur(4px);
+    letter-spacing: 0.01em;
+  }
+  .palette-card.dark .pal-lbl {
+    color: var(--bg-card);
+    background: rgba(28,28,26,0.7);
+  }
+
+  /* ============== First-time hint ============== */
+  .intro-hint {
+    position: absolute;
+    bottom: 200px;
+    left: 50%;
+    transform: translateX(-50%);
+    z-index: 22;
+    pointer-events: none;
+    background: rgba(28,28,26,0.92);
+    color: var(--bg-card);
+    padding: 8px 14px;
+    border-radius: 999px;
+    font-size: 11px;
+    font-weight: 400;
+    opacity: 0;
+    transition: opacity 360ms;
+    white-space: nowrap;
+    box-shadow: var(--shadow-md);
+  }
+  .intro-hint.show { opacity: 0.92; }
+</style>
+</head>
+<body>
+<div class="phone" id="phone">
+
+  <div class="hdr">
+    <div class="brand">MEBELCHI <span class="tag">STUDIO</span></div>
+    <button class="wall-pill" id="wall-pill">
+      <span class="dots-mini" id="dots-mini"></span>
+      <span id="wall-val">1 500</span><span class="unit"> мм</span>
+    </button>
+    <div class="price-block">
+      <div class="lbl">СТОИМОСТЬ КОМПЛЕКТА</div>
+      <div class="price"><span id="price-val">7 337 500</span><span class="cur"> сум</span></div>
+    </div>
+  </div>
+
+  <div class="dots" id="dots"></div>
+
+  <div class="view-toggle" id="view-toggle">
+    <button class="vt-btn active" data-view="3d">3D</button>
+    <button class="vt-btn" data-view="2d">2D</button>
+  </div>
+
+  <div class="warning" id="warning">⚠ Раковина рядом с плитой</div>
+
+  <div class="plan-grid" id="plan-grid"></div>
+
+  <canvas id="canvas"></canvas>
+
+  <div class="intro-hint" id="intro-hint">Tap anything — каждая часть отдельно</div>
+  <div class="toast" id="toast"></div>
+
+  <div class="sel-pill" id="sel-pill">
+    <div class="sel-header">
+      <span class="sel-name" id="sel-name">ШКАФ · BASE</span>
+      <button class="sel-close" id="sel-close">×</button>
+    </div>
+    <div class="sel-width">
+      <button class="w-btn" id="w-minus">−</button>
+      <div class="w-val"><span id="w-val">600</span><span class="unit"> мм</span></div>
+      <button class="w-btn" id="w-plus">+</button>
+    </div>
+    <div class="sel-divider"></div>
+    <div class="sel-row-label">Цвет фасада</div>
+    <div class="sel-swatches" id="sel-swatches"></div>
+    <div class="sel-hints">tap door · tap handle · tap worktop · tap sink · tap stove</div>
+  </div>
+
+  <div class="bot">
+    <button class="material-btn" id="material-btn">
+      <span class="swatch" id="material-swatch"></span>
+      <div class="material-text">
+        <div class="lbl">МАТЕРИАЛ</div>
+        <div class="name" id="material-name">Белая классика</div>
+      </div>
+    </button>
+    <button class="save-btn" id="save-btn">Сохранить и заказать раскрой</button>
+    <div class="variant-counter" id="variant-counter">
+      <div class="lbl">ВАРИАНТ</div>
+      <div class="vnum"><span id="variant-now">3</span><span style="opacity:0.4"> / </span><span id="variant-total">3</span></div>
+    </div>
+  </div>
+
+  <div class="drawer" id="drawer">
+    <div class="pill-handle"></div>
+    <h3>Палитра кухни · 6 вариантов</h3>
+    <div class="palette-grid" id="palette-grid"></div>
+  </div>
+
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+(function() {
+  'use strict';
+
+  /* ============================================================
+   * DATA
+   * ============================================================ */
+
+  const MATERIALS = [
+    { id:'white_classic', name:'Белая классика', facade:0xf6f3ea, top:0xdfd9c8, hex:'#f6f3ea', topHex:'#dfd9c8', isDark:false },
+    { id:'cashmere',      name:'Кашемир',        facade:0xddd0b6, top:0xc5b88f, hex:'#ddd0b6', topHex:'#c5b88f', isDark:false },
+    { id:'oak_light',     name:'Дуб светлый',    facade:0xc4a575, top:0x2c2c2a, hex:'#c4a575', topHex:'#2c2c2a', isDark:false },
+    { id:'graphite',      name:'Серый камень',   facade:0x8e8a83, top:0x1f1f1d, hex:'#8e8a83', topHex:'#1f1f1d', isDark:false },
+    { id:'walnut',        name:'Орех тёмный',    facade:0x6b4528, top:0x1a1a18, hex:'#6b4528', topHex:'#1a1a18', isDark:true },
+    { id:'anthracite',    name:'Антрацит',       facade:0x2e2e30, top:0x1a1a18, hex:'#2e2e30', topHex:'#1a1a18', isDark:true }
+  ];
+
+  const DOOR_STYLES = ['flat', 'shaker', 'grooved'];
+  const HANDLE_TYPES = ['bar', 'knob', 'inset'];
+  const SINK_TYPES = ['single', 'double', 'none'];
+  const STOVE_TYPES = ['induction', 'gas', 'none'];
+
+  const WALL_SIZES = [1200, 1500, 1800, 2100, 2400, 2700, 3000];
+
+  /* ============================================================
+   * VARIANTS GENERATOR
+   * ============================================================ */
+
+  function generateVariants(wallMm) {
+    const W = wallMm / 1000;
+    const variants = [];
+
+    if (W <= 1.3) {
+      variants.push({ name: 'Микро', cabs:[
+        {w:W*0.33,t:'drawer3'},{w:W*0.45,t:'sink'},{w:W*0.22,t:'base'}
+      ], hasUppers: false, hasSideShelves: false });
+      variants.push({ name: 'С плитой', cabs:[
+        {w:W*0.45,t:'sink'},{w:W*0.55,t:'stove'}
+      ], hasUppers: true, hasSideShelves: false });
+    } else if (W <= 1.6) {
+      /* 1500mm — matches screenshot reference */
+      variants.push({ name: 'Линейная', cabs:[
+        {w:W*0.27,t:'drawer4'},{w:W*0.46,t:'sink_stove'},{w:W*0.27,t:'base'}
+      ], hasUppers: false, hasSideShelves: false });
+      variants.push({ name: 'С верхом', cabs:[
+        {w:W*0.35,t:'drawer3'},{w:W*0.4,t:'sink_stove'},{w:W*0.25,t:'base'}
+      ], hasUppers: true, hasSideShelves: false });
+      variants.push({ name: 'С полками', cabs:[
+        {w:W*0.27,t:'drawer4'},{w:W*0.73,t:'sink_stove'}
+      ], hasUppers: true, hasSideShelves: true });
+    } else if (W <= 1.9) {
+      variants.push({ name: 'Линейная', cabs:[
+        {w:W*0.22,t:'drawer3'},{w:W*0.33,t:'sink'},{w:W*0.25,t:'stove'},{w:W*0.2,t:'base'}
+      ], hasUppers: false, hasSideShelves: false });
+      variants.push({ name: 'Симметрия', cabs:[
+        {w:W*0.2,t:'drawer3'},{w:W*0.3,t:'sink'},{w:W*0.3,t:'stove'},{w:W*0.2,t:'drawer3'}
+      ], hasUppers: true, hasSideShelves: false });
+      variants.push({ name: 'С пеналом', cabs:[
+        {w:0.6,t:'tall'},{w:W*0.45-0.3,t:'sink'},{w:W*0.55-0.3,t:'stove'}
+      ], hasUppers: true, hasSideShelves: false });
+    } else if (W <= 2.2) {
+      variants.push({ name: 'Стандарт', cabs:[
+        {w:W*0.22,t:'drawer3'},{w:W*0.28,t:'sink'},{w:W*0.22,t:'stove'},{w:W*0.28,t:'drawer3'}
+      ], hasUppers: true, hasSideShelves: false });
+      variants.push({ name: 'Мойка в центре', cabs:[
+        {w:W*0.2,t:'drawer3'},{w:W*0.22,t:'base'},{w:W*0.3,t:'sink'},{w:W*0.28,t:'stove'}
+      ], hasUppers: true, hasSideShelves: false });
+      variants.push({ name: 'Открытые полки', cabs:[
+        {w:W*0.25,t:'drawer4'},{w:W*0.25,t:'sink'},{w:W*0.25,t:'stove'},{w:W*0.25,t:'base'}
+      ], hasUppers: false, hasSideShelves: true });
+      variants.push({ name: 'С пеналом', cabs:[
+        {w:0.6,t:'tall'},{w:W*0.32-0.2,t:'drawer3'},{w:W*0.35-0.2,t:'sink'},{w:W*0.33-0.2,t:'stove'}
+      ], hasUppers: true, hasSideShelves: false });
+    } else {
+      /* 2400+ */
+      const inner = W - 0.6;
+      variants.push({ name: 'С холодильником', cabs:[
+        {w:0.6,t:'fridge'},{w:inner*0.25,t:'drawer3'},{w:inner*0.3,t:'sink'},{w:inner*0.25,t:'stove'},{w:inner*0.2,t:'base'}
+      ], hasUppers: true, hasSideShelves: false });
+      variants.push({ name: 'Симметрия', cabs:[
+        {w:W*0.15,t:'drawer3'},{w:W*0.2,t:'base'},{w:W*0.3,t:'sink_stove'},{w:W*0.2,t:'base'},{w:W*0.15,t:'drawer3'}
+      ], hasUppers: true, hasSideShelves: false });
+      variants.push({ name: 'Линейная стандарт', cabs:[
+        {w:W*0.18,t:'drawer3'},{w:W*0.22,t:'sink'},{w:W*0.2,t:'stove'},{w:W*0.2,t:'base'},{w:W*0.2,t:'drawer3'}
+      ], hasUppers: true, hasSideShelves: false });
+      variants.push({ name: 'Открытые полки', cabs:[
+        {w:W*0.2,t:'drawer3'},{w:W*0.25,t:'sink'},{w:W*0.25,t:'stove'},{w:W*0.3,t:'drawer4'}
+      ], hasUppers: false, hasSideShelves: true });
+    }
+    return variants;
+  }
+
+  /* ============================================================
+   * STATE
+   * ============================================================ */
+  const state = {
+    wall: 1500,
+    variantIdx: 0,
+    variants: [],
+    cabinets: [],
+    globalMaterialIdx: 0,
+    doorStyle: 'flat',
+    selectedIdx: -1,
+    view: '3d',    /* '3d' | '2d' */
+    cabinetMaterials: {},   /* per-cabinet override: { cabId: materialIdx } */
+    cabinetDoorStyles: {},  /* per-cabinet door style override */
+    cabinetHandles: {},     /* per-cabinet handle override */
+    sinkType: 'single',
+    stoveType: 'induction',
+    worktopOverride: null
+  };
+
+  /* ============================================================
+   * DOM REFS
+   * ============================================================ */
+  const phoneEl = document.getElementById('phone');
+  const canvas = document.getElementById('canvas');
+  const wallPill = document.getElementById('wall-pill');
+  const wallVal = document.getElementById('wall-val');
+  const dotsMiniEl = document.getElementById('dots-mini');
+  const priceVal = document.getElementById('price-val');
+  const dotsEl = document.getElementById('dots');
+  const warningEl = document.getElementById('warning');
+  const toastEl = document.getElementById('toast');
+  const introHintEl = document.getElementById('intro-hint');
+  const selPill = document.getElementById('sel-pill');
+  const selName = document.getElementById('sel-name');
+  const selClose = document.getElementById('sel-close');
+  const wMinus = document.getElementById('w-minus');
+  const wPlus = document.getElementById('w-plus');
+  const wValEl = document.getElementById('w-val');
+  const selSwatches = document.getElementById('sel-swatches');
+  const planGrid = document.getElementById('plan-grid');
+  const materialBtn = document.getElementById('material-btn');
+  const materialName = document.getElementById('material-name');
+  const materialSwatch = document.getElementById('material-swatch');
+  const saveBtn = document.getElementById('save-btn');
+  const variantCounter = document.getElementById('variant-counter');
+  const variantNow = document.getElementById('variant-now');
+  const variantTotal = document.getElementById('variant-total');
+  const drawer = document.getElementById('drawer');
+  const paletteGrid = document.getElementById('palette-grid');
+  const viewToggle = document.getElementById('view-toggle');
+
+  /* ============================================================
+   * THREE.JS SETUP
+   * ============================================================ */
+  const scene = new THREE.Scene();
+  scene.background = new THREE.Color(0xe8e3d7);
+  scene.fog = new THREE.Fog(0xe8e3d7, 6, 14);
+
+  const camera = new THREE.PerspectiveCamera(34, 1, 0.05, 50);
+  const ISO_POS = new THREE.Vector3(2.1, 1.55, 3.05);
+  const ISO_LOOK = new THREE.Vector3(0, 0.65, -0.2);
+  const PLAN_POS = new THREE.Vector3(0.01, 4.2, 0.6);
+  const PLAN_LOOK = new THREE.Vector3(0, 0, 0.6);
+  camera.position.copy(ISO_POS);
+  camera.lookAt(ISO_LOOK);
+
+  const renderer = new THREE.WebGLRenderer({ canvas: canvas, antialias: true, alpha: false });
+  renderer.setClearColor(0xe8e3d7, 1);
+  renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+  renderer.shadowMap.enabled = true;
+  renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+
+  /* Lights */
+  scene.add(new THREE.AmbientLight(0xfff5e8, 0.55));
+  const sun = new THREE.DirectionalLight(0xfff1d4, 0.85);
+  sun.position.set(2.6, 4.5, 2.8);
+  sun.castShadow = true;
+  sun.shadow.mapSize.width = 1024;
+  sun.shadow.mapSize.height = 1024;
+  sun.shadow.camera.near = 0.5;
+  sun.shadow.camera.far = 12;
+  sun.shadow.camera.left = -3.5;
+  sun.shadow.camera.right = 3.5;
+  sun.shadow.camera.top = 3.5;
+  sun.shadow.camera.bottom = -3.5;
+  sun.shadow.bias = -0.0005;
+  sun.shadow.radius = 4;
+  scene.add(sun);
+  const fillLight = new THREE.DirectionalLight(0xc8d8ff, 0.18);
+  fillLight.position.set(-3, 2, 2);
+  scene.add(fillLight);
+
+  /* Floor */
+  const floorMat = new THREE.MeshStandardMaterial({ color: 0xe5dfd1, roughness: 1 });
+  const floor = new THREE.Mesh(new THREE.PlaneGeometry(14, 10), floorMat);
+  floor.rotation.x = -Math.PI / 2;
+  floor.receiveShadow = true;
+  floor.userData = { type: 'floor' };
+  scene.add(floor);
+
+  /* Back wall */
+  const wallMat = new THREE.MeshStandardMaterial({ color: 0xede8db, roughness: 1 });
+  const backWall = new THREE.Mesh(new THREE.PlaneGeometry(14, 4), wallMat);
+  backWall.position.set(0, 2, -0.65);
+  backWall.receiveShadow = true;
+  backWall.userData = { type: 'wall' };
+  scene.add(backWall);
+
+  /* Side wall (perpendicular, right) — for corner shelves variant */
+  const sideWall = new THREE.Mesh(new THREE.PlaneGeometry(2.5, 4), wallMat);
+  sideWall.rotation.y = -Math.PI / 2;
+  sideWall.receiveShadow = true;
+  sideWall.userData = { type: 'wall' };
+  sideWall.visible = false;
+  scene.add(sideWall);
+
+  /* Kitchen group */
+  const kitchenGroup = new THREE.Group();
+  scene.add(kitchenGroup);
+  kitchenGroup._refs = [];   /* { cabId, group, meshes: {body, doors[], handles[], plinth, worktop}, cab } */
+
+  /* Geometry constants */
+  const CAB_H = 0.82;
+  const CAB_D = 0.56;
+  const PLINTH = 0.1;
+  const UPPER_H = 0.7;
+  const UPPER_D = 0.32;
+  const UPPER_Y = 1.45;
+  const WORKTOP_T = 0.038;
+
+  /* ============================================================
+   * MATERIALS HELPERS
+   * ============================================================ */
+  function getMatForCabinet(cabId) {
+    const overrideIdx = state.cabinetMaterials[cabId];
+    return MATERIALS[overrideIdx !== undefined ? overrideIdx : state.globalMaterialIdx];
+  }
+  function getDoorStyleForCabinet(cabId) {
+    return state.cabinetDoorStyles[cabId] || state.doorStyle;
+  }
+  function getHandleForCabinet(cabId) {
+    return state.cabinetHandles[cabId] || 'bar';
+  }
+  function makeFacadeMat(mat) {
+    return new THREE.MeshStandardMaterial({
+      color: mat.facade,
+      roughness: mat.isDark ? 0.55 : 0.6,
+      metalness: 0
+    });
+  }
+  function makeTopMat() {
+    const mat = MATERIALS[state.globalMaterialIdx];
+    const topColor = state.worktopOverride !== null ? state.worktopOverride : mat.top;
+    return new THREE.MeshStandardMaterial({ color: topColor, roughness: 0.38, metalness: 0.05 });
+  }
+  function makePlinthMat() {
+    return new THREE.MeshStandardMaterial({ color: 0x2c2c2a, roughness: 0.7 });
+  }
+  function makeHandleMat() {
+    return new THREE.MeshStandardMaterial({ color: 0x2a2a28, roughness: 0.35, metalness: 0.4 });
+  }
+  function makeOutlineMat() {
+    return new THREE.MeshBasicMaterial({ color: 0x000000, transparent: true, opacity: 0.10 });
+  }
+
+  /* ============================================================
+   * BUILD A SINGLE CABINET
+   * ============================================================ */
+  function buildCabinet(cabId, cab, x, baseY, depthY) {
+    const isTall = cab.t === 'tall' || cab.t === 'fridge';
+    const h = isTall ? (CAB_H + UPPER_Y + UPPER_H - PLINTH) : CAB_H;
+    const mat = getMatForCabinet(cabId);
+    const doorStyle = getDoorStyleForCabinet(cabId);
+    const handleType = getHandleForCabinet(cabId);
+
+    const g = new THREE.Group();
+    g.userData = { type: 'cabinet_group', cabId };
+
+    /* Cabinet body (carcass + facade together for simplicity) */
+    const bodyW = cab.w - 0.005;
+    const body = new THREE.Mesh(
+      new THREE.BoxGeometry(bodyW, h, CAB_D),
+      makeFacadeMat(mat)
+    );
+    body.position.set(x + cab.w / 2, PLINTH + h / 2, depthY - CAB_D / 2);
+    body.castShadow = true;
+    body.receiveShadow = true;
+    body.userData = { type: 'cabinet_body', cabId };
+    g.add(body);
+
+    const facadeZ = body.position.z + CAB_D / 2 + 0.001;
+
+    /* Door / drawer division lines */
+    const lineMat = makeOutlineMat();
+    let drawerCount = 0;
+    if (cab.t === 'drawer3') drawerCount = 3;
+    if (cab.t === 'drawer4') drawerCount = 4;
+
+    const doorMeshes = [];
+    const handleMeshes = [];
+
+    if (drawerCount > 0) {
+      /* Drawer divisions */
+      for (let k = 1; k < drawerCount; k++) {
+        const div = new THREE.Mesh(
+          new THREE.BoxGeometry(bodyW - 0.015, 0.0025, 0.003),
+          lineMat
+        );
+        div.position.set(body.position.x, PLINTH + (h * k / drawerCount), facadeZ);
+        g.add(div);
+      }
+      /* Drawer faces (tappable) */
+      const handleMat = makeHandleMat();
+      for (let k = 0; k < drawerCount; k++) {
+        const drawerY = PLINTH + (h * (k + 0.5) / drawerCount);
+        /* Invisible drawer hitbox */
+        const drawer = new THREE.Mesh(
+          new THREE.BoxGeometry(bodyW - 0.015, h / drawerCount - 0.008, 0.004),
+          new THREE.MeshBasicMaterial({ visible: false })
+        );
+        drawer.position.set(body.position.x, drawerY, facadeZ + 0.003);
+        drawer.userData = { type: 'cabinet_door', cabId, isDrawer: true };
+        g.add(drawer);
+        doorMeshes.push(drawer);
+
+        /* Handle */
+        const handle = buildHandle(handleType, bodyW, h / drawerCount, makeHandleMat());
+        handle.position.set(body.position.x, drawerY - 0.04, facadeZ + 0.008);
+        handle.userData = { type: 'cabinet_handle', cabId };
+        g.add(handle);
+        handleMeshes.push(handle);
+      }
+    } else if (cab.t === 'sink_stove') {
+      /* Sink+stove combo: 2 doors below, sink+stove on top */
+      const div = new THREE.Mesh(
+        new THREE.BoxGeometry(0.003, h - 0.03, 0.003),
+        lineMat
+      );
+      div.position.set(body.position.x, body.position.y, facadeZ);
+      g.add(div);
+
+      /* Two door hitboxes */
+      for (let s = 0; s < 2; s++) {
+        const dx = body.position.x + (s === 0 ? -bodyW/4 : bodyW/4);
+        const door = new THREE.Mesh(
+          new THREE.BoxGeometry(bodyW/2 - 0.01, h - 0.02, 0.004),
+          new THREE.MeshBasicMaterial({ visible: false })
+        );
+        door.position.set(dx, body.position.y, facadeZ + 0.003);
+        door.userData = { type: 'cabinet_door', cabId, isDrawer: false, doorIdx: s };
+        g.add(door);
+        doorMeshes.push(door);
+
+        /* Handle */
+        const handle = buildHandle(handleType, bodyW/2, h, makeHandleMat());
+        const xOff = (handleType === 'bar') ? 0 : (s === 0 ? bodyW/4 - 0.05 : -bodyW/4 + 0.05);
+        handle.position.set(dx + xOff * 0.6, PLINTH + h - 0.13, facadeZ + 0.008);
+        handle.userData = { type: 'cabinet_handle', cabId };
+        g.add(handle);
+        handleMeshes.push(handle);
+      }
+    } else if (cab.t === 'tall' || cab.t === 'fridge') {
+      /* Tall column: full height single door */
+      if (cab.t === 'fridge') {
+        /* Fridge has horizontal split at top 35% */
+        const div = new THREE.Mesh(
+          new THREE.BoxGeometry(bodyW - 0.015, 0.003, 0.003),
+          lineMat
+        );
+        div.position.set(body.position.x, PLINTH + h * 0.65, facadeZ);
+        g.add(div);
+      }
+      const door = new THREE.Mesh(
+        new THREE.BoxGeometry(bodyW - 0.01, h - 0.02, 0.004),
+        new THREE.MeshBasicMaterial({ visible: false })
+      );
+      door.position.set(body.position.x, body.position.y, facadeZ + 0.003);
+      door.userData = { type: 'cabinet_door', cabId, isDrawer: false };
+      g.add(door);
+      doorMeshes.push(door);
+
+      /* Tall handle */
+      const handle = buildHandle('bar', bodyW, h * 0.4, makeHandleMat());
+      handle.position.set(body.position.x + bodyW/2 - 0.05, PLINTH + h * 0.55, facadeZ + 0.008);
+      handle.userData = { type: 'cabinet_handle', cabId };
+      g.add(handle);
+      handleMeshes.push(handle);
+    } else if (cab.t === 'sink' || cab.t === 'stove') {
+      /* Single sink or stove cabinet */
+      if (bodyW > 0.5) {
+        /* Two doors */
+        const div = new THREE.Mesh(
+          new THREE.BoxGeometry(0.003, h - 0.03, 0.003),
+          lineMat
+        );
+        div.position.set(body.position.x, body.position.y, facadeZ);
+        g.add(div);
+
+        for (let s = 0; s < 2; s++) {
+          const dx = body.position.x + (s === 0 ? -bodyW/4 : bodyW/4);
+          const door = new THREE.Mesh(
+            new THREE.BoxGeometry(bodyW/2 - 0.01, h - 0.02, 0.004),
+            new THREE.MeshBasicMaterial({ visible: false })
+          );
+          door.position.set(dx, body.position.y, facadeZ + 0.003);
+          door.userData = { type: 'cabinet_door', cabId, isDrawer: false, doorIdx: s };
+          g.add(door);
+          doorMeshes.push(door);
+
+          const handle = buildHandle(handleType, bodyW/2, h, makeHandleMat());
+          const xOff = (handleType === 'bar') ? 0 : (s === 0 ? bodyW/4 - 0.05 : -bodyW/4 + 0.05);
+          handle.position.set(dx + xOff * 0.6, PLINTH + h - 0.13, facadeZ + 0.008);
+          handle.userData = { type: 'cabinet_handle', cabId };
+          g.add(handle);
+          handleMeshes.push(handle);
+        }
+      } else {
+        const door = new THREE.Mesh(
+          new THREE.BoxGeometry(bodyW - 0.01, h - 0.02, 0.004),
+          new THREE.MeshBasicMaterial({ visible: false })
+        );
+        door.position.set(body.position.x, body.position.y, facadeZ + 0.003);
+        door.userData = { type: 'cabinet_door', cabId, isDrawer: false };
+        g.add(door);
+        doorMeshes.push(door);
+        const handle = buildHandle(handleType, bodyW, h, makeHandleMat());
+        handle.position.set(body.position.x + bodyW/2 - 0.05, PLINTH + h - 0.13, facadeZ + 0.008);
+        handle.userData = { type: 'cabinet_handle', cabId };
+        g.add(handle);
+        handleMeshes.push(handle);
+      }
+    } else {
+      /* Plain base — 2 doors if wide, 1 if narrow */
+      if (bodyW > 0.5) {
+        const div = new THREE.Mesh(
+          new THREE.BoxGeometry(0.003, h - 0.03, 0.003),
+          lineMat
+        );
+        div.position.set(body.position.x, body.position.y, facadeZ);
+        g.add(div);
+        for (let s = 0; s < 2; s++) {
+          const dx = body.position.x + (s === 0 ? -bodyW/4 : bodyW/4);
+          const door = new THREE.Mesh(
+            new THREE.BoxGeometry(bodyW/2 - 0.01, h - 0.02, 0.004),
+            new THREE.MeshBasicMaterial({ visible: false })
+          );
+          door.position.set(dx, body.position.y, facadeZ + 0.003);
+          door.userData = { type: 'cabinet_door', cabId, isDrawer: false, doorIdx: s };
+          g.add(door);
+          doorMeshes.push(door);
+          const handle = buildHandle(handleType, bodyW/2, h, makeHandleMat());
+          const xOff = (handleType === 'bar') ? 0 : (s === 0 ? bodyW/4 - 0.05 : -bodyW/4 + 0.05);
+          handle.position.set(dx + xOff * 0.6, PLINTH + h - 0.13, facadeZ + 0.008);
+          handle.userData = { type: 'cabinet_handle', cabId };
+          g.add(handle);
+          handleMeshes.push(handle);
+        }
+      } else {
+        const door = new THREE.Mesh(
+          new THREE.BoxGeometry(bodyW - 0.01, h - 0.02, 0.004),
+          new THREE.MeshBasicMaterial({ visible: false })
+        );
+        door.position.set(body.position.x, body.position.y, facadeZ + 0.003);
+        door.userData = { type: 'cabinet_door', cabId, isDrawer: false };
+        g.add(door);
+        doorMeshes.push(door);
+        const handle = buildHandle(handleType, bodyW, h, makeHandleMat());
+        handle.position.set(body.position.x + bodyW/2 - 0.05, PLINTH + h - 0.13, facadeZ + 0.008);
+        handle.userData = { type: 'cabinet_handle', cabId };
+        g.add(handle);
+        handleMeshes.push(handle);
+      }
+    }
+
+    /* Door style overlays */
+    if (doorStyle === 'shaker' && !isTall) {
+      /* Inset frame on each door */
+      doorMeshes.forEach(d => {
+        if (d.userData.isDrawer) return;
+        addShakerFrame(g, d, makeOutlineMat());
+      });
+    } else if (doorStyle === 'grooved' && !isTall) {
+      doorMeshes.forEach(d => {
+        if (d.userData.isDrawer) return;
+        addGrooves(g, d, makeOutlineMat());
+      });
+    }
+
+    /* Plinth */
+    if (!isTall) {
+      const plinth = new THREE.Mesh(
+        new THREE.BoxGeometry(bodyW, PLINTH, CAB_D - 0.04),
+        makePlinthMat()
+      );
+      plinth.position.set(body.position.x, PLINTH / 2, body.position.z + 0.02);
+      plinth.castShadow = false;
+      plinth.receiveShadow = true;
+      plinth.userData = { type: 'plinth', cabId };
+      g.add(plinth);
+    } else {
+      const plinth = new THREE.Mesh(
+        new THREE.BoxGeometry(bodyW, PLINTH, CAB_D - 0.04),
+        makePlinthMat()
+      );
+      plinth.position.set(body.position.x, PLINTH / 2, body.position.z + 0.02);
+      g.add(plinth);
+    }
+
+    /* Sink basin + faucet */
+    if (cab.t === 'sink' || cab.t === 'sink_stove') {
+      if (state.sinkType !== 'none') {
+        const sinkW = (cab.t === 'sink_stove') ? bodyW * 0.42 : bodyW * 0.7;
+        const sinkD = CAB_D * 0.62;
+        const sinkX = (cab.t === 'sink_stove') ? body.position.x - bodyW * 0.22 : body.position.x;
+        const sinkZ = body.position.z + 0.01;
+        const sinkY = PLINTH + h + WORKTOP_T + 0.018;
+
+        /* Bowl rim */
+        const bowlMat = new THREE.MeshStandardMaterial({ color: 0xb9b6ae, roughness: 0.3, metalness: 0.5 });
+        const bowl = new THREE.Mesh(
+          new THREE.BoxGeometry(sinkW, 0.022, sinkD),
+          bowlMat
+        );
+        bowl.position.set(sinkX, sinkY, sinkZ);
+        bowl.userData = { type: 'sink', cabId };
+        bowl.castShadow = true;
+        bowl.receiveShadow = true;
+        g.add(bowl);
+
+        if (state.sinkType === 'double') {
+          /* Divider line */
+          const sinkDiv = new THREE.Mesh(
+            new THREE.BoxGeometry(0.004, 0.025, sinkD * 0.85),
+            new THREE.MeshStandardMaterial({ color: 0x8a8780, roughness: 0.4, metalness: 0.5 })
+          );
+          sinkDiv.position.set(sinkX, sinkY + 0.001, sinkZ);
+          g.add(sinkDiv);
+        }
+
+        /* Faucet */
+        const faucetMat = new THREE.MeshStandardMaterial({ color: 0x6b6b6b, roughness: 0.3, metalness: 0.7 });
+        const faucetBase = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.014, 0.018, 0.045, 16),
+          faucetMat
+        );
+        faucetBase.position.set(sinkX + sinkW * 0.25, sinkY + 0.04, sinkZ - sinkD * 0.4);
+        faucetBase.castShadow = true;
+        g.add(faucetBase);
+        const faucetArm = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.01, 0.01, 0.21, 12),
+          faucetMat
+        );
+        faucetArm.position.set(sinkX + sinkW * 0.25, sinkY + 0.16, sinkZ - sinkD * 0.4);
+        faucetArm.castShadow = true;
+        g.add(faucetArm);
+        const faucetSpout = new THREE.Mesh(
+          new THREE.CylinderGeometry(0.008, 0.008, 0.14, 12),
+          faucetMat
+        );
+        faucetSpout.rotation.z = Math.PI / 2.4;
+        faucetSpout.position.set(sinkX + sinkW * 0.15, sinkY + 0.245, sinkZ - sinkD * 0.32);
+        g.add(faucetSpout);
+      }
+    }
+
+    /* Stove */
+    if (cab.t === 'stove' || cab.t === 'sink_stove') {
+      if (state.stoveType !== 'none') {
+        const stoveW = (cab.t === 'sink_stove') ? bodyW * 0.42 : bodyW * 0.85;
+        const stoveD = CAB_D * 0.72;
+        const stoveX = (cab.t === 'sink_stove') ? body.position.x + bodyW * 0.22 : body.position.x;
+        const stoveZ = body.position.z + 0.015;
+        const stoveY = PLINTH + h + WORKTOP_T + 0.013;
+
+        const stoveTopMat = (state.stoveType === 'induction')
+          ? new THREE.MeshStandardMaterial({ color: 0x1a1a1a, roughness: 0.2, metalness: 0.7 })
+          : new THREE.MeshStandardMaterial({ color: 0x2a2a26, roughness: 0.5, metalness: 0.3 });
+
+        const stoveTop = new THREE.Mesh(
+          new THREE.BoxGeometry(stoveW, 0.012, stoveD),
+          stoveTopMat
+        );
+        stoveTop.position.set(stoveX, stoveY, stoveZ);
+        stoveTop.userData = { type: 'stove', cabId };
+        stoveTop.castShadow = true;
+        stoveTop.receiveShadow = true;
+        g.add(stoveTop);
+
+        /* Burners */
+        const burnerColor = (state.stoveType === 'induction') ? 0x2c2c2c : 0x444444;
+        const burnerMat = new THREE.MeshStandardMaterial({ color: burnerColor, roughness: 0.55 });
+        const positions = [
+          [-stoveW * 0.22, -stoveD * 0.18],
+          [stoveW * 0.22, -stoveD * 0.18],
+          [-stoveW * 0.22, stoveD * 0.18],
+          [stoveW * 0.22, stoveD * 0.18]
+        ];
+        positions.forEach(([dx, dz]) => {
+          const burner = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.052, 0.052, 0.005, 18),
+            burnerMat
+          );
+          burner.position.set(stoveX + dx, stoveY + 0.0085, stoveZ + dz);
+          g.add(burner);
+        });
+      }
+    }
+
+    /* UPPER CABINETS — paired above each base cabinet (skip sink_stove handled separately) */
+    if (!isTall) {
+      /* Worktop handled outside */
+    }
+
+    /* Selection highlight */
+    const hl = new THREE.Mesh(
+      new THREE.BoxGeometry(bodyW + 0.025, h + 0.04, CAB_D + 0.04),
+      new THREE.MeshBasicMaterial({ color: 0x1c1c1a, transparent: true, opacity: 0.0, depthWrite: false })
+    );
+    hl.position.copy(body.position);
+    hl.visible = false;
+    hl.userData = { type: 'highlight' };
+    g.add(hl);
+
+    return {
+      cabId,
+      group: g,
+      body,
+      doors: doorMeshes,
+      handles: handleMeshes,
+      highlight: hl,
+      cab,
+      isTall,
+      h,
+      x,
+      bodyW
+    };
+  }
+
+  function buildHandle(handleType, w, h, mat) {
+    if (handleType === 'knob') {
+      const knob = new THREE.Mesh(
+        new THREE.SphereGeometry(0.013, 12, 8),
+        mat
+      );
+      return knob;
+    }
+    if (handleType === 'inset') {
+      const inset = new THREE.Mesh(
+        new THREE.BoxGeometry(Math.min(0.18, w * 0.45), 0.008, 0.004),
+        mat
+      );
+      return inset;
+    }
+    /* bar = default */
+    const isWide = w > 0.45;
+    const handle = new THREE.Mesh(
+      new THREE.BoxGeometry(Math.min(0.16, w * 0.5), 0.008, 0.012),
+      mat
+    );
+    return handle;
+  }
+
+  function addShakerFrame(parentGroup, doorMesh, mat) {
+    const inset = 0.06;
+    const w = doorMesh.geometry.parameters.width;
+    const h = doorMesh.geometry.parameters.height;
+    const z = doorMesh.position.z + 0.001;
+    const cx = doorMesh.position.x;
+    const cy = doorMesh.position.y;
+    /* Top */
+    const t = new THREE.Mesh(new THREE.BoxGeometry(w - inset*2, 0.0025, 0.0015), mat);
+    t.position.set(cx, cy + h/2 - inset, z);
+    parentGroup.add(t);
+    const b = new THREE.Mesh(new THREE.BoxGeometry(w - inset*2, 0.0025, 0.0015), mat);
+    b.position.set(cx, cy - h/2 + inset, z);
+    parentGroup.add(b);
+    const l = new THREE.Mesh(new THREE.BoxGeometry(0.0025, h - inset*2, 0.0015), mat);
+    l.position.set(cx - w/2 + inset, cy, z);
+    parentGroup.add(l);
+    const r = new THREE.Mesh(new THREE.BoxGeometry(0.0025, h - inset*2, 0.0015), mat);
+    r.position.set(cx + w/2 - inset, cy, z);
+    parentGroup.add(r);
+  }
+  function addGrooves(parentGroup, doorMesh, mat) {
+    const w = doorMesh.geometry.parameters.width;
+    const h = doorMesh.geometry.parameters.height;
+    const cx = doorMesh.position.x;
+    const cy = doorMesh.position.y;
+    const z = doorMesh.position.z + 0.001;
+    const spacing = 0.055;
+    const startY = cy - h/2 + 0.05;
+    const endY = cy + h/2 - 0.05;
+    for (let y = startY; y < endY; y += spacing) {
+      const g = new THREE.Mesh(new THREE.BoxGeometry(w - 0.025, 0.002, 0.0012), mat);
+      g.position.set(cx, y, z);
+      parentGroup.add(g);
+    }
+  }
+
+  /* ============================================================
+   * BUILD UPPER CABINETS
+   * ============================================================ */
+  function buildUpper(cabId, x, w) {
+    const mat = getMatForCabinet(cabId);
+    const doorStyle = getDoorStyleForCabinet(cabId);
+    const handleType = getHandleForCabinet(cabId);
+    const g = new THREE.Group();
+
+    const body = new THREE.Mesh(
+      new THREE.BoxGeometry(w - 0.005, UPPER_H, UPPER_D),
+      makeFacadeMat(mat)
+    );
+    body.position.set(x + w / 2, UPPER_Y + UPPER_H / 2, -UPPER_D / 2 - 0.05);
+    body.castShadow = true;
+    body.receiveShadow = true;
+    body.userData = { type: 'cabinet_body', cabId, upper: true };
+    g.add(body);
+
+    const facadeZ = body.position.z + UPPER_D / 2 + 0.001;
+
+    /* 2-door if wide enough */
+    const lineMat = makeOutlineMat();
+    const doors = [];
+    const handles = [];
+
+    if (w > 0.45) {
+      const div = new THREE.Mesh(
+        new THREE.BoxGeometry(0.003, UPPER_H - 0.03, 0.003),
+        lineMat
+      );
+      div.position.set(body.position.x, body.position.y, facadeZ);
+      g.add(div);
+
+      for (let s = 0; s < 2; s++) {
+        const dx = body.position.x + (s === 0 ? -w/4 : w/4);
+        const door = new THREE.Mesh(
+          new THREE.BoxGeometry(w/2 - 0.01, UPPER_H - 0.02, 0.004),
+          new THREE.MeshBasicMaterial({ visible: false })
+        );
+        door.position.set(dx, body.position.y, facadeZ + 0.003);
+        door.userData = { type: 'cabinet_door', cabId, upper: true, doorIdx: s };
+        g.add(door);
+        doors.push(door);
+
+        const handle = buildHandle(handleType, w/2, UPPER_H, makeHandleMat());
+        const xOff = (handleType === 'bar') ? 0 : (s === 0 ? w/4 - 0.04 : -w/4 + 0.04);
+        handle.position.set(dx + xOff * 0.5, body.position.y + UPPER_H/2 - 0.08, facadeZ + 0.008);
+        handle.userData = { type: 'cabinet_handle', cabId, upper: true };
+        g.add(handle);
+        handles.push(handle);
+      }
+    } else {
+      const door = new THREE.Mesh(
+        new THREE.BoxGeometry(w - 0.01, UPPER_H - 0.02, 0.004),
+        new THREE.MeshBasicMaterial({ visible: false })
+      );
+      door.position.set(body.position.x, body.position.y, facadeZ + 0.003);
+      door.userData = { type: 'cabinet_door', cabId, upper: true };
+      g.add(door);
+      doors.push(door);
+      const handle = buildHandle(handleType, w, UPPER_H, makeHandleMat());
+      handle.position.set(body.position.x, body.position.y - UPPER_H/2 + 0.08, facadeZ + 0.008);
+      handle.userData = { type: 'cabinet_handle', cabId, upper: true };
+      g.add(handle);
+      handles.push(handle);
+    }
+
+    /* Door style overlays */
+    if (doorStyle === 'shaker') {
+      doors.forEach(d => addShakerFrame(g, d, makeOutlineMat()));
+    } else if (doorStyle === 'grooved') {
+      doors.forEach(d => addGrooves(g, d, makeOutlineMat()));
+    }
+
+    return { group: g, body, doors, handles };
+  }
+
+  /* ============================================================
+   * BUILD SIDE SHELVES (perpendicular wall)
+   * ============================================================ */
+  function buildSideShelves(rootX) {
+    const g = new THREE.Group();
+    const shelfMat = new THREE.MeshStandardMaterial({ color: 0xede4d0, roughness: 0.7 });
+
+    const positions = [0.6, 1.05, 1.5, 1.95];
+    positions.forEach((y, i) => {
+      const shelf = new THREE.Mesh(
+        new THREE.BoxGeometry(0.018, 0.018, 0.62),
+        shelfMat
+      );
+      shelf.position.set(rootX - 0.31, y, -0.65 - 0.4);
+      shelf.castShadow = true;
+      shelf.receiveShadow = true;
+      shelf.userData = { type: 'shelf', shelfIdx: i };
+      g.add(shelf);
+
+      /* Side support */
+      const support = new THREE.Mesh(
+        new THREE.BoxGeometry(0.018, 0.018, 0.04),
+        shelfMat
+      );
+      support.position.set(rootX - 0.31, y, -0.65);
+      g.add(support);
+    });
+    return g;
+  }
+
+  /* ============================================================
+   * BUILD WHOLE KITCHEN
+   * ============================================================ */
+  function rebuildKitchen() {
+    /* Dispose old */
+    while (kitchenGroup.children.length) {
+      const c = kitchenGroup.children[0];
+      kitchenGroup.remove(c);
+      c.traverse(o => { if (o.geometry) o.geometry.dispose(); });
+    }
+    kitchenGroup._refs = [];
+
+    const variant = state.variants[state.variantIdx];
+    if (!variant) return;
+    state.cabinets = variant.cabs.map((c, i) => ({...c, id: `c${state.variantIdx}_${i}`}));
+    const totalW = state.cabinets.reduce((s, c) => s + c.w, 0);
+    let x = -totalW / 2;
+    const depthY = -0.05;
+
+    /* Worktop (runs over non-tall cabinets) */
+    const runs = [];
+    let runStart = x;
+    let runWidth = 0;
+    state.cabinets.forEach(c => {
+      const isTall = c.t === 'tall' || c.t === 'fridge';
+      if (isTall) {
+        if (runWidth > 0) runs.push({ start: runStart, width: runWidth });
+        runStart = runStart + runWidth + c.w;
+        runWidth = 0;
+      } else {
+        runWidth += c.w;
+      }
+    });
+    if (runWidth > 0) runs.push({ start: runStart, width: runWidth });
+
+    const topMat = makeTopMat();
+    runs.forEach(r => {
+      const top = new THREE.Mesh(
+        new THREE.BoxGeometry(r.width + 0.04, WORKTOP_T, CAB_D + 0.04),
+        topMat
+      );
+      top.position.set(r.start + r.width / 2, PLINTH + CAB_H + WORKTOP_T / 2, depthY - CAB_D / 2);
+      top.castShadow = true;
+      top.receiveShadow = true;
+      top.userData = { type: 'worktop' };
+      kitchenGroup.add(top);
+    });
+
+    /* Cabinets */
+    x = -totalW / 2;
+    state.cabinets.forEach(cab => {
+      const ref = buildCabinet(cab.id, cab, x, 0, depthY);
+      kitchenGroup.add(ref.group);
+      kitchenGroup._refs.push(ref);
+      x += cab.w;
+    });
+
+    /* Upper cabinets */
+    if (variant.hasUppers) {
+      x = -totalW / 2;
+      state.cabinets.forEach(cab => {
+        if (cab.t !== 'tall' && cab.t !== 'fridge') {
+          /* Skip uppers above sink+stove combos so range hood concept doesn't clash */
+          if (cab.t !== 'sink_stove') {
+            const upper = buildUpper(cab.id, x, cab.w);
+            kitchenGroup.add(upper.group);
+          }
+        }
+        x += cab.w;
+      });
+    }
+
+    /* Side shelves */
+    sideWall.visible = !!variant.hasSideShelves;
+    if (variant.hasSideShelves) {
+      const totalW2 = totalW;
+      const sideX = (totalW / 2) + 0.02;
+      sideWall.position.set(sideX + 0.62 / 2, 2, -CAB_D - 0.62);
+
+      const shelvesGroup = buildSideShelves(sideX);
+      shelvesGroup.position.set(0, 0, 0);
+      kitchenGroup.add(shelvesGroup);
+    }
+
+    /* Soft drop shadow under each cabinet (subtle) */
+    /* Actually: relying on real shadow map */
+
+    /* Restore selection */
+    if (state.selectedIdx >= 0 && state.selectedIdx < kitchenGroup._refs.length) {
+      const ref = kitchenGroup._refs[state.selectedIdx];
+      if (ref) ref.highlight.visible = false;  /* selection visual is via pill, not glow */
+    }
+
+    /* Update adjacency warning */
+    const hasAdjacent = hasAdjacentSinkStove();
+    warningEl.classList.toggle('show', hasAdjacent);
+
+    /* Update pill swatches if cabinet selected */
+    if (state.selectedIdx >= 0) renderSelSwatches();
+  }
+
+  function hasAdjacentSinkStove() {
+    for (let i = 0; i < state.cabinets.length - 1; i++) {
+      const a = state.cabinets[i], b = state.cabinets[i+1];
+      if ((a.t === 'sink' && b.t === 'stove') || (a.t === 'stove' && b.t === 'sink')) return true;
+    }
+    return false;
+  }
+
+  /* ============================================================
+   * RAYCASTER
+   * ============================================================ */
+  const raycaster = new THREE.Raycaster();
+  const pointer = new THREE.Vector2();
+
+  function readPointer(e) {
+    const rect = canvas.getBoundingClientRect();
+    const ev = e.touches && e.touches[0] ? e.touches[0]
+             : e.changedTouches && e.changedTouches[0] ? e.changedTouches[0] : e;
+    pointer.x = ((ev.clientX - rect.left) / rect.width) * 2 - 1;
+    pointer.y = -((ev.clientY - rect.top) / rect.height) * 2 + 1;
+    return { x: ev.clientX - rect.left, y: ev.clientY - rect.top };
+  }
+
+  function getInteractiveMeshes() {
+    const meshes = [];
+    kitchenGroup.traverse(o => {
+      if (o.isMesh && o.userData && o.userData.type) {
+        const t = o.userData.type;
+        if (t === 'cabinet_body' || t === 'cabinet_door' || t === 'cabinet_handle' ||
+            t === 'worktop' || t === 'sink' || t === 'stove' || t === 'plinth' || t === 'shelf') {
+          meshes.push(o);
+        }
+      }
+    });
+    return meshes;
+  }
+
+  /* ============================================================
+   * CAMERA TWEEN
+   * ============================================================ */
+  let tweenStart = 0, tweenDur = 480, tweening = false;
+  let camFrom = camera.position.clone(), camTo = camera.position.clone();
+  let lookFrom = ISO_LOOK.clone(), lookTo = ISO_LOOK.clone();
+  const currentLook = ISO_LOOK.clone();
+  let fovFrom = camera.fov, fovTo = camera.fov;
+
+  function easeOutCubic(t) { return 1 - Math.pow(1 - t, 3); }
+  function easeInOutCubic(t) { return t < 0.5 ? 4*t*t*t : 1 - Math.pow(-2*t + 2, 3) / 2; }
+
+  function tweenCameraTo(pos, look, dur, fov) {
+    camFrom = camera.position.clone();
+    camTo = pos.clone();
+    lookFrom = currentLook.clone();
+    lookTo = look.clone();
+    fovFrom = camera.fov;
+    fovTo = fov !== undefined ? fov : camera.fov;
+    tweenStart = performance.now();
+    tweenDur = dur || 480;
+    tweening = true;
+  }
+
+  /* ============================================================
+   * SELECTION
+   * ============================================================ */
+  function findCabIdx(cabId) {
+    return kitchenGroup._refs.findIndex(r => r.cabId === cabId);
+  }
+
+  function selectCabinetByCabId(cabId) {
+    const idx = findCabIdx(cabId);
+    if (idx < 0) return;
+    selectCabinet(idx);
+  }
+
+  function selectCabinet(idx) {
+    if (idx < 0) {
+      state.selectedIdx = -1;
+      hideSelPill();
+      tweenCameraTo(state.view === '3d' ? ISO_POS : PLAN_POS, state.view === '3d' ? ISO_LOOK : PLAN_LOOK, 480);
+      dotsEl.classList.remove('hide');
+      return;
+    }
+    state.selectedIdx = idx;
+    const ref = kitchenGroup._refs[idx];
+    if (!ref) return;
+    /* NFS-style camera tween into cabinet */
+    if (state.view === '3d') {
+      const center = new THREE.Vector3();
+      ref.body.getWorldPosition(center);
+      const camPos = new THREE.Vector3(
+        center.x * 0.5 + (center.x >= 0 ? 0.45 : -0.45),
+        center.y + 0.4,
+        center.z + 1.35 + ref.bodyW * 0.4
+      );
+      tweenCameraTo(camPos, center.clone().setY(center.y + 0.04), 480);
+    }
+    dotsEl.classList.add('hide');
+    showSelPill(ref);
+  }
+
+  function showSelPill(ref) {
+    const cab = ref.cab;
+    const label = cabTypeLabel(cab.t);
+    selName.textContent = `${label} · ${Math.round(cab.w * 1000)} мм`;
+    wValEl.textContent = Math.round(cab.w * 1000);
+    renderSelSwatches();
+    selPill.classList.add('show');
+  }
+  function hideSelPill() {
+    selPill.classList.remove('show');
+  }
+
+  function cabTypeLabel(t) {
+    switch (t) {
+      case 'sink': return 'МОЙКА';
+      case 'stove': return 'ВАРОЧНАЯ';
+      case 'sink_stove': return 'МОЙКА+ВАРОЧНАЯ';
+      case 'drawer3': return 'ЯЩИКИ ×3';
+      case 'drawer4': return 'ЯЩИКИ ×4';
+      case 'tall': return 'ПЕНАЛ';
+      case 'fridge': return 'ХОЛОДИЛЬНИК';
+      default: return 'ШКАФ';
+    }
+  }
+
+  function renderSelSwatches() {
+    selSwatches.innerHTML = '';
+    if (state.selectedIdx < 0) return;
+    const cabId = kitchenGroup._refs[state.selectedIdx].cabId;
+    const currentMatIdx = state.cabinetMaterials[cabId] !== undefined
+      ? state.cabinetMaterials[cabId]
+      : state.globalMaterialIdx;
+    MATERIALS.forEach((m, i) => {
+      const s = document.createElement('div');
+      s.className = 'mini-swatch' + (i === currentMatIdx ? ' active' : '');
+      s.style.background = m.hex;
+      s.addEventListener('click', (e) => {
+        e.stopPropagation();
+        applyMaterialToCabinet(cabId, i);
+      });
+      selSwatches.appendChild(s);
+    });
+  }
+
+  /* ============================================================
+   * INTERACTIONS — change atoms
+   * ============================================================ */
+  function applyMaterialToCabinet(cabId, matIdx) {
+    state.cabinetMaterials[cabId] = matIdx;
+    const newMat = MATERIALS[matIdx];
+    /* Direct material mutation for sub-100ms repaint */
+    kitchenGroup.traverse(o => {
+      if (o.isMesh && o.userData && o.userData.cabId === cabId && o.userData.type === 'cabinet_body') {
+        o.material.color.setHex(newMat.facade);
+      }
+    });
+    /* Add door style overlays if needed (door style may need rebuild) — but for material, no rebuild */
+    renderSelSwatches();
+    pulseToast(`Цвет: ${newMat.name}`);
+    recomputePrice();
+    bumpHaptic();
+  }
+
+  function cycleCabinetMaterial(cabId) {
+    const cur = state.cabinetMaterials[cabId] !== undefined
+      ? state.cabinetMaterials[cabId]
+      : state.globalMaterialIdx;
+    const next = (cur + 1) % MATERIALS.length;
+    applyMaterialToCabinet(cabId, next);
+  }
+
+  function cycleDoorStyle(cabId) {
+    const cur = state.cabinetDoorStyles[cabId] || state.doorStyle;
+    const idx = DOOR_STYLES.indexOf(cur);
+    const next = DOOR_STYLES[(idx + 1) % DOOR_STYLES.length];
+    state.cabinetDoorStyles[cabId] = next;
+    /* Need to rebuild this cabinet's door overlays */
+    rebuildKitchen();
+    /* Reselect to restore camera */
+    if (state.selectedIdx >= 0) {
+      selectCabinet(state.selectedIdx);
+    }
+    const labels = { flat: 'Плоский', shaker: 'Шейкер', grooved: 'С рельефом' };
+    pulseToast(`Стиль двери: ${labels[next]}`);
+    bumpHaptic();
+  }
+
+  function cycleHandle(cabId) {
+    const cur = state.cabinetHandles[cabId] || 'bar';
+    const idx = HANDLE_TYPES.indexOf(cur);
+    const next = HANDLE_TYPES[(idx + 1) % HANDLE_TYPES.length];
+    state.cabinetHandles[cabId] = next;
+    rebuildKitchen();
+    if (state.selectedIdx >= 0) {
+      selectCabinet(state.selectedIdx);
+    }
+    const labels = { bar: 'Планка', knob: 'Ручка-шар', inset: 'Скрытая' };
+    pulseToast(`Ручка: ${labels[next]}`);
+    bumpHaptic();
+  }
+
+  function cycleSink() {
+    const idx = SINK_TYPES.indexOf(state.sinkType);
+    state.sinkType = SINK_TYPES[(idx + 1) % SINK_TYPES.length];
+    rebuildKitchen();
+    const labels = { single: 'Одна чаша', double: 'Две чаши', none: 'Без мойки' };
+    pulseToast(`Мойка: ${labels[state.sinkType]}`);
+    recomputePrice();
+    bumpHaptic();
+  }
+
+  function cycleStove() {
+    const idx = STOVE_TYPES.indexOf(state.stoveType);
+    state.stoveType = STOVE_TYPES[(idx + 1) % STOVE_TYPES.length];
+    rebuildKitchen();
+    const labels = { induction: 'Индукция', gas: 'Газ', none: 'Без плиты' };
+    pulseToast(`Плита: ${labels[state.stoveType]}`);
+    recomputePrice();
+    bumpHaptic();
+  }
+
+  function cycleWorktop() {
+    const tops = [null, 0x1a1a18, 0x5d4a3a, 0xe8e2d3, 0x444444];
+    const labels = ['По палитре', 'Антрацит', 'Тёплое дерево', 'Светлый камень', 'Графит'];
+    let idx = tops.indexOf(state.worktopOverride);
+    if (idx < 0) idx = 0;
+    idx = (idx + 1) % tops.length;
+    state.worktopOverride = tops[idx];
+    rebuildKitchen();
+    pulseToast(`Столешница: ${labels[idx]}`);
+    recomputePrice();
+    bumpHaptic();
+  }
+
+  /* ============================================================
+   * VARIANTS
+   * ============================================================ */
+  function regenerateForWall() {
+    state.variants = generateVariants(state.wall);
+    if (state.variantIdx >= state.variants.length) state.variantIdx = state.variants.length - 1;
+    /* Reset per-cabinet overrides on wall change (ids change) */
+    state.cabinetMaterials = {};
+    state.cabinetDoorStyles = {};
+    state.cabinetHandles = {};
+    state.selectedIdx = -1;
+    hideSelPill();
+    rebuildKitchen();
+    renderDots();
+    renderDotsMini();
+    updateVariantCounter();
+    recomputePrice();
+  }
+
+  function loadVariant(i) {
+    state.variantIdx = (i + state.variants.length) % state.variants.length;
+    /* On variant change, ids regen — preserve material overrides? No — clear them */
+    state.cabinetMaterials = {};
+    state.cabinetDoorStyles = {};
+    state.cabinetHandles = {};
+    state.selectedIdx = -1;
+    hideSelPill();
+    rebuildKitchen();
+    renderDots();
+    updateVariantCounter();
+    recomputePrice();
+    pulseToast(state.variants[state.variantIdx].name);
+  }
+
+  function renderDots() {
+    dotsEl.innerHTML = '';
+    state.variants.forEach((_, i) => {
+      const d = document.createElement('div');
+      d.className = 'dot' + (i === state.variantIdx ? ' active' : '');
+      dotsEl.appendChild(d);
+    });
+  }
+  function renderDotsMini() {
+    dotsMiniEl.innerHTML = '';
+    const idx = WALL_SIZES.indexOf(state.wall);
+    WALL_SIZES.forEach((_, i) => {
+      const d = document.createElement('div');
+      d.className = 'dot-mini' + (i === idx ? ' active' : '');
+      dotsMiniEl.appendChild(d);
+    });
+  }
+
+  function updateVariantCounter() {
+    variantNow.textContent = state.variantIdx + 1;
+    variantTotal.textContent = state.variants.length;
+    wallVal.textContent = state.wall.toLocaleString('ru-RU').replace(/,/g, ' ');
+  }
+
+  /* ============================================================
+   * VIEW (3D / 2D)
+   * ============================================================ */
+  function setView(v) {
+    if (state.view === v) return;
+    state.view = v;
+    document.querySelectorAll('.vt-btn').forEach(b => {
+      b.classList.toggle('active', b.dataset.view === v);
+    });
+    if (v === '2d') {
+      tweenCameraTo(PLAN_POS, PLAN_LOOK, 540, 32);
+      planGrid.classList.add('show');
+      pulseToast('Вид сверху · план');
+    } else {
+      tweenCameraTo(ISO_POS, ISO_LOOK, 540, 34);
+      planGrid.classList.remove('show');
+      pulseToast('Перспектива');
+    }
+  }
+
+  /* ============================================================
+   * PRICE
+   * ============================================================ */
+  function recomputePrice() {
+    let total = 0;
+    const totalMm = state.cabinets.reduce((s, c) => s + c.w * 1000, 0);
+    const sheets = Math.max(0.5, (totalMm / 2400) * 2.6);
+    let darkPremium = 1;
+    state.cabinets.forEach(c => {
+      const matIdx = state.cabinetMaterials[c.id] !== undefined ? state.cabinetMaterials[c.id] : state.globalMaterialIdx;
+      if (MATERIALS[matIdx].isDark) darkPremium += 0.05;
+    });
+    const ldsp = Math.round(sheets * 1450000 * darkPremium);
+    const hardware = state.cabinets.length * 280000;
+    const edge = Math.round((totalMm / 1000) * 2 * 75000);
+    const labor = state.cabinets.length * 850000;
+    let appliances = 0;
+    if (state.sinkType !== 'none') appliances += 850000;
+    if (state.sinkType === 'double') appliances += 200000;
+    if (state.stoveType === 'induction') appliances += 1800000;
+    if (state.stoveType === 'gas') appliances += 800000;
+    total = ldsp + hardware + edge + labor + appliances;
+    /* Match screenshot scale: 7,337,500 sum at 1500mm */
+    priceVal.textContent = total.toLocaleString('ru-RU').replace(/,/g, ' ');
+  }
+
+  /* ============================================================
+   * TOAST + HAPTIC
+   * ============================================================ */
+  let toastTimer = null;
+  function pulseToast(msg) {
+    toastEl.textContent = msg;
+    toastEl.classList.add('show');
+    clearTimeout(toastTimer);
+    toastTimer = setTimeout(() => toastEl.classList.remove('show'), 1400);
+  }
+  function bumpHaptic() {
+    if (navigator.vibrate) navigator.vibrate(6);
+  }
+
+  /* ============================================================
+   * MATERIAL PALETTE DRAWER
+   * ============================================================ */
+  function renderPalette() {
+    paletteGrid.innerHTML = '';
+    MATERIALS.forEach((m, i) => {
+      const c = document.createElement('div');
+      c.className = 'palette-card' + (i === state.globalMaterialIdx ? ' active' : '') + (m.isDark ? ' dark' : '');
+      c.innerHTML = `<div class="pal-row"><div style="background:${m.hex}"></div><div style="background:${m.topHex}"></div></div><div class="pal-lbl">${m.name}</div>`;
+      c.addEventListener('click', () => {
+        state.globalMaterialIdx = i;
+        materialSwatch.style.background = m.hex;
+        materialName.textContent = m.name;
+        rebuildKitchen();
+        renderPalette();
+        recomputePrice();
+        pulseToast(`Палитра: ${m.name}`);
+        bumpHaptic();
+        setTimeout(closeDrawer, 240);
+      });
+      paletteGrid.appendChild(c);
+    });
+  }
+  function openDrawer() { drawer.classList.add('show'); }
+  function closeDrawer() { drawer.classList.remove('show'); }
+  materialBtn.addEventListener('click', () => {
+    if (drawer.classList.contains('show')) closeDrawer();
+    else openDrawer();
+  });
+
+  /* ============================================================
+   * INPUT HANDLING
+   * ============================================================ */
+  let touchStartX = 0, touchStartY = 0, touchStartTime = 0;
+  let isSwiping = false;
+  let pinchInitial = -1;
+
+  function onPointerDown(e) {
+    if (drawer.classList.contains('show')) return;
+    const p = readPointer(e);
+    touchStartX = p.x; touchStartY = p.y;
+    touchStartTime = performance.now();
+    isSwiping = false;
+  }
+  function onPointerMove(e) {
+    if (drawer.classList.contains('show')) return;
+    const rect = canvas.getBoundingClientRect();
+    const ev = e.touches && e.touches[0] ? e.touches[0] : e;
+    const dx = (ev.clientX - rect.left) - touchStartX;
+    const dy = (ev.clientY - rect.top) - touchStartY;
+    if (state.selectedIdx < 0 && state.view === '3d' && Math.abs(dx) > 22 && Math.abs(dx) > Math.abs(dy) * 1.4) {
+      isSwiping = true;
+    }
+  }
+  function onPointerUp(e) {
+    const elapsed = performance.now() - touchStartTime;
+    if (isSwiping) {
+      const rect = canvas.getBoundingClientRect();
+      const ev = e.changedTouches && e.changedTouches[0] ? e.changedTouches[0] : e;
+      const dx = (ev.clientX - rect.left) - touchStartX;
+      if (dx < -50) loadVariant(state.variantIdx + 1);
+      else if (dx > 50) loadVariant(state.variantIdx - 1);
+      isSwiping = false;
+      return;
+    }
+    if (tweening || elapsed > 500) return;
+    /* Tap */
+    readPointer(e);
+    raycaster.setFromCamera(pointer, camera);
+    const meshes = getInteractiveMeshes();
+    const hits = raycaster.intersectObjects(meshes, false);
+    if (hits.length === 0) {
+      /* Background tap — deselect */
+      if (state.selectedIdx >= 0) selectCabinet(-1);
+      return;
+    }
+    const hit = hits[0].object;
+    handleHit(hit);
+  }
+
+  function handleHit(mesh) {
+    const t = mesh.userData.type;
+    const cabId = mesh.userData.cabId;
+
+    /* Pulse animation on the hit mesh */
+    pulseMesh(mesh);
+
+    if (t === 'cabinet_body' || t === 'plinth') {
+      /* Select this cabinet */
+      if (cabId) selectCabinetByCabId(cabId);
+      return;
+    }
+    if (t === 'cabinet_door') {
+      /* If cabinet not yet selected, select it first */
+      if (state.selectedIdx < 0 || kitchenGroup._refs[state.selectedIdx].cabId !== cabId) {
+        selectCabinetByCabId(cabId);
+        /* On first tap, just select. Second tap cycles. */
+        return;
+      }
+      /* Already selected, cycle door style */
+      cycleDoorStyle(cabId);
+      return;
+    }
+    if (t === 'cabinet_handle') {
+      if (state.selectedIdx < 0 || kitchenGroup._refs[state.selectedIdx].cabId !== cabId) {
+        selectCabinetByCabId(cabId);
+        return;
+      }
+      cycleHandle(cabId);
+      return;
+    }
+    if (t === 'worktop') {
+      cycleWorktop();
+      return;
+    }
+    if (t === 'sink') {
+      cycleSink();
+      return;
+    }
+    if (t === 'stove') {
+      cycleStove();
+      return;
+    }
+    if (t === 'shelf') {
+      pulseToast(`Полка ${mesh.userData.shelfIdx + 1}`);
+      bumpHaptic();
+      return;
+    }
+  }
+
+  function pulseMesh(mesh) {
+    if (!mesh || mesh.userData._pulsing) return;
+    mesh.userData._pulsing = true;
+    const startScale = mesh.scale.x;
+    const target = startScale * 1.04;
+    const dur = 180;
+    const t0 = performance.now();
+    function step() {
+      const t = (performance.now() - t0) / dur;
+      if (t >= 1) {
+        mesh.scale.set(startScale, startScale, startScale);
+        mesh.userData._pulsing = false;
+        return;
+      }
+      const p = t < 0.5 ? (t * 2) : (1 - (t - 0.5) * 2);
+      const s = startScale + (target - startScale) * easeOutCubic(p);
+      mesh.scale.set(s, s, s);
+      requestAnimationFrame(step);
+    }
+    requestAnimationFrame(step);
+  }
+
+  /* Width buttons */
+  wMinus.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (state.selectedIdx < 0) return;
+    const cab = kitchenGroup._refs[state.selectedIdx].cab;
+    const newW = Math.max(0.3, cab.w - 0.05);
+    if (Math.abs(newW - cab.w) < 0.001) return;
+    cab.w = newW;
+    state.cabinets[state.selectedIdx].w = newW;
+    state.variants[state.variantIdx].cabs[state.selectedIdx].w = newW;
+    const remember = state.selectedIdx;
+    rebuildKitchen();
+    state.selectedIdx = remember;
+    const ref = kitchenGroup._refs[remember];
+    if (ref) {
+      wValEl.textContent = Math.round(newW * 1000);
+      selName.textContent = `${cabTypeLabel(ref.cab.t)} · ${Math.round(newW * 1000)} мм`;
+    }
+    recomputePrice();
+    bumpHaptic();
+  });
+  wPlus.addEventListener('click', (e) => {
+    e.stopPropagation();
+    if (state.selectedIdx < 0) return;
+    const cab = kitchenGroup._refs[state.selectedIdx].cab;
+    const newW = Math.min(1.2, cab.w + 0.05);
+    if (Math.abs(newW - cab.w) < 0.001) return;
+    cab.w = newW;
+    state.cabinets[state.selectedIdx].w = newW;
+    state.variants[state.variantIdx].cabs[state.selectedIdx].w = newW;
+    const remember = state.selectedIdx;
+    rebuildKitchen();
+    state.selectedIdx = remember;
+    const ref = kitchenGroup._refs[remember];
+    if (ref) {
+      wValEl.textContent = Math.round(newW * 1000);
+      selName.textContent = `${cabTypeLabel(ref.cab.t)} · ${Math.round(newW * 1000)} мм`;
+    }
+    recomputePrice();
+    bumpHaptic();
+  });
+
+  selClose.addEventListener('click', (e) => {
+    e.stopPropagation();
+    selectCabinet(-1);
+    bumpHaptic();
+  });
+
+  /* Wall pill cycles wall size */
+  wallPill.addEventListener('click', () => {
+    const idx = WALL_SIZES.indexOf(state.wall);
+    state.wall = WALL_SIZES[(idx + 1) % WALL_SIZES.length];
+    regenerateForWall();
+    pulseToast(`Стена ${state.wall} мм`);
+    bumpHaptic();
+  });
+
+  /* Variant counter cycles variants */
+  variantCounter.addEventListener('click', () => {
+    loadVariant(state.variantIdx + 1);
+    bumpHaptic();
+  });
+
+  /* View toggle */
+  document.querySelectorAll('.vt-btn').forEach(b => {
+    b.addEventListener('click', () => {
+      setView(b.dataset.view);
+      bumpHaptic();
+    });
+  });
+
+  /* Save button */
+  saveBtn.addEventListener('click', () => {
+    pulseToast('DXF + смета · отправлено в Telegram');
+    bumpHaptic();
+  });
+
+  /* Click outside drawer closes it */
+  document.addEventListener('pointerdown', (e) => {
+    if (drawer.classList.contains('show')
+        && !drawer.contains(e.target)
+        && e.target !== materialBtn
+        && !materialBtn.contains(e.target)) {
+      closeDrawer();
+    }
+  });
+
+  canvas.addEventListener('pointerdown', onPointerDown);
+  canvas.addEventListener('pointermove', onPointerMove);
+  canvas.addEventListener('pointerup', onPointerUp);
+  canvas.addEventListener('pointercancel', () => { isSwiping = false; });
+
+  /* ============================================================
+   * ANIMATION LOOP
+   * ============================================================ */
+  function animate() {
+    if (tweening) {
+      const t = (performance.now() - tweenStart) / tweenDur;
+      if (t >= 1) {
+        camera.position.copy(camTo);
+        currentLook.copy(lookTo);
+        camera.lookAt(currentLook);
+        if (fovTo !== camera.fov) { camera.fov = fovTo; camera.updateProjectionMatrix(); }
+        tweening = false;
+      } else {
+        const e = easeOutCubic(t);
+        camera.position.lerpVectors(camFrom, camTo, e);
+        currentLook.lerpVectors(lookFrom, lookTo, e);
+        camera.lookAt(currentLook);
+        if (fovTo !== fovFrom) {
+          camera.fov = fovFrom + (fovTo - fovFrom) * e;
+          camera.updateProjectionMatrix();
+        }
+      }
+    }
+    renderer.render(scene, camera);
+    requestAnimationFrame(animate);
+  }
+
+  function resize() {
+    const w = canvas.clientWidth || phoneEl.clientWidth;
+    const h = canvas.clientHeight || phoneEl.clientHeight;
+    renderer.setSize(w, h, false);
+    camera.aspect = w / h;
+    camera.updateProjectionMatrix();
+  }
+  window.addEventListener('resize', resize);
+  setTimeout(resize, 50);
+
+  /* ============================================================
+   * INIT
+   * ============================================================ */
+  regenerateForWall();
+  state.variantIdx = state.variants.length - 1;  /* Match screenshot — variant 3/3 */
+  rebuildKitchen();
+  renderDots();
+  renderPalette();
+  updateVariantCounter();
+  recomputePrice();
+  animate();
+
+  /* Initial hint */
+  setTimeout(() => {
+    introHintEl.classList.add('show');
+    setTimeout(() => introHintEl.classList.remove('show'), 2800);
+  }, 700);
+})();
+</script>
+</body>
+</html>

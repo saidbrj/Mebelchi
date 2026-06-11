@@ -1,0 +1,23 @@
+{
+ "id": "gtv_corner_brackets",
+ "brand": "GTV",
+ "tier": "core",
+ "family": "corner_bracket",
+ "name": "Angle/corner brackets (wide)",
+ "category": "brackets_fittings_connectors",
+ "source_doc": "Furniture-Accessories-2025-PL-EN-UA-HU-6.pdf",
+ "pdf_pages": [
+  263,
+  264
+ ],
+ "skus": [],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/gtv_corner_brackets_p263-263.png",
+  "media/gtv_corner_brackets_p264-264.png"
+ ],
+ "function_group": "F10_wall_hanging",
+ "role": "alternative"
+}

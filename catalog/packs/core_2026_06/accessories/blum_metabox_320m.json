@@ -1,0 +1,27 @@
+{
+ "id": "blum_metabox_320m",
+ "brand": "Blum",
+ "tier": "premium",
+ "family": "drawer_box_budget",
+ "name": "METABOX 320M single-wall set (CIS classic)",
+ "category": "drawer_systems",
+ "source_doc": "Catalogue and technical manual 2024-2025 en.pdf",
+ "pdf_pages": [
+  348,
+  354,
+  356
+ ],
+ "skus": [
+  "320M5500",
+  "320H4500"
+ ],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/blum_metabox_320m_p348-348.png",
+  "media/blum_metabox_320m_p354-354.png"
+ ],
+ "function_group": "F8_drawer_box",
+ "role": "substitute"
+}

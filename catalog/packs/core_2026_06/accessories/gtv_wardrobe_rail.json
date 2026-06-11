@@ -1,0 +1,23 @@
+{
+ "id": "gtv_wardrobe_rail",
+ "brand": "GTV",
+ "tier": "core",
+ "family": "wardrobe_rail",
+ "name": "Wardrobe rail + holders",
+ "category": "wardrobe_accessories",
+ "source_doc": "Furniture-Accessories-2025-PL-EN-UA-HU-6.pdf",
+ "pdf_pages": [
+  290,
+  291
+ ],
+ "skus": [],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/gtv_wardrobe_rail_p290-290.png",
+  "media/gtv_wardrobe_rail_p291-291.png"
+ ],
+ "function_group": "F12_wardrobe",
+ "role": "default"
+}

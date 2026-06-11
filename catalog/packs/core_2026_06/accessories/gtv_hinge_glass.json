@@ -1,0 +1,26 @@
+{
+ "id": "gtv_hinge_glass",
+ "brand": "GTV",
+ "tier": "core",
+ "family": "hinge_glass",
+ "name": "Glass door hinge",
+ "category": "hinges",
+ "source_doc": "Furniture-Accessories-2025-PL-EN-UA-HU-6.pdf",
+ "pdf_pages": [
+  98,
+  99
+ ],
+ "skus": [
+  "ZP-CIG-09OZE",
+  "ZP-CIG-07OZE"
+ ],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/gtv_hinge_glass_p98-098.png",
+  "media/gtv_hinge_glass_p99-099.png"
+ ],
+ "function_group": "F5_door_hinged",
+ "role": "alternative"
+}

@@ -1,0 +1,23 @@
+{
+  "_README": "First cited joint-rule table (doc 16 §2 Source C/doc 13 rules engine). Hinge count by door weight, per GTV's own application chart. Data, not code — the solver's hinge-count selection function reads this.",
+  "rule": "hinge_count_by_door_weight",
+  "source": {
+    "document": "GTV Furniture-Accessories-2025-PL-EN-UA-HU-6.pdf",
+    "pdf_page": 59,
+    "printed_page": 57,
+    "scope": "cup hinges Ø26 and Ø35 (wide-angle special models per footnote), door width ≤450mm, height ≤2500mm, hinge-to-edge ≥90mm"
+  },
+  "verified": false,
+  "bands": [
+    { "door_weight_kg": [3, 4.5],    "hinges": 2 },
+    { "door_weight_kg": [4.5, 9],    "hinges": 3 },
+    { "door_weight_kg": [9, 12.5],   "hinges": 4 },
+    { "door_weight_kg": [12.5, 15],  "hinges": 5 }
+  ],
+  "placement_principles_from_source": [
+    "distance between hinges as large as possible",
+    "count depends on door height, width AND weight",
+    "mounting tests required before mass production"
+  ],
+  "engine_notes": "Door weight = area × material density (materials catalog already plans density_kg_per_m3, IMOS_FEATURE_MAP). Cross-check bands against Blum TA catalogue and factory practice before verified:true."
+}

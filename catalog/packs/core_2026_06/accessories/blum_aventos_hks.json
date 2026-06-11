@@ -1,0 +1,24 @@
+{
+ "id": "blum_aventos_hks",
+ "brand": "Blum",
+ "tier": "premium",
+ "family": "lift_stay_small",
+ "name": "AVENTOS HK-S small stay lift",
+ "category": "lifts",
+ "source_doc": "Catalogue and technical manual 2024-2025 en.pdf",
+ "pdf_pages": [
+  58,
+  59,
+  60
+ ],
+ "skus": [],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/blum_aventos_hks_p58-058.png",
+  "media/blum_aventos_hks_p59-059.png"
+ ],
+ "function_group": "F9_flap_lift",
+ "role": "substitute"
+}

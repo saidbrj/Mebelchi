@@ -1,0 +1,23 @@
+{
+ "id": "gtv_handle_classic",
+ "brand": "GTV",
+ "tier": "core",
+ "family": "handle",
+ "name": "Classic bow handles (128/160)",
+ "category": "handles",
+ "source_doc": "Furniture-Accessories-2025-PL-EN-UA-HU-6.pdf",
+ "pdf_pages": [
+  400,
+  401
+ ],
+ "skus": [],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/gtv_handle_classic_p400-400.png",
+  "media/gtv_handle_classic_p401-401.png"
+ ],
+ "function_group": "F14_grip",
+ "role": "substitute"
+}

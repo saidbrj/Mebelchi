@@ -1,0 +1,25 @@
+{
+ "id": "blum_movento_760h",
+ "brand": "Blum",
+ "tier": "premium",
+ "family": "runner_concealed",
+ "name": "MOVENTO 760H full-extension runner",
+ "category": "slides",
+ "source_doc": "Catalogue and technical manual 2024-2025 en.pdf",
+ "pdf_pages": [
+  416,
+  418
+ ],
+ "skus": [
+  "760H4500"
+ ],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/blum_movento_760h_p416-416.png",
+  "media/blum_movento_760h_p418-418.png"
+ ],
+ "function_group": "F7_drawer_runner",
+ "role": "substitute"
+}

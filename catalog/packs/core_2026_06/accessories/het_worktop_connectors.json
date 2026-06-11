@@ -1,0 +1,23 @@
+{
+ "id": "het_worktop_connectors",
+ "brand": "Hettich",
+ "tier": "upper",
+ "family": "worktop_connector",
+ "name": "Worktop connecting bolts — default",
+ "category": "brackets_fittings_connectors",
+ "source_doc": "TA_2020_18565_en.pdf",
+ "pdf_pages": [
+  760,
+  761
+ ],
+ "skus": [],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/het_worktop_connectors_p760-0760.png",
+  "media/het_worktop_connectors_p761-0761.png"
+ ],
+ "function_group": "F13_worktop_banking",
+ "role": "default"
+}

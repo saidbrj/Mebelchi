@@ -1,0 +1,23 @@
+{
+ "id": "gtv_knobs",
+ "brand": "GTV",
+ "tier": "core",
+ "family": "handle_knob",
+ "name": "Knob handles",
+ "category": "handles",
+ "source_doc": "Furniture-Accessories-2025-PL-EN-UA-HU-6.pdf",
+ "pdf_pages": [
+  467,
+  469
+ ],
+ "skus": [],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/gtv_knobs_p467-467.png",
+  "media/gtv_knobs_p469-469.png"
+ ],
+ "function_group": "F14_grip",
+ "role": "substitute"
+}

@@ -1,0 +1,25 @@
+{
+ "id": "het_sensys_8645i",
+ "brand": "Hettich",
+ "tier": "upper",
+ "family": "hinge_cup35",
+ "name": "Sensys 8645i TH52 (integrated soft-close) — overlay",
+ "category": "hinges",
+ "source_doc": "TA_2020_18565_en.pdf",
+ "pdf_pages": [
+  32,
+  33
+ ],
+ "skus": [
+  "Sensys 8645i"
+ ],
+ "grade": "browse",
+ "verified": false,
+ "note": "overlay type per page — confirm full/half",
+ "media": [
+  "media/het_sensys_8645i_p32-0032.png",
+  "media/het_sensys_8645i_p33-0033.png"
+ ],
+ "function_group": "F5_door_hinged",
+ "role": "substitute"
+}

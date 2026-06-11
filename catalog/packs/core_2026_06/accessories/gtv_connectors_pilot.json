@@ -1,0 +1,25 @@
+{
+ "id": "gtv_connectors_pilot",
+ "brand": "GTV",
+ "tier": "core",
+ "family": "connectors",
+ "name": "Connectors pilot (cams, bolts, confirmat, rafix, sleeves, screws)",
+ "category": "brackets_fittings_connectors",
+ "source_doc": "Furniture-Accessories-2025-PL-EN-UA-HU-6.pdf",
+ "pdf_pages": [
+  271,
+  272,
+  273,
+  274
+ ],
+ "skus": [],
+ "grade": "browse",
+ "verified": false,
+ "note": "structured in connectors_pilot.json",
+ "media": [
+  "media/gtv_connectors_pilot_p271-271.png",
+  "media/gtv_connectors_pilot_p272-272.png"
+ ],
+ "function_group": "F1_carcass_joint",
+ "role": "default"
+}

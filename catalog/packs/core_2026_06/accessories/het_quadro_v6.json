@@ -1,0 +1,25 @@
+{
+ "id": "het_quadro_v6",
+ "brand": "Hettich",
+ "tier": "upper",
+ "family": "runner_concealed",
+ "name": "Quadro V6 full-extension runner",
+ "category": "slides",
+ "source_doc": "TA_2020_18565_en.pdf",
+ "pdf_pages": [
+  365,
+  366,
+  367,
+  368
+ ],
+ "skus": [],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/het_quadro_v6_p365-0365.png",
+  "media/het_quadro_v6_p366-0366.png"
+ ],
+ "function_group": "F7_drawer_runner",
+ "role": "substitute"
+}

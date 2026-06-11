@@ -1,0 +1,25 @@
+{
+ "id": "het_sensys_8639i",
+ "brand": "Hettich",
+ "tier": "upper",
+ "family": "hinge_cup35",
+ "name": "Sensys 8639i — reduced/half overlay",
+ "category": "hinges",
+ "source_doc": "TA_2020_18565_en.pdf",
+ "pdf_pages": [
+  48,
+  49
+ ],
+ "skus": [
+  "Sensys 8639i"
+ ],
+ "grade": "browse",
+ "verified": false,
+ "note": "confirm overlay class",
+ "media": [
+  "media/het_sensys_8639i_p48-0048.png",
+  "media/het_sensys_8639i_p49-0049.png"
+ ],
+ "function_group": "F5_door_hinged",
+ "role": "substitute"
+}

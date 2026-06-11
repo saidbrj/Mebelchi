@@ -1,0 +1,25 @@
+{
+ "id": "blum_aventos_hf_top",
+ "brand": "Blum",
+ "tier": "premium",
+ "family": "lift_bifold",
+ "name": "AVENTOS HF top bi-fold lift",
+ "category": "lifts",
+ "source_doc": "Catalogue and technical manual 2024-2025 en.pdf",
+ "pdf_pages": [
+  24,
+  25,
+  26,
+  27
+ ],
+ "skus": [],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/blum_aventos_hf_top_p24-024.png",
+  "media/blum_aventos_hf_top_p25-025.png"
+ ],
+ "function_group": "F9_flap_lift",
+ "role": "substitute"
+}

@@ -1,0 +1,75 @@
+{
+  "_README": "PILOT manufacturing-grade CANDIDATES — transcribed by eye from rendered catalogue pages (PDF pages noted). Every drilling-relevant number is verified:false until cross-checked against a factory export or GTV technical sheet. Same contract as hardware_specs.dummy.json: numbers live here, never in code.",
+  "_source_document": "GTV Furniture-Accessories-2025-PL-EN-UA-HU-6.pdf",
+
+  "eccentric_cams_minifix": {
+    "family": "cam_dowel_eccentric",
+    "pdf_page": 272,
+    "skus": [
+      { "sku": "WK-CAM-12-10",   "cam_diameter": 12, "cam_height": 10, "verified": false },
+      { "sku": "WK-CAM-15-12-D", "cam_diameter": 15, "cam_height": 12, "verified": false,
+        "comment": "MATCHES FACTORY: their Ø15 seats drill 12.5 deep → cam height 12 + 0.5 clearance. Confirm this (or equivalent class) is what the factory buys." },
+      { "sku": "WK-CAM-15-13-D", "cam_diameter": 15, "cam_height": 13, "verified": false,
+        "comment": "candidate explanation for the OTHER factory seat depth class — they also drill Ø15×11; two cam heights exist. CONFIRM which SKU ↔ which depth." }
+    ]
+  },
+
+  "eccentric_bolts": {
+    "family": "cam_dowel_eccentric",
+    "pdf_page": 273,
+    "bolt_thread_diameter": 7.5,
+    "skus": [
+      { "sku": "WK-DOW63X45B-D", "length": 45, "verified": false },
+      { "sku": "WK-DOW63X39-D",  "length": 39, "verified": false },
+      { "sku": "WK-DOW63X35B-D", "length": 35, "verified": false },
+      { "sku": "WK-DOW63X31G-D", "length": 31, "verified": false }
+    ],
+    "kits_pdf_page": 273,
+    "kits": ["WK-CAM-15-DOW63X45-KPL-1T", "WK-CAM-15-DOW63X39-KPL-1T", "WK-CAM-15-DOW63X35-KPL-1T", "WK-CAM-15-DOW63X31-KPL-1T"],
+    "kit_bolt_diameter": 6.3
+  },
+
+  "shelf_eccentric_rafix_type": {
+    "family": "shelf_connector_eccentric",
+    "pdf_page": 271,
+    "name": "Złącze mimośrodowe do półek / Eccentric connecting fitting for shelves",
+    "skus": ["MM-FI20-20X6X11-PL10-1T", "MM-FI20-20X6X11-PL20-1T", "MM-FI20-20X6X11-PL30-1T", "MM-FI20-20X6X11-PL80-1T", "MM-FI20-20X6X11-ZN-1T"],
+    "colors": ["white", "black", "brown", "gray", "silver"],
+    "housing_diameter_from_sku": 20,
+    "dowel": { "diameter": 6, "length": 16.5 },
+    "seat_depths_seen_in_drawing": [12.5, 11.5, 13.5],
+    "verified": false,
+    "comment": "Drawing dims interleaved in PDF text — visually confirm seat Ø and depth against GTV technical sheet before any drilling use."
+  },
+
+  "confirmat": {
+    "family": "confirmat",
+    "pdf_page": 274,
+    "skus": [
+      { "sku": "WK-CF6450-01", "diameter": 6.4, "length": 50, "head_diameter": 9.5, "hex": 4, "verified": false },
+      { "sku": "WK-CF0750-01", "diameter": 7.0, "length": 50, "head_diameter": 10,  "hex": 4, "verified": false,
+        "comment": "Ø7 class — factory face pilots Ø7×17 are consistent with a Ø7 confirmat through 16mm panel. Confirm pilot drill convention (face Ø7 through + edge Ø4.5×34)." }
+    ]
+  },
+
+  "wood_screws": {
+    "family": "screw",
+    "pdf_page": 272,
+    "skus": [
+      { "sku": "WK-D0320-001*", "size": "3x20" }, { "sku": "WK-D0325-001*", "size": "3x25" },
+      { "sku": "WK-D0330-001*", "size": "3x30" }, { "sku": "WK-D0416-001*", "size": "4x16" },
+      { "sku": "WK-D0425-001*", "size": "4x25" }
+    ],
+    "note": "* = special-order per catalogue footnote"
+  },
+
+  "threaded_sleeves": {
+    "family": "intersection_bolt",
+    "pdf_page": 271,
+    "skus": [
+      { "sku": "SZ-005-00-01T / SZ-005-00-01-AT", "thread": "M4", "shaft": 5, "length": 30.5, "verified": false },
+      { "sku": "SZ-008-00-01T / SZ-008-00-01-AT", "thread": "M6", "shaft": 8, "length": 29, "verified": false }
+    ],
+    "use": "joining adjacent cabinets through both side panels"
+  }
+}

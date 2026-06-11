@@ -1,0 +1,23 @@
+{
+ "id": "gtv_castors",
+ "brand": "GTV",
+ "tier": "core",
+ "family": "castor",
+ "name": "Furniture castors",
+ "category": "castors",
+ "source_doc": "Furniture-Accessories-2025-PL-EN-UA-HU-6.pdf",
+ "pdf_pages": [
+  594,
+  595
+ ],
+ "skus": [],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/gtv_castors_p594-594.png",
+  "media/gtv_castors_p595-595.png"
+ ],
+ "function_group": "F11_base_feet",
+ "role": "alternative"
+}

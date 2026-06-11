@@ -1,0 +1,714 @@
+{
+ "pack": "core_universal",
+ "version": "2026.06-core-v2",
+ "purpose": "The curated core catalogue: the most universal, market-proven families across the three tiers actually present in Uzbekistan. 53 families; each carries its size/colour SKU variants (≈100+ orderable items). Media = catalogue page renders (product image + technical drilling drawing, no 3D) per founder decision.",
+ "tiers": {
+  "core": "GTV (mid price/quality, B2B API available)",
+  "upper": "Hettich (widely in UZ market, pricier)",
+  "premium": "Blum"
+ },
+ "grades_note": "All entries browse grade. Manufacturing grade requires per-SKU drilling verification against manufacturer technical sheet or factory export (doc 17 §2).",
+ "source_documents": {
+  "Blum": "Catalogue and technical manual 2024-2025 en.pdf (758pp)",
+  "Hettich": "TA_2020_18565_en.pdf Technik & Anwendung (1390pp)",
+  "GTV": "Furniture-Accessories-2025-PL-EN-UA-HU-6.pdf (788pp)"
+ },
+ "entry_count": 63,
+ "function_groups": {
+  "F1_carcass_joint": {
+   "default": "gtv_connectors_pilot",
+   "subs": [
+    "het_rastex_15",
+    "het_vb35"
+   ]
+  },
+  "F3_shelf_adjustable": {
+   "default": "gtv_shelf_pins",
+   "subs": [
+    "gtv_shelf_supports_screw",
+    "het_shelf_supports"
+   ]
+  },
+  "F4_back_panel": {
+   "default": "gtv_rear_stabilizer",
+   "subs": []
+  },
+  "F5_door_hinged": {
+   "default": "gtv_hinge_softclose_full",
+   "subs": [
+    "het_sensys_8645i",
+    "het_sensys_8657i",
+    "het_sensys_8639i",
+    "het_intermat_9943",
+    "blum_cliptop_blumotion_full",
+    "blum_cliptop_blumotion_half",
+    "blum_cliptop_blumotion_inset",
+    "blum_cliptop_std_full"
+   ],
+   "alts": [
+    "gtv_hinge_165",
+    "gtv_hinge_45_90",
+    "gtv_hinge_glass",
+    "gtv_springfree_hinge_push",
+    "gtv_hinge_plates",
+    "het_selekta",
+    "blum_clip_plates",
+    "het_sensys_drillpattern"
+   ]
+  },
+  "F6_door_motion": {
+   "default": "gtv_mensa_catch",
+   "subs": [
+    "blum_blumotion_doors"
+   ],
+   "alts": [
+    "gtv_damper_dots"
+   ]
+  },
+  "F7_drawer_runner": {
+   "default": "gtv_bb_slide_h45",
+   "subs": [
+    "gtv_bb_slide_softclose",
+    "het_ka270",
+    "gtv_roller_slide",
+    "het_quadro_v6",
+    "het_actro_5d",
+    "blum_movento_760h",
+    "blum_tandem_550h"
+   ]
+  },
+  "F8_drawer_box": {
+   "default": "gtv_axispro",
+   "subs": [
+    "het_innotech_atira",
+    "het_avantech_you",
+    "blum_tandembox_antaro_m",
+    "blum_tandembox_antaro_d",
+    "blum_legrabox_pure",
+    "blum_merivobox",
+    "blum_metabox_320m"
+   ],
+   "alts": [
+    "gtv_axispro_glass"
+   ]
+  },
+  "F9_flap_lift": {
+   "default": "gtv_gas_lift",
+   "subs": [
+    "gtv_minilift",
+    "blum_aventos_hk_top",
+    "blum_aventos_hks",
+    "blum_aventos_hf_top"
+   ]
+  },
+  "F10_wall_hanging": {
+   "default": "gtv_cabinet_hangers",
+   "subs": [
+    "gtv_mounting_strip",
+    "blum_cabinet_connectors"
+   ],
+   "alts": [
+    "gtv_corner_brackets"
+   ]
+  },
+  "F11_base_feet": {
+   "default": "gtv_plinth_legs",
+   "subs": [],
+   "alts": [
+    "gtv_castors"
+   ]
+  },
+  "F12_wardrobe": {
+   "default": "gtv_wardrobe_rail",
+   "subs": [
+    "gtv_sliding_bottom",
+    "het_topline_l"
+   ]
+  },
+  "F13_worktop_banking": {
+   "default": "het_worktop_connectors",
+   "subs": []
+  },
+  "F14_grip": {
+   "default": "gtv_handle_rail",
+   "subs": [
+    "gtv_handle_classic",
+    "gtv_knobs"
+   ]
+  },
+  "FX_lighting": {
+   "default": "gtv_led_strip",
+   "subs": []
+  }
+ },
+ "doctrine": "../CORE_DOCTRINE.md",
+ "entries": [
+  {
+   "id": "blum_cliptop_blumotion_full",
+   "name": "CLIP top BLUMOTION 110° full overlay",
+   "brand": "Blum",
+   "tier": "premium",
+   "function_group": "F5_door_hinged",
+   "role": "substitute",
+   "file": "accessories/blum_cliptop_blumotion_full.json"
+  },
+  {
+   "id": "blum_cliptop_blumotion_half",
+   "name": "CLIP top BLUMOTION 110° half overlay",
+   "brand": "Blum",
+   "tier": "premium",
+   "function_group": "F5_door_hinged",
+   "role": "substitute",
+   "file": "accessories/blum_cliptop_blumotion_half.json"
+  },
+  {
+   "id": "blum_cliptop_blumotion_inset",
+   "name": "CLIP top BLUMOTION 110° inset",
+   "brand": "Blum",
+   "tier": "premium",
+   "function_group": "F5_door_hinged",
+   "role": "substitute",
+   "file": "accessories/blum_cliptop_blumotion_inset.json"
+  },
+  {
+   "id": "blum_cliptop_std_full",
+   "name": "CLIP top 110° full overlay (no soft-close)",
+   "brand": "Blum",
+   "tier": "premium",
+   "function_group": "F5_door_hinged",
+   "role": "substitute",
+   "file": "accessories/blum_cliptop_std_full.json"
+  },
+  {
+   "id": "blum_clip_plates",
+   "name": "CLIP cruciform mounting plates 0/3mm",
+   "brand": "Blum",
+   "tier": "premium",
+   "function_group": "F5_door_hinged",
+   "role": "alternative",
+   "file": "accessories/blum_clip_plates.json"
+  },
+  {
+   "id": "blum_blumotion_doors",
+   "name": "BLUMOTION 971A for doors (add-on)",
+   "brand": "Blum",
+   "tier": "premium",
+   "function_group": "F6_door_motion",
+   "role": "substitute",
+   "file": "accessories/blum_blumotion_doors.json"
+  },
+  {
+   "id": "blum_aventos_hk_top",
+   "name": "AVENTOS HK top stay lift",
+   "brand": "Blum",
+   "tier": "premium",
+   "function_group": "F9_flap_lift",
+   "role": "substitute",
+   "file": "accessories/blum_aventos_hk_top.json"
+  },
+  {
+   "id": "blum_aventos_hks",
+   "name": "AVENTOS HK-S small stay lift",
+   "brand": "Blum",
+   "tier": "premium",
+   "function_group": "F9_flap_lift",
+   "role": "substitute",
+   "file": "accessories/blum_aventos_hks.json"
+  },
+  {
+   "id": "blum_aventos_hf_top",
+   "name": "AVENTOS HF top bi-fold lift",
+   "brand": "Blum",
+   "tier": "premium",
+   "function_group": "F9_flap_lift",
+   "role": "substitute",
+   "file": "accessories/blum_aventos_hf_top.json"
+  },
+  {
+   "id": "blum_tandembox_antaro_m",
+   "name": "TANDEMBOX antaro, M height set",
+   "brand": "Blum",
+   "tier": "premium",
+   "function_group": "F8_drawer_box",
+   "role": "substitute",
+   "file": "accessories/blum_tandembox_antaro_m.json"
+  },
+  {
+   "id": "blum_tandembox_antaro_d",
+   "name": "TANDEMBOX antaro, D height set",
+   "brand": "Blum",
+   "tier": "premium",
+   "function_group": "F8_drawer_box",
+   "role": "substitute",
+   "file": "accessories/blum_tandembox_antaro_d.json"
+  },
+  {
+   "id": "blum_legrabox_pure",
+   "name": "LEGRABOX pure set",
+   "brand": "Blum",
+   "tier": "premium",
+   "function_group": "F8_drawer_box",
+   "role": "substitute",
+   "file": "accessories/blum_legrabox_pure.json"
+  },
+  {
+   "id": "blum_merivobox",
+   "name": "MERIVOBOX set",
+   "brand": "Blum",
+   "tier": "premium",
+   "function_group": "F8_drawer_box",
+   "role": "substitute",
+   "file": "accessories/blum_merivobox.json"
+  },
+  {
+   "id": "blum_metabox_320m",
+   "name": "METABOX 320M single-wall set (CIS classic)",
+   "brand": "Blum",
+   "tier": "premium",
+   "function_group": "F8_drawer_box",
+   "role": "substitute",
+   "file": "accessories/blum_metabox_320m.json"
+  },
+  {
+   "id": "blum_movento_760h",
+   "name": "MOVENTO 760H full-extension runner",
+   "brand": "Blum",
+   "tier": "premium",
+   "function_group": "F7_drawer_runner",
+   "role": "substitute",
+   "file": "accessories/blum_movento_760h.json"
+  },
+  {
+   "id": "blum_tandem_550h",
+   "name": "TANDEM 550H runner",
+   "brand": "Blum",
+   "tier": "premium",
+   "function_group": "F7_drawer_runner",
+   "role": "substitute",
+   "file": "accessories/blum_tandem_550h.json"
+  },
+  {
+   "id": "blum_cabinet_connectors",
+   "name": "Cabinet connectors / wall hanging brackets",
+   "brand": "Blum",
+   "tier": "premium",
+   "function_group": "F10_wall_hanging",
+   "role": "substitute",
+   "file": "accessories/blum_cabinet_connectors.json"
+  },
+  {
+   "id": "het_sensys_8645i",
+   "name": "Sensys 8645i TH52 (integrated soft-close) — overlay",
+   "brand": "Hettich",
+   "tier": "upper",
+   "function_group": "F5_door_hinged",
+   "role": "substitute",
+   "file": "accessories/het_sensys_8645i.json"
+  },
+  {
+   "id": "het_sensys_8657i",
+   "name": "Sensys 8657i — inset",
+   "brand": "Hettich",
+   "tier": "upper",
+   "function_group": "F5_door_hinged",
+   "role": "substitute",
+   "file": "accessories/het_sensys_8657i.json"
+  },
+  {
+   "id": "het_sensys_8639i",
+   "name": "Sensys 8639i — reduced/half overlay",
+   "brand": "Hettich",
+   "tier": "upper",
+   "function_group": "F5_door_hinged",
+   "role": "substitute",
+   "file": "accessories/het_sensys_8639i.json"
+  },
+  {
+   "id": "het_intermat_9943",
+   "name": "Intermat 9943 (budget classic) full/half/inset",
+   "brand": "Hettich",
+   "tier": "upper",
+   "function_group": "F5_door_hinged",
+   "role": "substitute",
+   "file": "accessories/het_intermat_9943.json"
+  },
+  {
+   "id": "het_sensys_drillpattern",
+   "name": "Sensys/Intermat drilling patterns TH-/W-",
+   "brand": "Hettich",
+   "tier": "upper",
+   "function_group": "F5_door_hinged",
+   "role": "alternative",
+   "file": "accessories/het_sensys_drillpattern.json"
+  },
+  {
+   "id": "het_innotech_atira",
+   "name": "InnoTech Atira drawer set (CIS favourite)",
+   "brand": "Hettich",
+   "tier": "upper",
+   "function_group": "F8_drawer_box",
+   "role": "substitute",
+   "file": "accessories/het_innotech_atira.json"
+  },
+  {
+   "id": "het_avantech_you",
+   "name": "AvanTech YOU drawer set",
+   "brand": "Hettich",
+   "tier": "upper",
+   "function_group": "F8_drawer_box",
+   "role": "substitute",
+   "file": "accessories/het_avantech_you.json"
+  },
+  {
+   "id": "het_quadro_v6",
+   "name": "Quadro V6 full-extension runner",
+   "brand": "Hettich",
+   "tier": "upper",
+   "function_group": "F7_drawer_runner",
+   "role": "substitute",
+   "file": "accessories/het_quadro_v6.json"
+  },
+  {
+   "id": "het_actro_5d",
+   "name": "Actro 5D runner",
+   "brand": "Hettich",
+   "tier": "upper",
+   "function_group": "F7_drawer_runner",
+   "role": "substitute",
+   "file": "accessories/het_actro_5d.json"
+  },
+  {
+   "id": "het_ka270",
+   "name": "KA 270 roller runner (budget king)",
+   "brand": "Hettich",
+   "tier": "upper",
+   "function_group": "F7_drawer_runner",
+   "role": "substitute",
+   "file": "accessories/het_ka270.json"
+  },
+  {
+   "id": "het_rastex_15",
+   "name": "Rastex 15 — THE cam connector (our spec namesake)",
+   "brand": "Hettich",
+   "tier": "upper",
+   "function_group": "F1_carcass_joint",
+   "role": "substitute",
+   "file": "accessories/het_rastex_15.json"
+  },
+  {
+   "id": "het_vb35",
+   "name": "VB 35/36 connecting fittings",
+   "brand": "Hettich",
+   "tier": "upper",
+   "function_group": "F1_carcass_joint",
+   "role": "substitute",
+   "file": "accessories/het_vb35.json"
+  },
+  {
+   "id": "het_selekta",
+   "name": "Selekta mounting/plate system",
+   "brand": "Hettich",
+   "tier": "upper",
+   "function_group": "F5_door_hinged",
+   "role": "alternative",
+   "file": "accessories/het_selekta.json"
+  },
+  {
+   "id": "het_shelf_supports",
+   "name": "Shelf supports range",
+   "brand": "Hettich",
+   "tier": "upper",
+   "function_group": "F3_shelf_adjustable",
+   "role": "substitute",
+   "file": "accessories/het_shelf_supports.json"
+  },
+  {
+   "id": "het_topline_l",
+   "name": "TopLine L sliding door system (wardrobes)",
+   "brand": "Hettich",
+   "tier": "upper",
+   "function_group": "F12_wardrobe",
+   "role": "substitute",
+   "file": "accessories/het_topline_l.json"
+  },
+  {
+   "id": "gtv_hinge_softclose_full",
+   "name": "Standard Ø35 soft-close hinge, full overlay (HCSL08/09 3D)",
+   "brand": "GTV",
+   "tier": "core",
+   "function_group": "F5_door_hinged",
+   "role": "default",
+   "file": "accessories/gtv_hinge_softclose_full.json"
+  },
+  {
+   "id": "gtv_hinge_plates",
+   "name": "Mounting plates H0 (PZ-HCSL)",
+   "brand": "GTV",
+   "tier": "core",
+   "function_group": "F5_door_hinged",
+   "role": "alternative",
+   "file": "accessories/gtv_hinge_plates.json"
+  },
+  {
+   "id": "gtv_hinge_165",
+   "name": "165° hinge (corner/folding)",
+   "brand": "GTV",
+   "tier": "core",
+   "function_group": "F5_door_hinged",
+   "role": "alternative",
+   "file": "accessories/gtv_hinge_165.json"
+  },
+  {
+   "id": "gtv_hinge_45_90",
+   "name": "45°/90° angle hinges",
+   "brand": "GTV",
+   "tier": "core",
+   "function_group": "F5_door_hinged",
+   "role": "alternative",
+   "file": "accessories/gtv_hinge_45_90.json"
+  },
+  {
+   "id": "gtv_hinge_glass",
+   "name": "Glass door hinge",
+   "brand": "GTV",
+   "tier": "core",
+   "function_group": "F5_door_hinged",
+   "role": "alternative",
+   "file": "accessories/gtv_hinge_glass.json"
+  },
+  {
+   "id": "gtv_gas_lift",
+   "name": "Gas lift / strut (GAM050)",
+   "brand": "GTV",
+   "tier": "core",
+   "function_group": "F9_flap_lift",
+   "role": "default",
+   "file": "accessories/gtv_gas_lift.json"
+  },
+  {
+   "id": "gtv_minilift",
+   "name": "MINILIFT stay lift",
+   "brand": "GTV",
+   "tier": "core",
+   "function_group": "F9_flap_lift",
+   "role": "substitute",
+   "file": "accessories/gtv_minilift.json"
+  },
+  {
+   "id": "gtv_bb_slide_h45",
+   "name": "Ball-bearing slide H45 (lengths 250–550)",
+   "brand": "GTV",
+   "tier": "core",
+   "function_group": "F7_drawer_runner",
+   "role": "default",
+   "file": "accessories/gtv_bb_slide_h45.json"
+  },
+  {
+   "id": "gtv_bb_slide_softclose",
+   "name": "Ball-bearing slide H45 soft-close (HK)",
+   "brand": "GTV",
+   "tier": "core",
+   "function_group": "F7_drawer_runner",
+   "role": "substitute",
+   "file": "accessories/gtv_bb_slide_softclose.json"
+  },
+  {
+   "id": "gtv_roller_slide",
+   "name": "Roller slide (budget)",
+   "brand": "GTV",
+   "tier": "core",
+   "function_group": "F7_drawer_runner",
+   "role": "substitute",
+   "file": "accessories/gtv_roller_slide.json"
+  },
+  {
+   "id": "gtv_axispro",
+   "name": "AXIS PRO drawer box system",
+   "brand": "GTV",
+   "tier": "core",
+   "function_group": "F8_drawer_box",
+   "role": "default",
+   "file": "accessories/gtv_axispro.json"
+  },
+  {
+   "id": "gtv_axispro_glass",
+   "name": "AXIS PRO glass side set",
+   "brand": "GTV",
+   "tier": "core",
+   "function_group": "F8_drawer_box",
+   "role": "alternative",
+   "file": "accessories/gtv_axispro_glass.json"
+  },
+  {
+   "id": "gtv_mensa_catch",
+   "name": "MENSA magnetic catch",
+   "brand": "GTV",
+   "tier": "core",
+   "function_group": "F6_door_motion",
+   "role": "default",
+   "file": "accessories/gtv_mensa_catch.json"
+  },
+  {
+   "id": "gtv_wardrobe_rail",
+   "name": "Wardrobe rail + holders",
+   "brand": "GTV",
+   "tier": "core",
+   "function_group": "F12_wardrobe",
+   "role": "default",
+   "file": "accessories/gtv_wardrobe_rail.json"
+  },
+  {
+   "id": "gtv_plinth_legs",
+   "name": "Adjustable plinth legs + clips",
+   "brand": "GTV",
+   "tier": "core",
+   "function_group": "F11_base_feet",
+   "role": "default",
+   "file": "accessories/gtv_plinth_legs.json"
+  },
+  {
+   "id": "gtv_castors",
+   "name": "Furniture castors",
+   "brand": "GTV",
+   "tier": "core",
+   "function_group": "F11_base_feet",
+   "role": "alternative",
+   "file": "accessories/gtv_castors.json"
+  },
+  {
+   "id": "gtv_sliding_bottom",
+   "name": "Bottom-running sliding system",
+   "brand": "GTV",
+   "tier": "core",
+   "function_group": "F12_wardrobe",
+   "role": "substitute",
+   "file": "accessories/gtv_sliding_bottom.json"
+  },
+  {
+   "id": "gtv_led_strip",
+   "name": "LED strip + profile basics",
+   "brand": "GTV",
+   "tier": "core",
+   "function_group": "FX_lighting",
+   "role": "default",
+   "file": "accessories/gtv_led_strip.json"
+  },
+  {
+   "id": "gtv_handle_rail",
+   "name": "Rail/profile handles (128/160/192)",
+   "brand": "GTV",
+   "tier": "core",
+   "function_group": "F14_grip",
+   "role": "default",
+   "file": "accessories/gtv_handle_rail.json"
+  },
+  {
+   "id": "gtv_handle_classic",
+   "name": "Classic bow handles (128/160)",
+   "brand": "GTV",
+   "tier": "core",
+   "function_group": "F14_grip",
+   "role": "substitute",
+   "file": "accessories/gtv_handle_classic.json"
+  },
+  {
+   "id": "gtv_connectors_pilot",
+   "name": "Connectors pilot (cams, bolts, confirmat, rafix, sleeves, screws)",
+   "brand": "GTV",
+   "tier": "core",
+   "function_group": "F1_carcass_joint",
+   "role": "default",
+   "file": "accessories/gtv_connectors_pilot.json"
+  },
+  {
+   "id": "gtv_shelf_pins",
+   "name": "Shelf supports small (Ø5 pin class) — default",
+   "brand": "GTV",
+   "tier": "core",
+   "function_group": "F3_shelf_adjustable",
+   "role": "default",
+   "file": "accessories/gtv_shelf_pins.json"
+  },
+  {
+   "id": "gtv_shelf_supports_screw",
+   "name": "Shelf supports, screw-mounted / glass",
+   "brand": "GTV",
+   "tier": "core",
+   "function_group": "F3_shelf_adjustable",
+   "role": "substitute",
+   "file": "accessories/gtv_shelf_supports_screw.json"
+  },
+  {
+   "id": "gtv_corner_brackets",
+   "name": "Angle/corner brackets (wide)",
+   "brand": "GTV",
+   "tier": "core",
+   "function_group": "F10_wall_hanging",
+   "role": "alternative",
+   "file": "accessories/gtv_corner_brackets.json"
+  },
+  {
+   "id": "gtv_rear_stabilizer",
+   "name": "Rear wall stabilizer (wide cabinets)",
+   "brand": "GTV",
+   "tier": "core",
+   "function_group": "F4_back_panel",
+   "role": "default",
+   "file": "accessories/gtv_rear_stabilizer.json"
+  },
+  {
+   "id": "gtv_cabinet_hangers",
+   "name": "Cabinet hangers (wall cabinets) — default",
+   "brand": "GTV",
+   "tier": "core",
+   "function_group": "F10_wall_hanging",
+   "role": "default",
+   "file": "accessories/gtv_cabinet_hangers.json"
+  },
+  {
+   "id": "gtv_damper_dots",
+   "name": "Silicone damper dots",
+   "brand": "GTV",
+   "tier": "core",
+   "function_group": "F6_door_motion",
+   "role": "alternative",
+   "file": "accessories/gtv_damper_dots.json"
+  },
+  {
+   "id": "gtv_springfree_hinge_push",
+   "name": "Spring-free hinge (for push-to-open doors)",
+   "brand": "GTV",
+   "tier": "core",
+   "function_group": "F5_door_hinged",
+   "role": "alternative",
+   "file": "accessories/gtv_springfree_hinge_push.json"
+  },
+  {
+   "id": "gtv_knobs",
+   "name": "Knob handles",
+   "brand": "GTV",
+   "tier": "core",
+   "function_group": "F14_grip",
+   "role": "substitute",
+   "file": "accessories/gtv_knobs.json"
+  },
+  {
+   "id": "gtv_mounting_strip",
+   "name": "Wall mounting strip",
+   "brand": "GTV",
+   "tier": "core",
+   "function_group": "F10_wall_hanging",
+   "role": "substitute",
+   "file": "accessories/gtv_mounting_strip.json"
+  },
+  {
+   "id": "het_worktop_connectors",
+   "name": "Worktop connecting bolts — default",
+   "brand": "Hettich",
+   "tier": "upper",
+   "function_group": "F13_worktop_banking",
+   "role": "default",
+   "file": "accessories/het_worktop_connectors.json"
+  }
+ ]
+}

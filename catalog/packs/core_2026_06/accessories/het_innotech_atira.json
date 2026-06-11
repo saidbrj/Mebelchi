@@ -1,0 +1,25 @@
+{
+ "id": "het_innotech_atira",
+ "brand": "Hettich",
+ "tier": "upper",
+ "family": "drawer_box",
+ "name": "InnoTech Atira drawer set (CIS favourite)",
+ "category": "drawer_systems",
+ "source_doc": "TA_2020_18565_en.pdf",
+ "pdf_pages": [
+  886,
+  900,
+  901,
+  902
+ ],
+ "skus": [],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/het_innotech_atira_p886-0886.png",
+  "media/het_innotech_atira_p900-0900.png"
+ ],
+ "function_group": "F8_drawer_box",
+ "role": "substitute"
+}

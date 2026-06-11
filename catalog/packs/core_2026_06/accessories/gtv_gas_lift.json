@@ -1,0 +1,26 @@
+{
+ "id": "gtv_gas_lift",
+ "brand": "GTV",
+ "tier": "core",
+ "family": "lift_gas",
+ "name": "Gas lift / strut (GAM050)",
+ "category": "lifts",
+ "source_doc": "Furniture-Accessories-2025-PL-EN-UA-HU-6.pdf",
+ "pdf_pages": [
+  118,
+  119
+ ],
+ "skus": [
+  "PD-GAM050-N02",
+  "PD-G0050-N02"
+ ],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/gtv_gas_lift_p118-118.png",
+  "media/gtv_gas_lift_p119-119.png"
+ ],
+ "function_group": "F9_flap_lift",
+ "role": "default"
+}

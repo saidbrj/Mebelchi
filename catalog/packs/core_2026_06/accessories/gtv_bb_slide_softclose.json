@@ -1,0 +1,25 @@
+{
+ "id": "gtv_bb_slide_softclose",
+ "brand": "GTV",
+ "tier": "core",
+ "family": "runner_ball_sc",
+ "name": "Ball-bearing slide H45 soft-close (HK)",
+ "category": "slides",
+ "source_doc": "Furniture-Accessories-2025-PL-EN-UA-HU-6.pdf",
+ "pdf_pages": [
+  152,
+  153
+ ],
+ "skus": [
+  "PK-0H45250HK"
+ ],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/gtv_bb_slide_softclose_p152-152.png",
+  "media/gtv_bb_slide_softclose_p153-153.png"
+ ],
+ "function_group": "F7_drawer_runner",
+ "role": "substitute"
+}

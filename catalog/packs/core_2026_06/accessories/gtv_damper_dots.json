@@ -1,0 +1,21 @@
+{
+ "id": "gtv_damper_dots",
+ "brand": "GTV",
+ "tier": "core",
+ "family": "buffer",
+ "name": "Silicone damper dots",
+ "category": "other_functional",
+ "source_doc": "Furniture-Accessories-2025-PL-EN-UA-HU-6.pdf",
+ "pdf_pages": [
+  108
+ ],
+ "skus": [],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/gtv_damper_dots_p108-108.png"
+ ],
+ "function_group": "F6_door_motion",
+ "role": "alternative"
+}

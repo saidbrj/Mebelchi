@@ -1,0 +1,24 @@
+{
+ "id": "het_topline_l",
+ "brand": "Hettich",
+ "tier": "upper",
+ "family": "sliding_door",
+ "name": "TopLine L sliding door system (wardrobes)",
+ "category": "sliding",
+ "source_doc": "TA_2020_18565_en.pdf",
+ "pdf_pages": [
+  422,
+  423,
+  424
+ ],
+ "skus": [],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/het_topline_l_p422-0422.png",
+  "media/het_topline_l_p423-0423.png"
+ ],
+ "function_group": "F12_wardrobe",
+ "role": "substitute"
+}

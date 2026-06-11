@@ -1,0 +1,31 @@
+{
+ "id": "het_rastex_15",
+ "brand": "Hettich",
+ "tier": "upper",
+ "family": "cam_dowel_eccentric",
+ "name": "Rastex 15 — THE cam connector (our spec namesake)",
+ "category": "brackets_fittings_connectors",
+ "source_doc": "TA_2020_18565_en.pdf",
+ "pdf_pages": [
+  733,
+  734,
+  735,
+  736,
+  737,
+  738,
+  739,
+  740
+ ],
+ "skus": [
+  "Rastex 15"
+ ],
+ "grade": "browse",
+ "verified": false,
+ "note": "cross-check cam depth classes vs factory Ø15×12.5/11",
+ "media": [
+  "media/het_rastex_15_p733-0733.png",
+  "media/het_rastex_15_p734-0734.png"
+ ],
+ "function_group": "F1_carcass_joint",
+ "role": "substitute"
+}

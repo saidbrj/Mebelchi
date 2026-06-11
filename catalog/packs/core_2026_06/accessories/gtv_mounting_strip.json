@@ -1,0 +1,21 @@
+{
+ "id": "gtv_mounting_strip",
+ "brand": "GTV",
+ "tier": "core",
+ "family": "mounting_strip",
+ "name": "Wall mounting strip",
+ "category": "brackets_fittings_connectors",
+ "source_doc": "Furniture-Accessories-2025-PL-EN-UA-HU-6.pdf",
+ "pdf_pages": [
+  270
+ ],
+ "skus": [],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/gtv_mounting_strip_p270-270.png"
+ ],
+ "function_group": "F10_wall_hanging",
+ "role": "substitute"
+}

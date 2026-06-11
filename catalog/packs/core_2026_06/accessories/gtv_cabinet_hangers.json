@@ -1,0 +1,21 @@
+{
+ "id": "gtv_cabinet_hangers",
+ "brand": "GTV",
+ "tier": "core",
+ "family": "cabinet_hanger",
+ "name": "Cabinet hangers (wall cabinets) — default",
+ "category": "brackets_fittings_connectors",
+ "source_doc": "Furniture-Accessories-2025-PL-EN-UA-HU-6.pdf",
+ "pdf_pages": [
+  269
+ ],
+ "skus": [],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/gtv_cabinet_hangers_p269-269.png"
+ ],
+ "function_group": "F10_wall_hanging",
+ "role": "default"
+}

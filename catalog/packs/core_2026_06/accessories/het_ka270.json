@@ -1,0 +1,24 @@
+{
+ "id": "het_ka270",
+ "brand": "Hettich",
+ "tier": "upper",
+ "family": "runner_roller",
+ "name": "KA 270 roller runner (budget king)",
+ "category": "slides",
+ "source_doc": "TA_2020_18565_en.pdf",
+ "pdf_pages": [
+  1086,
+  1087,
+  1090
+ ],
+ "skus": [],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/het_ka270_p1086-1086.png",
+  "media/het_ka270_p1087-1087.png"
+ ],
+ "function_group": "F7_drawer_runner",
+ "role": "substitute"
+}

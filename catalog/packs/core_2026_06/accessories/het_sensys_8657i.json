@@ -1,0 +1,25 @@
+{
+ "id": "het_sensys_8657i",
+ "brand": "Hettich",
+ "tier": "upper",
+ "family": "hinge_cup35",
+ "name": "Sensys 8657i — inset",
+ "category": "hinges",
+ "source_doc": "TA_2020_18565_en.pdf",
+ "pdf_pages": [
+  44,
+  45
+ ],
+ "skus": [
+  "Sensys 8657i"
+ ],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/het_sensys_8657i_p44-0044.png",
+  "media/het_sensys_8657i_p45-0045.png"
+ ],
+ "function_group": "F5_door_hinged",
+ "role": "substitute"
+}

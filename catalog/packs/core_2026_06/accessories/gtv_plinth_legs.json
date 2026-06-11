@@ -1,0 +1,23 @@
+{
+ "id": "gtv_plinth_legs",
+ "brand": "GTV",
+ "tier": "core",
+ "family": "furniture_leg",
+ "name": "Adjustable plinth legs + clips",
+ "category": "furniture_legs_low",
+ "source_doc": "Furniture-Accessories-2025-PL-EN-UA-HU-6.pdf",
+ "pdf_pages": [
+  550,
+  551
+ ],
+ "skus": [],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/gtv_plinth_legs_p550-550.png",
+  "media/gtv_plinth_legs_p551-551.png"
+ ],
+ "function_group": "F11_base_feet",
+ "role": "default"
+}

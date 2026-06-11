@@ -1,0 +1,23 @@
+{
+ "id": "gtv_shelf_supports_screw",
+ "brand": "GTV",
+ "tier": "core",
+ "family": "shelf_support_screw",
+ "name": "Shelf supports, screw-mounted / glass",
+ "category": "brackets_fittings_connectors",
+ "source_doc": "Furniture-Accessories-2025-PL-EN-UA-HU-6.pdf",
+ "pdf_pages": [
+  250,
+  251
+ ],
+ "skus": [],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/gtv_shelf_supports_screw_p250-250.png",
+  "media/gtv_shelf_supports_screw_p251-251.png"
+ ],
+ "function_group": "F3_shelf_adjustable",
+ "role": "substitute"
+}

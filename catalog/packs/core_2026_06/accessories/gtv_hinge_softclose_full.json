@@ -1,0 +1,26 @@
+{
+ "id": "gtv_hinge_softclose_full",
+ "brand": "GTV",
+ "tier": "core",
+ "family": "hinge_cup35",
+ "name": "Standard Ø35 soft-close hinge, full overlay (HCSL08/09 3D)",
+ "category": "hinges",
+ "source_doc": "Furniture-Accessories-2025-PL-EN-UA-HU-6.pdf",
+ "pdf_pages": [
+  61,
+  63
+ ],
+ "skus": [
+  "ZM-HCSL08-3D",
+  "ZM-HCSL09-3D"
+ ],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/gtv_hinge_softclose_full_p61-061.png",
+  "media/gtv_hinge_softclose_full_p63-063.png"
+ ],
+ "function_group": "F5_door_hinged",
+ "role": "default"
+}

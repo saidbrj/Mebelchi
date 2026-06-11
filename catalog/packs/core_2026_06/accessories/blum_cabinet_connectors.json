@@ -1,0 +1,21 @@
+{
+ "id": "blum_cabinet_connectors",
+ "brand": "Blum",
+ "tier": "premium",
+ "family": "cabinet_connector",
+ "name": "Cabinet connectors / wall hanging brackets",
+ "category": "brackets_fittings_connectors",
+ "source_doc": "Catalogue and technical manual 2024-2025 en.pdf",
+ "pdf_pages": [
+  586
+ ],
+ "skus": [],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/blum_cabinet_connectors_p586-586.png"
+ ],
+ "function_group": "F10_wall_hanging",
+ "role": "substitute"
+}

@@ -1,0 +1,27 @@
+{
+ "id": "blum_clip_plates",
+ "brand": "Blum",
+ "tier": "premium",
+ "family": "hinge_plate",
+ "name": "CLIP cruciform mounting plates 0/3mm",
+ "category": "hinges",
+ "source_doc": "Catalogue and technical manual 2024-2025 en.pdf",
+ "pdf_pages": [
+  26,
+  27,
+  31
+ ],
+ "skus": [
+  "175H3100",
+  "175H3130"
+ ],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/blum_clip_plates_p26-026.png",
+  "media/blum_clip_plates_p27-027.png"
+ ],
+ "function_group": "F5_door_hinged",
+ "role": "alternative"
+}

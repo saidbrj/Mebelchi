@@ -1,0 +1,26 @@
+{
+ "id": "gtv_hinge_45_90",
+ "brand": "GTV",
+ "tier": "core",
+ "family": "hinge_angle",
+ "name": "45°/90° angle hinges",
+ "category": "hinges",
+ "source_doc": "Furniture-Accessories-2025-PL-EN-UA-HU-6.pdf",
+ "pdf_pages": [
+  76,
+  78
+ ],
+ "skus": [
+  "ZM-HCKT45-3DBEO-S",
+  "ZM-HCKT90-3DBEO-S"
+ ],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/gtv_hinge_45_90_p76-076.png",
+  "media/gtv_hinge_45_90_p78-078.png"
+ ],
+ "function_group": "F5_door_hinged",
+ "role": "alternative"
+}

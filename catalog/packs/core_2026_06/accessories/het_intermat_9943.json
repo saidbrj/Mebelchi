@@ -1,0 +1,27 @@
+{
+ "id": "het_intermat_9943",
+ "brand": "Hettich",
+ "tier": "upper",
+ "family": "hinge_cup35",
+ "name": "Intermat 9943 (budget classic) full/half/inset",
+ "category": "hinges",
+ "source_doc": "TA_2020_18565_en.pdf",
+ "pdf_pages": [
+  68,
+  69,
+  70,
+  71
+ ],
+ "skus": [
+  "Intermat 9943"
+ ],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/het_intermat_9943_p68-0068.png",
+  "media/het_intermat_9943_p69-0069.png"
+ ],
+ "function_group": "F5_door_hinged",
+ "role": "substitute"
+}

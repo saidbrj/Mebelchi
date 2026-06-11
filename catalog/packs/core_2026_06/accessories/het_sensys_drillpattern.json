@@ -1,0 +1,25 @@
+{
+ "id": "het_sensys_drillpattern",
+ "brand": "Hettich",
+ "tier": "upper",
+ "family": "hinge_drilling",
+ "name": "Sensys/Intermat drilling patterns TH-/W-",
+ "category": "hinges",
+ "source_doc": "TA_2020_18565_en.pdf",
+ "pdf_pages": [
+  210,
+  211,
+  212,
+  213
+ ],
+ "skus": [],
+ "grade": "browse",
+ "verified": false,
+ "note": "drilling-pattern reference pages — manufacturing-grade source",
+ "media": [
+  "media/het_sensys_drillpattern_p210-0210.png",
+  "media/het_sensys_drillpattern_p211-0211.png"
+ ],
+ "function_group": "F5_door_hinged",
+ "role": "alternative"
+}

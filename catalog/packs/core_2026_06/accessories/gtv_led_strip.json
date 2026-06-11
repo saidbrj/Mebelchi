@@ -1,0 +1,25 @@
+{
+ "id": "gtv_led_strip",
+ "brand": "GTV",
+ "tier": "core",
+ "family": "led",
+ "name": "LED strip + profile basics",
+ "category": "lighting",
+ "source_doc": "Furniture-Accessories-2025-PL-EN-UA-HU-6.pdf",
+ "pdf_pages": [
+  660,
+  670
+ ],
+ "skus": [
+  "ZC-GTV-12-00"
+ ],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/gtv_led_strip_p660-660.png",
+  "media/gtv_led_strip_p670-670.png"
+ ],
+ "function_group": "FX_lighting",
+ "role": "default"
+}

@@ -1,0 +1,26 @@
+{
+ "id": "het_vb35",
+ "brand": "Hettich",
+ "tier": "upper",
+ "family": "shelf_connector_eccentric",
+ "name": "VB 35/36 connecting fittings",
+ "category": "brackets_fittings_connectors",
+ "source_doc": "TA_2020_18565_en.pdf",
+ "pdf_pages": [
+  745,
+  748,
+  749,
+  750,
+  751
+ ],
+ "skus": [],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/het_vb35_p745-0745.png",
+  "media/het_vb35_p748-0748.png"
+ ],
+ "function_group": "F1_carcass_joint",
+ "role": "substitute"
+}

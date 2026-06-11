@@ -1,0 +1,23 @@
+{
+ "id": "gtv_shelf_pins",
+ "brand": "GTV",
+ "tier": "core",
+ "family": "shelf_support",
+ "name": "Shelf supports small (Ø5 pin class) — default",
+ "category": "brackets_fittings_connectors",
+ "source_doc": "Furniture-Accessories-2025-PL-EN-UA-HU-6.pdf",
+ "pdf_pages": [
+  246,
+  247
+ ],
+ "skus": [],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/gtv_shelf_pins_p246-246.png",
+  "media/gtv_shelf_pins_p247-247.png"
+ ],
+ "function_group": "F3_shelf_adjustable",
+ "role": "default"
+}

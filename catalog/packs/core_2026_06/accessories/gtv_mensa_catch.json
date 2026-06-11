@@ -1,0 +1,24 @@
+{
+ "id": "gtv_mensa_catch",
+ "brand": "GTV",
+ "tier": "core",
+ "family": "catch_magnetic",
+ "name": "MENSA magnetic catch",
+ "category": "other_functional",
+ "source_doc": "Furniture-Accessories-2025-PL-EN-UA-HU-6.pdf",
+ "pdf_pages": [
+  274
+ ],
+ "skus": [
+  "MG-MENSA-010",
+  "MG-MENSA-030"
+ ],
+ "grade": "browse",
+ "verified": false,
+ "note": null,
+ "media": [
+  "media/gtv_mensa_catch_p274-274.png"
+ ],
+ "function_group": "F6_door_motion",
+ "role": "default"
+}
