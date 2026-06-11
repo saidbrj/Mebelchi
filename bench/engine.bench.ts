@@ -49,8 +49,12 @@ async function measure(label: string, fn: () => unknown | Promise<unknown>) {
 }
 
 it("bench: golden suite", async () => {
+  // BENCH_FILTER (optional regex) restricts the suite — used for apples-to-apples
+  // ledger deltas when the golden suite itself grows.
+  const filter = process.env.BENCH_FILTER ? new RegExp(process.env.BENCH_FILTER) : null;
   const xmlFiles = readdirSync(GOLDEN_DIR)
     .filter((f) => f.toUpperCase().endsWith(".XML"))
+    .filter((f) => !filter || filter.test(f))
     .sort();
   const xmls = xmlFiles.map((f) => readFileSync(join(GOLDEN_DIR, f), "utf8"));
 
@@ -82,7 +86,7 @@ it("bench: golden suite", async () => {
   console.log(
     `\nBENCH — golden suite: ${xmlFiles.length} files, ` +
       `${partsPerFile.flat().length} panels, ` +
-      `${partsPerFile.flat().reduce((n, p) => n + p.operations.length, 0)} drill ops` +
+      `${partsPerFile.flat().reduce((n, p) => n + p.operations.length, 0)} ops` +
       `\nnode ${process.version} | ${platform()}/${arch()} | ${cpu}` +
       `\nwarmup ${WARMUP_RUNS}, measured ${MEASURED_RUNS}\n\n` +
       pad("operation", 30) + pad("median ms", 12) + "p95 ms\n" +
