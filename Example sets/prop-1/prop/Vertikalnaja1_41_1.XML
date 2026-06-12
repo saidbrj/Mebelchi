@@ -1,0 +1,32 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Root>
+	<Project Name="" Flag="SWJ008">
+		<Panels>
+			<Panel ID="Vertikalnaja1_41_1" Name="Vertikalnaja1_41_1" Width="500.000" Length="2145.000" Material="" Thickness="16.000" IsProduce="true" MachiningPoint="1" Type="1" Face5ID="" Face6ID="" Grain="L">
+				<Outline></Outline>
+				<Machines>
+					<Machining ID="1000" Type="2" IsGenCode="2" Face="5" X="2105.000" Y="30.000" Depth="11.000" Diameter="8.000" />
+					<Machining ID="1010" Type="2" IsGenCode="2" Face="5" X="311.000" Y="52.000" Depth="11.000" Diameter="8.000" />
+					<Machining ID="1020" Type="2" IsGenCode="2" Face="5" X="8.000" Y="58.000" Depth="11.000" Diameter="8.000" />
+					<Machining ID="1030" Type="2" IsGenCode="2" Face="5" X="2057.000" Y="58.000" Depth="11.000" Diameter="8.000" />
+					<Machining ID="1040" Type="2" IsGenCode="2" Face="5" X="8.000" Y="90.000" Depth="14.000" Diameter="8.000" />
+					<Machining ID="1050" Type="2" IsGenCode="2" Face="5" X="311.000" Y="308.000" Depth="11.000" Diameter="8.000" />
+					<Machining ID="1060" Type="2" IsGenCode="2" Face="5" X="87.000" Y="323.000" Depth="1.000" Diameter="3.000" />
+					<Machining ID="1070" Type="2" IsGenCode="2" Face="5" X="119.000" Y="323.000" Depth="1.000" Diameter="3.000" />
+					<Machining ID="1080" Type="2" IsGenCode="2" Face="5" X="219.000" Y="323.000" Depth="1.000" Diameter="3.000" />
+					<Machining ID="1090" Type="2" IsGenCode="2" Face="5" X="251.000" Y="323.000" Depth="1.000" Diameter="3.000" />
+					<Machining ID="1100" Type="2" IsGenCode="2" Face="5" X="8.000" Y="410.000" Depth="14.000" Diameter="8.000" />
+					<Machining ID="1110" Type="2" IsGenCode="2" Face="5" X="8.000" Y="442.000" Depth="11.000" Diameter="8.000" />
+					<Machining ID="1120" Type="2" IsGenCode="2" Face="5" X="2057.000" Y="442.000" Depth="11.000" Diameter="8.000" />
+					<Machining ID="1130" Type="2" IsGenCode="2" Face="5" X="2105.000" Y="480.000" Depth="11.000" Diameter="8.000" />
+				</Machines>
+				<EdgeGroup>
+					<Edge Face="1" Thickness="1.000" />
+					<Edge Face="2" Thickness="0.000000" />
+					<Edge Face="3" Thickness="0.000000" />
+					<Edge Face="4" Thickness="0.000000" />
+				</EdgeGroup>
+			</Panel>
+		</Panels>
+	</Project>
+</Root>

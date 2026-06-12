@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Root>
+	<Project Name="" Flag="SWJ008">
+		<Panels>
+			<Panel ID="SHKOF TORTMA_21_1" Name="SHKOF TORTMA_21_1" Width="180.000" Length="670.000" Material="" Thickness="16.000" IsProduce="true" MachiningPoint="1" Type="1" Face5ID="" Face6ID="" Grain="L">
+				<Outline></Outline>
+				<Machines>
+					<Machining ID="1000" Type="4" IsGenCode="2" Face="5" X="8.500" Y="138.000" EndX="661.500" EndY="138.000" Width="4.000" Depth="8.000" />
+					<Machining ID="1010" Type="2" IsGenCode="2" Face="5" X="9.000" Y="58.000" Depth="11.000" Diameter="8.000" />
+					<Machining ID="1020" Type="2" IsGenCode="2" Face="5" X="661.000" Y="58.000" Depth="11.000" Diameter="8.000" />
+					<Machining ID="1030" Type="2" IsGenCode="2" Face="5" X="9.000" Y="122.000" Depth="11.000" Diameter="8.000" />
+					<Machining ID="1040" Type="2" IsGenCode="2" Face="5" X="661.000" Y="122.000" Depth="11.000" Diameter="8.000" />
+				</Machines>
+				<EdgeGroup>
+					<Edge Face="1" Thickness="0.400" />
+					<Edge Face="2" Thickness="0.400" />
+					<Edge Face="3" Thickness="0.400" />
+					<Edge Face="4" Thickness="0.400" />
+				</EdgeGroup>
+			</Panel>
+		</Panels>
+	</Project>
+</Root>

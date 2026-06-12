@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Root>
+	<Project Name="" Flag="SWJ008">
+		<Panels>
+			<Panel ID="CHESTR XDF_105_1" Name="CHESTR XDF_105_1" Width="357.500" Length="525.000" Material="" Thickness="3.000" IsProduce="true" MachiningPoint="1" Type="1" Face5ID="" Face6ID="" Grain="L">
+				<Outline></Outline>
+				<Machines>
+				</Machines>
+				<EdgeGroup>
+					<Edge Face="1" Thickness="0.400" />
+					<Edge Face="2" Thickness="0.000000" />
+					<Edge Face="3" Thickness="0.000000" />
+					<Edge Face="4" Thickness="0.000000" />
+				</EdgeGroup>
+			</Panel>
+		</Panels>
+	</Project>
+</Root>

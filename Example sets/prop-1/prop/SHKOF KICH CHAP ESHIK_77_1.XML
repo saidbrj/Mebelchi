@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Root>
+	<Project Name="" Flag="SWJ008">
+		<Panels>
+			<Panel ID="SHKOF KICH CHAP ESHIK_77_1" Name="SHKOF KICH CHAP ESHIK_77_1" Width="400.000" Length="1232.000" Material="" Thickness="16.000" IsProduce="true" MachiningPoint="1" Type="1" Face5ID="" Face6ID="" Grain="L">
+				<Outline></Outline>
+				<Machines>
+					<Machining ID="1000" Type="2" IsGenCode="2" Face="5" X="1182.000" Y="47.004" Depth="17.000" Diameter="4.500" />
+					<Machining ID="1010" Type="2" IsGenCode="2" Face="5" X="74.000" Y="373.004" Depth="1.000" Diameter="3.000" />
+					<Machining ID="1020" Type="2" IsGenCode="2" Face="5" X="126.000" Y="373.004" Depth="1.000" Diameter="3.000" />
+					<Machining ID="1030" Type="2" IsGenCode="2" Face="5" X="590.000" Y="373.004" Depth="1.000" Diameter="3.000" />
+					<Machining ID="1040" Type="2" IsGenCode="2" Face="5" X="642.000" Y="373.004" Depth="1.000" Diameter="3.000" />
+					<Machining ID="1050" Type="2" IsGenCode="2" Face="5" X="1106.000" Y="373.004" Depth="1.000" Diameter="3.000" />
+					<Machining ID="1060" Type="2" IsGenCode="2" Face="5" X="1158.000" Y="373.004" Depth="1.000" Diameter="3.000" />
+					<Machining ID="1070" Type="2" IsGenCode="2" Face="5" X="100.000" Y="378.504" Depth="13.000" Diameter="35.000" />
+					<Machining ID="1080" Type="2" IsGenCode="2" Face="5" X="616.000" Y="378.504" Depth="13.000" Diameter="35.000" />
+					<Machining ID="1090" Type="2" IsGenCode="2" Face="5" X="1132.000" Y="378.504" Depth="13.000" Diameter="35.000" />
+				</Machines>
+				<EdgeGroup>
+					<Edge Face="1" Thickness="1.000" />
+					<Edge Face="2" Thickness="1.000" />
+					<Edge Face="3" Thickness="1.000" />
+					<Edge Face="4" Thickness="1.000" />
+				</EdgeGroup>
+			</Panel>
+		</Panels>
+	</Project>
+</Root>

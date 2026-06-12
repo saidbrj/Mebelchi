@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Root>
+	<Project Name="" Flag="SWJ008">
+		<Panels>
+			<Panel ID="SHKOF CHAP ESHIK_46_1" Name="SHKOF CHAP ESHIK_46_1" Width="400.000" Length="2065.000" Material="" Thickness="16.000" IsProduce="true" MachiningPoint="1" Type="1" Face5ID="" Face6ID="" Grain="L">
+				<Outline></Outline>
+				<Machines>
+					<Machining ID="1000" Type="2" IsGenCode="2" Face="5" X="1045.000" Y="47.004" Depth="17.000" Diameter="4.500" />
+					<Machining ID="1010" Type="2" IsGenCode="2" Face="5" X="1525.000" Y="47.004" Depth="17.000" Diameter="4.500" />
+					<Machining ID="1020" Type="2" IsGenCode="2" Face="5" X="2005.000" Y="47.004" Depth="17.000" Diameter="4.500" />
+					<Machining ID="1030" Type="2" IsGenCode="2" Face="5" X="58.000" Y="373.004" Depth="1.000" Diameter="3.000" />
+					<Machining ID="1040" Type="2" IsGenCode="2" Face="5" X="110.000" Y="373.004" Depth="1.000" Diameter="3.000" />
+					<Machining ID="1050" Type="2" IsGenCode="2" Face="5" X="679.000" Y="373.004" Depth="1.000" Diameter="3.000" />
+					<Machining ID="1060" Type="2" IsGenCode="2" Face="5" X="731.000" Y="373.004" Depth="1.000" Diameter="3.000" />
+					<Machining ID="1070" Type="2" IsGenCode="2" Face="5" X="1350.000" Y="373.004" Depth="1.000" Diameter="3.000" />
+					<Machining ID="1080" Type="2" IsGenCode="2" Face="5" X="1402.000" Y="373.004" Depth="1.000" Diameter="3.000" />
+					<Machining ID="1090" Type="2" IsGenCode="2" Face="5" X="1971.000" Y="373.004" Depth="1.000" Diameter="3.000" />
+					<Machining ID="1100" Type="2" IsGenCode="2" Face="5" X="2023.000" Y="373.004" Depth="1.000" Diameter="3.000" />
+					<Machining ID="1110" Type="2" IsGenCode="2" Face="5" X="84.000" Y="378.504" Depth="13.000" Diameter="35.000" />
+					<Machining ID="1120" Type="2" IsGenCode="2" Face="5" X="705.000" Y="378.504" Depth="13.000" Diameter="35.000" />
+					<Machining ID="1130" Type="2" IsGenCode="2" Face="5" X="1376.000" Y="378.504" Depth="13.000" Diameter="35.000" />
+					<Machining ID="1140" Type="2" IsGenCode="2" Face="5" X="1997.000" Y="378.504" Depth="13.000" Diameter="35.000" />
+				</Machines>
+				<EdgeGroup>
+					<Edge Face="1" Thickness="1.000" />
+					<Edge Face="2" Thickness="1.000" />
+					<Edge Face="3" Thickness="1.000" />
+					<Edge Face="4" Thickness="1.000" />
+				</EdgeGroup>
+			</Panel>
+		</Panels>
+	</Project>
+</Root>

@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Root>
+	<Project Name="" Flag="SWJ008">
+		<Panels>
+			<Panel ID="TRIMO TORTMA_72_1" Name="TRIMO TORTMA_72_1" Width="161.000" Length="1032.000" Material="" Thickness="16.000" IsProduce="true" MachiningPoint="1" Type="1" Face5ID="" Face6ID="" Grain="L">
+				<Outline></Outline>
+				<Machines>
+					<Machining ID="1000" Type="4" IsGenCode="2" Face="5" X="27.500" Y="107.000" EndX="1004.500" EndY="107.000" Width="4.000" Depth="8.000" />
+					<Machining ID="1010" Type="2" IsGenCode="2" Face="5" X="28.000" Y="58.000" Depth="11.000" Diameter="8.000" />
+					<Machining ID="1020" Type="2" IsGenCode="2" Face="5" X="1004.000" Y="58.000" Depth="11.000" Diameter="8.000" />
+					<Machining ID="1030" Type="2" IsGenCode="2" Face="5" X="28.000" Y="90.000" Depth="11.000" Diameter="8.000" />
+					<Machining ID="1040" Type="2" IsGenCode="2" Face="5" X="1004.000" Y="90.000" Depth="11.000" Diameter="8.000" />
+				</Machines>
+				<EdgeGroup>
+					<Edge Face="1" Thickness="0.000000" />
+					<Edge Face="2" Thickness="0.000000" />
+					<Edge Face="3" Thickness="0.000000" />
+					<Edge Face="4" Thickness="0.000000" />
+				</EdgeGroup>
+			</Panel>
+		</Panels>
+	</Project>
+</Root>

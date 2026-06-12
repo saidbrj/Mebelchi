@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Root>
+	<Project Name="" Flag="SWJ008">
+		<Panels>
+			<Panel ID="TU ONG BAK_36_1" Name="TU ONG BAK_36_1" Width="212.000" Length="450.000" Material="" Thickness="16.000" IsProduce="true" MachiningPoint="1" Type="1" Face5ID="" Face6ID="" Grain="L">
+				<Outline></Outline>
+				<Machines>
+					<Machining ID="1000" Type="1" IsGenCode="2" Face="1" X="65.000" Y="212.000" Z="8.000" Depth="34.000" Diameter="8.000" />
+					<Machining ID="1010" Type="1" IsGenCode="2" Face="1" X="385.000" Y="212.000" Z="8.000" Depth="34.000" Diameter="8.000" />
+					<Machining ID="1020" Type="1" IsGenCode="2" Face="2" X="65.000" Y="0.000" Z="8.000" Depth="34.000" Diameter="8.000" />
+					<Machining ID="1030" Type="1" IsGenCode="2" Face="2" X="385.000" Y="0.000" Z="8.000" Depth="34.000" Diameter="8.000" />
+					<Machining ID="1040" Type="2" IsGenCode="2" Face="5" X="65.000" Y="34.000" Depth="12.500" Diameter="15.000" />
+					<Machining ID="1050" Type="2" IsGenCode="2" Face="5" X="385.000" Y="34.000" Depth="12.500" Diameter="15.000" />
+					<Machining ID="1060" Type="2" IsGenCode="2" Face="5" X="207.500" Y="48.000" Depth="1.000" Diameter="3.000" />
+					<Machining ID="1070" Type="2" IsGenCode="2" Face="5" X="294.500" Y="48.000" Depth="1.000" Diameter="3.000" />
+					<Machining ID="1080" Type="2" IsGenCode="2" Face="5" X="414.000" Y="48.000" Depth="1.000" Diameter="3.000" />
+					<Machining ID="1090" Type="2" IsGenCode="2" Face="5" X="65.000" Y="178.000" Depth="12.500" Diameter="15.000" />
+					<Machining ID="1100" Type="2" IsGenCode="2" Face="5" X="385.000" Y="178.000" Depth="12.500" Diameter="15.000" />
+				</Machines>
+				<EdgeGroup>
+					<Edge Face="1" Thickness="0.000000" />
+					<Edge Face="2" Thickness="0.000000" />
+					<Edge Face="3" Thickness="1.000" />
+					<Edge Face="4" Thickness="1.000" />
+				</EdgeGroup>
+			</Panel>
+		</Panels>
+	</Project>
+</Root>

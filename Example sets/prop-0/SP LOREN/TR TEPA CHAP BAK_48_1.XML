@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Root>
+	<Project Name="" Flag="SWJ008">
+		<Panels>
+			<Panel ID="TR TEPA CHAP BAK_48_1" Name="TR TEPA CHAP BAK_48_1" Width="150.000" Length="450.000" Material="" Thickness="16.000" IsProduce="true" MachiningPoint="1" Type="1" Face5ID="" Face6ID="" Grain="L">
+				<Outline></Outline>
+				<Machines>
+					<Machining ID="1000" Type="1" IsGenCode="2" Face="1" X="65.000" Y="150.000" Z="8.000" Depth="34.000" Diameter="8.000" />
+					<Machining ID="1010" Type="1" IsGenCode="2" Face="1" X="385.000" Y="150.000" Z="8.000" Depth="34.000" Diameter="8.000" />
+					<Machining ID="1020" Type="2" IsGenCode="2" Face="5" X="65.000" Y="8.000" Depth="11.000" Diameter="8.000" />
+					<Machining ID="1030" Type="2" IsGenCode="2" Face="5" X="97.000" Y="8.000" Depth="14.000" Diameter="8.000" />
+					<Machining ID="1040" Type="2" IsGenCode="2" Face="5" X="353.000" Y="8.000" Depth="14.000" Diameter="8.000" />
+					<Machining ID="1050" Type="2" IsGenCode="2" Face="5" X="385.000" Y="8.000" Depth="11.000" Diameter="8.000" />
+					<Machining ID="1060" Type="2" IsGenCode="2" Face="5" X="36.000" Y="56.000" Depth="1.000" Diameter="3.000" />
+					<Machining ID="1070" Type="2" IsGenCode="2" Face="5" X="155.500" Y="56.000" Depth="1.000" Diameter="3.000" />
+					<Machining ID="1080" Type="2" IsGenCode="2" Face="5" X="242.500" Y="56.000" Depth="1.000" Diameter="3.000" />
+					<Machining ID="1090" Type="2" IsGenCode="2" Face="5" X="65.000" Y="116.000" Depth="12.500" Diameter="15.000" />
+					<Machining ID="1100" Type="2" IsGenCode="2" Face="5" X="385.000" Y="116.000" Depth="12.500" Diameter="15.000" />
+				</Machines>
+				<EdgeGroup>
+					<Edge Face="1" Thickness="0.000000" />
+					<Edge Face="2" Thickness="1.000" />
+					<Edge Face="3" Thickness="1.000" />
+					<Edge Face="4" Thickness="1.000" />
+				</EdgeGroup>
+			</Panel>
+		</Panels>
+	</Project>
+</Root>

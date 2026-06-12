@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Root>
+	<Project Name="" Flag="SWJ008">
+		<Panels>
+			<Panel ID="CHESTR ORQA STOYKA_79_1" Name="CHESTR ORQA STOYKA_79_1" Width="112.000" Length="852.000" Material="" Thickness="16.000" IsProduce="true" MachiningPoint="1" Type="1" Face5ID="" Face6ID="" Grain="L">
+				<Outline></Outline>
+				<Machines>
+					<Machining ID="1000" Type="1" IsGenCode="2" Face="1" X="74.000" Y="112.000" Z="8.000" Depth="34.000" Diameter="4.500" />
+					<Machining ID="1010" Type="1" IsGenCode="2" Face="1" X="426.000" Y="112.000" Z="8.000" Depth="34.000" Diameter="4.500" />
+					<Machining ID="1020" Type="1" IsGenCode="2" Face="1" X="778.000" Y="112.000" Z="8.000" Depth="34.000" Diameter="4.500" />
+					<Machining ID="1030" Type="1" IsGenCode="2" Face="2" X="74.000" Y="0.000" Z="8.000" Depth="34.000" Diameter="8.000" />
+					<Machining ID="1040" Type="1" IsGenCode="2" Face="2" X="426.000" Y="0.000" Z="8.000" Depth="34.000" Diameter="8.000" />
+					<Machining ID="1050" Type="1" IsGenCode="2" Face="2" X="778.000" Y="0.000" Z="8.000" Depth="34.000" Diameter="8.000" />
+					<Machining ID="1060" Type="2" IsGenCode="2" Face="5" X="74.000" Y="34.000" Depth="12.500" Diameter="15.000" />
+					<Machining ID="1070" Type="2" IsGenCode="2" Face="5" X="426.000" Y="34.000" Depth="12.500" Diameter="15.000" />
+					<Machining ID="1080" Type="2" IsGenCode="2" Face="5" X="778.000" Y="34.000" Depth="12.500" Diameter="15.000" />
+				</Machines>
+				<EdgeGroup>
+					<Edge Face="1" Thickness="0.000000" />
+					<Edge Face="2" Thickness="0.000000" />
+					<Edge Face="3" Thickness="0.000000" />
+					<Edge Face="4" Thickness="0.000000" />
+				</EdgeGroup>
+			</Panel>
+		</Panels>
+	</Project>
+</Root>

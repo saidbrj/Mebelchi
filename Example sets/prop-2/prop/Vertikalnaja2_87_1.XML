@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Root>
+	<Project Name="" Flag="SWJ008">
+		<Panels>
+			<Panel ID="Vertikalnaja2_87_1" Name="Vertikalnaja2_87_1" Width="200.000" Length="1360.000" Material="" Thickness="16.000" IsProduce="true" MachiningPoint="1" Type="1" Face5ID="" Face6ID="" Grain="L">
+				<Outline></Outline>
+				<Machines>
+					<Machining ID="1000" Type="3" IsGenCode="2" Face="5" Depth="16.000" X="1360.000" Y="200.000" Pocket="0" ToolOffset="右">
+						<Lines>
+							<Line LineID="1" EndX="0.000" EndY="81.015" Angle="0.000000" />
+						</Lines>
+					</Machining>
+				</Machines>
+				<EdgeGroup>
+					<Edge Face="1" Thickness="0.000000" />
+					<Edge Face="2" Thickness="1.000" />
+					<Edge Face="3" Thickness="0.000000" />
+					<Edge Face="4" Thickness="0.000000" />
+				</EdgeGroup>
+			</Panel>
+		</Panels>
+	</Project>
+</Root>

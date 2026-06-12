@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Root>
+	<Project Name="" Flag="SWJ008">
+		<Panels>
+			<Panel ID="Frontalnaja4_59_1" Name="Frontalnaja4_59_1" Width="256.000" Length="721.000" Material="" Thickness="16.000" IsProduce="true" MachiningPoint="1" Type="1" Face5ID="" Face6ID="" Grain="L">
+				<Outline></Outline>
+				<Machines>
+					<Machining ID="1000" Type="3" IsGenCode="2" Face="5" Depth="16.000" X="661.000" Y="0.000" Pocket="0" ToolOffset="右">
+						<Lines>
+							<Line LineID="1" EndX="721.000" EndY="60.000" Angle="0.000000" />
+						</Lines>
+					</Machining>
+					<Machining ID="1010" Type="1" IsGenCode="2" Face="4" X="0.000" Y="55.000" Z="8.000" Depth="34.003" Diameter="4.500" />
+					<Machining ID="1020" Type="1" IsGenCode="2" Face="4" X="0.000" Y="201.000" Z="8.000" Depth="34.003" Diameter="4.500" />
+					<Machining ID="1030" Type="1" IsGenCode="2" Face="3" X="721.000" Y="80.000" Z="8.000" Depth="34.003" Diameter="4.500" />
+					<Machining ID="1040" Type="1" IsGenCode="2" Face="3" X="721.000" Y="208.000" Z="8.000" Depth="34.003" Diameter="4.500" />
+				</Machines>
+				<EdgeGroup>
+					<Edge Face="1" Thickness="0.000000" />
+					<Edge Face="2" Thickness="0.000000" />
+					<Edge Face="3" Thickness="0.000000" />
+					<Edge Face="4" Thickness="0.000000" />
+				</EdgeGroup>
+			</Panel>
+		</Panels>
+	</Project>
+</Root>

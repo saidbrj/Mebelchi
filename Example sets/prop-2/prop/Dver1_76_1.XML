@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Root>
+	<Project Name="" Flag="SWJ008">
+		<Panels>
+			<Panel ID="Dver1_76_1" Name="Dver1_76_1" Width="359.000" Length="1380.000" Material="" Thickness="16.000" IsProduce="true" MachiningPoint="1" Type="1" Face5ID="" Face6ID="" Grain="L">
+				<Outline></Outline>
+				<Machines>
+					<Machining ID="1000" Type="2" IsGenCode="2" Face="5" X="74.005" Y="332.000" Depth="1.000" Diameter="3.000" />
+					<Machining ID="1010" Type="2" IsGenCode="2" Face="5" X="126.005" Y="332.000" Depth="1.000" Diameter="3.000" />
+					<Machining ID="1020" Type="2" IsGenCode="2" Face="5" X="664.005" Y="332.000" Depth="1.000" Diameter="3.000" />
+					<Machining ID="1030" Type="2" IsGenCode="2" Face="5" X="716.005" Y="332.000" Depth="1.000" Diameter="3.000" />
+					<Machining ID="1040" Type="2" IsGenCode="2" Face="5" X="1254.005" Y="332.000" Depth="1.000" Diameter="3.000" />
+					<Machining ID="1050" Type="2" IsGenCode="2" Face="5" X="1306.005" Y="332.000" Depth="1.000" Diameter="3.000" />
+					<Machining ID="1060" Type="2" IsGenCode="2" Face="5" X="100.005" Y="337.500" Depth="13.000" Diameter="35.000" />
+					<Machining ID="1070" Type="2" IsGenCode="2" Face="5" X="690.005" Y="337.500" Depth="13.000" Diameter="35.000" />
+					<Machining ID="1080" Type="2" IsGenCode="2" Face="5" X="1280.005" Y="337.500" Depth="13.000" Diameter="35.000" />
+				</Machines>
+				<EdgeGroup>
+					<Edge Face="1" Thickness="0.000000" />
+					<Edge Face="2" Thickness="0.000000" />
+					<Edge Face="3" Thickness="0.000000" />
+					<Edge Face="4" Thickness="0.000000" />
+				</EdgeGroup>
+			</Panel>
+		</Panels>
+	</Project>
+</Root>

@@ -1,0 +1,31 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Root>
+	<Project Name="" Flag="SWJ008">
+		<Panels>
+			<Panel ID="SHKOF DEKOR ORTA ONG_41_1" Name="SHKOF DEKOR ORTA ONG_41_1" Width="165.000" Length="1059.000" Material="" Thickness="6.000" IsProduce="true" MachiningPoint="1" Type="1" Face5ID="" Face6ID="" Grain="L">
+				<Outline></Outline>
+				<Machines>
+					<Machining ID="1000" Type="3" IsGenCode="2" Face="5" Depth="6.000" X="0.000" Y="164.500" Pocket="0" ToolOffset="右">
+						<Lines>
+							<Line LineID="1" EndX="164.500" EndY="0.000" Angle="-90.000" />
+						</Lines>
+					</Machining>
+					<Machining ID="1010" Type="3" IsGenCode="2" Face="5" Depth="6.000" X="1059.000" Y="110.000" Pocket="0" ToolOffset="右">
+						<Lines>
+							<Line LineID="1" EndX="165.000" EndY="110.000" Angle="0.000000" />
+							<Line LineID="2" EndX="110.000" EndY="165.000" Angle="90.000" />
+							<Line LineID="3" EndX="110.000" EndY="164.500" Angle="0.000000" />
+							<Line LineID="4" EndX="0.000" EndY="164.500" Angle="0.000000" />
+						</Lines>
+					</Machining>
+				</Machines>
+				<EdgeGroup>
+					<Edge Face="1" Thickness="0.000000" />
+					<Edge Face="2" Thickness="0.000000" />
+					<Edge Face="3" Thickness="0.000000" />
+					<Edge Face="4" Thickness="0.000000" />
+				</EdgeGroup>
+			</Panel>
+		</Panels>
+	</Project>
+</Root>

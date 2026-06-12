@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Root>
+	<Project Name="" Flag="SWJ008">
+		<Panels>
+			<Panel ID="CHAP SOKL_96_1" Name="CHAP SOKL_96_1" Width="120.000" Length="350.000" Material="" Thickness="16.000" IsProduce="true" MachiningPoint="1" Type="1" Face5ID="" Face6ID="" Grain="L">
+				<Outline></Outline>
+				<Machines>
+					<Machining ID="1000" Type="1" IsGenCode="2" Face="1" X="43.000" Y="120.000" Z="10.000" Depth="9.800" Diameter="6.000" />
+					<Machining ID="1010" Type="1" IsGenCode="2" Face="4" X="0.000" Y="28.000" Z="8.000" Depth="34.000" Diameter="8.000" />
+					<Machining ID="1020" Type="1" IsGenCode="2" Face="4" X="0.000" Y="92.000" Z="8.000" Depth="34.000" Diameter="8.000" />
+					<Machining ID="1030" Type="4" IsGenCode="2" Face="5" X="0.000" Y="108.000" EndX="350.000" EndY="108.000" Width="4.000" Depth="8.000" />
+					<Machining ID="1040" Type="2" IsGenCode="2" Face="5" X="34.000" Y="28.000" Depth="12.500" Diameter="15.000" />
+					<Machining ID="1050" Type="2" IsGenCode="2" Face="5" X="342.000" Y="53.000" Depth="17.000" Diameter="7.000" />
+					<Machining ID="1060" Type="2" IsGenCode="2" Face="5" X="34.000" Y="92.000" Depth="12.500" Diameter="15.000" />
+					<Machining ID="1070" Type="2" IsGenCode="2" Face="5" X="63.000" Y="113.000" Depth="12.000" Diameter="5.000" />
+				</Machines>
+				<EdgeGroup>
+					<Edge Face="1" Thickness="0.000000" />
+					<Edge Face="2" Thickness="1.000" />
+					<Edge Face="3" Thickness="0.000000" />
+					<Edge Face="4" Thickness="0.000000" />
+				</EdgeGroup>
+			</Panel>
+		</Panels>
+	</Project>
+</Root>

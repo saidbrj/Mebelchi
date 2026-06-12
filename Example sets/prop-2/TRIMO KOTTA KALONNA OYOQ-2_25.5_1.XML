@@ -1,0 +1,117 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Root>
+	<Project Name="" Flag="SWJ008">
+		<Panels>
+			<Panel ID="TRIMO KOTTA KALONNA OYOQ-2_25.5_1" Name="TRIMO KOTTA KALONNA OYOQ-2_25.5_1" Width="160.000" Length="853.000" Material="" Thickness="32.000" IsProduce="true" MachiningPoint="1" Type="1" Face5ID="" Face6ID="" Grain="L">
+				<Outline></Outline>
+				<Machines>
+					<Machining ID="1000" Type="3" IsGenCode="2" Face="5" Depth="32.000" X="853.000" Y="80.000" Pocket="0" ToolOffset="右">
+						<Lines>
+							<Line LineID="1" EndX="692.000" EndY="80.000" Angle="0.000000" />
+							<Line LineID="2" EndX="692.000" EndY="160.000" Angle="0.000000" />
+						</Lines>
+					</Machining>
+					<Machining ID="1010" Type="1" IsGenCode="2" Face="1" X="796.500" Y="80.000" Z="16.000" Depth="34.000" Diameter="4.500" />
+					<Machining ID="1020" Type="1" IsGenCode="2" Face="1" X="745.500" Y="80.000" Z="16.000" Depth="34.000" Diameter="4.500" />
+					<Machining ID="1030" Type="1" IsGenCode="2" Face="4" X="0.000" Y="32.000" Z="16.000" Depth="22.000" Diameter="8.000" />
+					<Machining ID="1040" Type="1" IsGenCode="2" Face="4" X="0.000" Y="128.000" Z="16.000" Depth="22.000" Diameter="8.000" />
+					<Machining ID="1050" Type="1" IsGenCode="2" Face="3" X="853.000" Y="23.620" Z="16.000" Depth="22.000" Diameter="8.000" />
+					<Machining ID="1060" Type="1" IsGenCode="2" Face="3" X="853.000" Y="55.620" Z="16.000" Depth="22.000" Diameter="8.000" />
+					<Machining ID="1070" Type="4" IsGenCode="2" Face="5" X="0.000" Y="160.000" EndX="692.000" EndY="160.000" Width="30.000" Depth="15.000" />
+					<Machining ID="1080" Type="2" IsGenCode="2" Face="5" X="206.170" Y="46.000" Depth="11.000" Diameter="8.000" />
+					<Machining ID="1090" Type="2" IsGenCode="2" Face="5" X="452.330" Y="46.000" Depth="11.000" Diameter="8.000" />
+					<Machining ID="1100" Type="2" IsGenCode="2" Face="5" X="206.170" Y="114.000" Depth="11.000" Diameter="8.000" />
+					<Machining ID="1110" Type="2" IsGenCode="2" Face="5" X="452.330" Y="114.000" Depth="11.000" Diameter="8.000" />
+					<Machining ID="1120" Type="2" IsGenCode="2" Face="5" X="386.000" Y="121.000" Depth="33.000" Diameter="7.000" />
+					<Machining ID="1130" Type="2" IsGenCode="2" Face="5" X="636.000" Y="121.000" Depth="33.000" Diameter="7.000" />
+					<Machining ID="1140" Type="3" IsGenCode="2" Face="6" Depth="15.000" X="0.000" Y="-13.000" Pocket="0" ToolOffset="">
+						<Lines>
+							<Line LineID="1" EndX="853.000" EndY="-13.000" Angle="0.000000" />
+						</Lines>
+					</Machining>
+					<Machining ID="1150" Type="3" IsGenCode="2" Face="6" Depth="15.000" X="0.000" Y="-9.000" Pocket="0" ToolOffset="">
+						<Lines>
+							<Line LineID="1" EndX="853.000" EndY="-9.000" Angle="0.000000" />
+						</Lines>
+					</Machining>
+					<Machining ID="1160" Type="3" IsGenCode="2" Face="6" Depth="15.000" X="0.000" Y="-5.000" Pocket="0" ToolOffset="">
+						<Lines>
+							<Line LineID="1" EndX="853.000" EndY="-5.000" Angle="0.000000" />
+						</Lines>
+					</Machining>
+					<Machining ID="1170" Type="3" IsGenCode="2" Face="6" Depth="15.000" X="0.000" Y="-1.000" Pocket="0" ToolOffset="">
+						<Lines>
+							<Line LineID="1" EndX="853.000" EndY="-1.000" Angle="0.000000" />
+						</Lines>
+					</Machining>
+					<Machining ID="1180" Type="3" IsGenCode="2" Face="6" Depth="15.000" X="0.000" Y="3.000" Pocket="0" ToolOffset="">
+						<Lines>
+							<Line LineID="1" EndX="853.000" EndY="3.000" Angle="0.000000" />
+						</Lines>
+					</Machining>
+					<Machining ID="1190" Type="3" IsGenCode="2" Face="6" Depth="15.000" X="0.000" Y="7.000" Pocket="0" ToolOffset="">
+						<Lines>
+							<Line LineID="1" EndX="853.000" EndY="7.000" Angle="0.000000" />
+						</Lines>
+					</Machining>
+					<Machining ID="1200" Type="3" IsGenCode="2" Face="6" Depth="15.000" X="0.000" Y="11.000" Pocket="0" ToolOffset="">
+						<Lines>
+							<Line LineID="1" EndX="853.000" EndY="11.000" Angle="0.000000" />
+						</Lines>
+					</Machining>
+					<Machining ID="1210" Type="3" IsGenCode="2" Face="6" Depth="15.000" X="0.000" Y="13.000" Pocket="0" ToolOffset="">
+						<Lines>
+							<Line LineID="1" EndX="853.000" EndY="13.000" Angle="0.000000" />
+						</Lines>
+					</Machining>
+					<Machining ID="1220" Type="3" IsGenCode="2" Face="6" Depth="15.000" X="0.000" Y="147.000" Pocket="0" ToolOffset="">
+						<Lines>
+							<Line LineID="1" EndX="692.000" EndY="147.000" Angle="0.000000" />
+						</Lines>
+					</Machining>
+					<Machining ID="1230" Type="3" IsGenCode="2" Face="6" Depth="15.000" X="0.000" Y="151.000" Pocket="0" ToolOffset="">
+						<Lines>
+							<Line LineID="1" EndX="692.000" EndY="151.000" Angle="0.000000" />
+						</Lines>
+					</Machining>
+					<Machining ID="1240" Type="3" IsGenCode="2" Face="6" Depth="15.000" X="0.000" Y="155.000" Pocket="0" ToolOffset="">
+						<Lines>
+							<Line LineID="1" EndX="692.000" EndY="155.000" Angle="0.000000" />
+						</Lines>
+					</Machining>
+					<Machining ID="1250" Type="3" IsGenCode="2" Face="6" Depth="15.000" X="0.000" Y="159.000" Pocket="0" ToolOffset="">
+						<Lines>
+							<Line LineID="1" EndX="692.000" EndY="159.000" Angle="0.000000" />
+						</Lines>
+					</Machining>
+					<Machining ID="1260" Type="3" IsGenCode="2" Face="6" Depth="15.000" X="0.000" Y="163.000" Pocket="0" ToolOffset="">
+						<Lines>
+							<Line LineID="1" EndX="692.000" EndY="163.000" Angle="0.000000" />
+						</Lines>
+					</Machining>
+					<Machining ID="1270" Type="3" IsGenCode="2" Face="6" Depth="15.000" X="0.000" Y="167.000" Pocket="0" ToolOffset="">
+						<Lines>
+							<Line LineID="1" EndX="692.000" EndY="167.000" Angle="0.000000" />
+						</Lines>
+					</Machining>
+					<Machining ID="1280" Type="3" IsGenCode="2" Face="6" Depth="15.000" X="0.000" Y="171.000" Pocket="0" ToolOffset="">
+						<Lines>
+							<Line LineID="1" EndX="692.000" EndY="171.000" Angle="0.000000" />
+						</Lines>
+					</Machining>
+					<Machining ID="1290" Type="3" IsGenCode="2" Face="6" Depth="15.000" X="0.000" Y="173.000" Pocket="0" ToolOffset="">
+						<Lines>
+							<Line LineID="1" EndX="692.000" EndY="173.000" Angle="0.000000" />
+						</Lines>
+					</Machining>
+				</Machines>
+				<EdgeGroup>
+					<Edge Face="1" Thickness="0.000000" />
+					<Edge Face="2" Thickness="0.000000" />
+					<Edge Face="3" Thickness="0.000000" />
+					<Edge Face="4" Thickness="0.000000" />
+				</EdgeGroup>
+			</Panel>
+		</Panels>
+	</Project>
+</Root>

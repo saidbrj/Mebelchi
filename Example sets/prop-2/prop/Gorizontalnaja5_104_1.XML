@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Root>
+	<Project Name="" Flag="SWJ008">
+		<Panels>
+			<Panel ID="Gorizontalnaja5_104_1" Name="Gorizontalnaja5_104_1" Width="220.000" Length="865.000" Material="" Thickness="3.000" IsProduce="true" MachiningPoint="1" Type="1" Face5ID="" Face6ID="" Grain="L">
+				<Outline></Outline>
+				<Machines>
+					<Machining ID="1000" Type="2" IsGenCode="2" Face="5" X="49.499" Y="152.000" Depth="4.000" Diameter="7.000" />
+					<Machining ID="1010" Type="2" IsGenCode="2" Face="5" X="432.499" Y="152.000" Depth="4.000" Diameter="7.000" />
+					<Machining ID="1020" Type="2" IsGenCode="2" Face="5" X="815.499" Y="152.000" Depth="4.000" Diameter="7.000" />
+					<Machining ID="1030" Type="2" IsGenCode="2" Face="5" X="240.999" Y="190.000" Depth="4.000" Diameter="7.000" />
+					<Machining ID="1040" Type="2" IsGenCode="2" Face="5" X="623.999" Y="190.000" Depth="4.000" Diameter="7.000" />
+				</Machines>
+				<EdgeGroup>
+					<Edge Face="1" Thickness="0.000000" />
+					<Edge Face="2" Thickness="0.000000" />
+					<Edge Face="3" Thickness="0.000000" />
+					<Edge Face="4" Thickness="0.000000" />
+				</EdgeGroup>
+			</Panel>
+		</Panels>
+	</Project>
+</Root>

@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Root>
+	<Project Name="" Flag="SWJ008">
+		<Panels>
+			<Panel ID="CHETR OYOQ UT-3_95_1" Name="CHETR OYOQ UT-3_95_1" Width="444.000" Length="687.000" Material="" Thickness="16.000" IsProduce="true" MachiningPoint="1" Type="1" Face5ID="" Face6ID="" Grain="L">
+				<Outline></Outline>
+				<Machines>
+					<Machining ID="1000" Type="3" IsGenCode="2" Face="5" Depth="16.000" X="607.000" Y="0.000" Pocket="0" ToolOffset="右">
+						<Lines>
+							<Line LineID="1" EndX="687.000" EndY="80.000" Angle="-90.000" />
+						</Lines>
+					</Machining>
+					<Machining ID="1010" Type="3" IsGenCode="2" Face="5" Depth="16.000" X="687.000" Y="364.000" Pocket="0" ToolOffset="右">
+						<Lines>
+							<Line LineID="1" EndX="607.000" EndY="444.000" Angle="-90.000" />
+						</Lines>
+					</Machining>
+					<Machining ID="1020" Type="3" IsGenCode="2" Face="5" Depth="16.000" X="80.000" Y="444.000" Pocket="0" ToolOffset="右">
+						<Lines>
+							<Line LineID="1" EndX="0.000" EndY="364.000" Angle="-90.000" />
+						</Lines>
+					</Machining>
+					<Machining ID="1030" Type="3" IsGenCode="2" Face="5" Depth="16.000" X="0.000" Y="80.000" Pocket="0" ToolOffset="右">
+						<Lines>
+							<Line LineID="1" EndX="80.000" EndY="0.000" Angle="-90.000" />
+						</Lines>
+					</Machining>
+					<Machining ID="1040" Type="3" IsGenCode="2" Face="5" Depth="16.000" X="30.000" Y="227.000" Pocket="0" ToolOffset="左">
+						<Lines>
+							<Line LineID="1" EndX="30.000" EndY="80.000" Angle="0.000000" />
+							<Line LineID="2" EndX="80.000" EndY="30.000" Angle="-90.000" />
+							<Line LineID="3" EndX="607.000" EndY="30.000" Angle="0.000000" />
+							<Line LineID="4" EndX="657.000" EndY="80.000" Angle="-90.000" />
+							<Line LineID="5" EndX="657.000" EndY="364.000" Angle="0.000000" />
+							<Line LineID="6" EndX="607.000" EndY="414.000" Angle="-90.000" />
+							<Line LineID="7" EndX="80.000" EndY="414.000" Angle="0.000000" />
+							<Line LineID="8" EndX="30.000" EndY="364.000" Angle="-90.000" />
+							<Line LineID="9" EndX="30.000" EndY="217.000" Angle="0.000000" />
+						</Lines>
+					</Machining>
+					<Machining ID="1050" Type="2" IsGenCode="2" Face="5" X="119.500" Y="15.000" Depth="2.000" Diameter="4.500" />
+					<Machining ID="1060" Type="2" IsGenCode="2" Face="5" X="343.500" Y="15.000" Depth="2.000" Diameter="4.500" />
+					<Machining ID="1070" Type="2" IsGenCode="2" Face="5" X="567.500" Y="15.000" Depth="2.000" Diameter="4.500" />
+					<Machining ID="1080" Type="2" IsGenCode="2" Face="5" X="15.000" Y="78.000" Depth="2.000" Diameter="4.500" />
+					<Machining ID="1090" Type="2" IsGenCode="2" Face="5" X="672.000" Y="78.000" Depth="2.000" Diameter="4.500" />
+					<Machining ID="1100" Type="2" IsGenCode="2" Face="5" X="15.000" Y="366.000" Depth="2.000" Diameter="4.500" />
+					<Machining ID="1110" Type="2" IsGenCode="2" Face="5" X="672.000" Y="366.000" Depth="2.000" Diameter="4.500" />
+					<Machining ID="1120" Type="2" IsGenCode="2" Face="5" X="119.500" Y="429.000" Depth="2.000" Diameter="4.500" />
+					<Machining ID="1130" Type="2" IsGenCode="2" Face="5" X="343.500" Y="429.000" Depth="2.000" Diameter="4.500" />
+					<Machining ID="1140" Type="2" IsGenCode="2" Face="5" X="567.500" Y="429.000" Depth="2.000" Diameter="4.500" />
+				</Machines>
+				<EdgeGroup>
+					<Edge Face="1" Thickness="0.000000" />
+					<Edge Face="2" Thickness="0.000000" />
+					<Edge Face="3" Thickness="0.000000" />
+					<Edge Face="4" Thickness="0.000000" />
+				</EdgeGroup>
+			</Panel>
+		</Panels>
+	</Project>
+</Root>

@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Root>
+	<Project Name="" Flag="SWJ008">
+		<Panels>
+			<Panel ID="TR KRISHKA_22_1" Name="TR KRISHKA_22_1" Width="480.000" Length="700.000" Material="" Thickness="16.000" IsProduce="true" MachiningPoint="1" Type="1" Face5ID="" Face6ID="" Grain="L">
+				<Outline></Outline>
+				<Machines>
+					<Machining ID="1000" Type="2" IsGenCode="2" Face="5" X="125.500" Y="90.000" Depth="17.000" Diameter="8.000" />
+					<Machining ID="1010" Type="2" IsGenCode="2" Face="5" X="125.500" Y="360.000" Depth="17.000" Diameter="8.000" />
+					<Machining ID="1020" Type="2" IsGenCode="2" Face="6" X="9.000" Y="64.000" Depth="11.000" Diameter="5.000" />
+					<Machining ID="1030" Type="2" IsGenCode="2" Face="6" X="691.000" Y="64.000" Depth="11.000" Diameter="5.000" />
+					<Machining ID="1040" Type="2" IsGenCode="2" Face="6" X="9.000" Y="416.000" Depth="11.000" Diameter="5.000" />
+					<Machining ID="1050" Type="2" IsGenCode="2" Face="6" X="691.000" Y="416.000" Depth="11.000" Diameter="5.000" />
+					<Machining ID="1060" Type="3" IsGenCode="2" Face="6" Depth="8.000" X="691.000" Y="12.000" Pocket="0" ToolOffset="">
+						<Lines>
+							<Line LineID="1" EndX="9.000" EndY="12.000" Angle="0.000000" />
+						</Lines>
+					</Machining>
+				</Machines>
+				<EdgeGroup>
+					<Edge Face="1" Thickness="0.000000" />
+					<Edge Face="2" Thickness="0.000000" />
+					<Edge Face="3" Thickness="0.000000" />
+					<Edge Face="4" Thickness="0.000000" />
+				</EdgeGroup>
+			</Panel>
+		</Panels>
+	</Project>
+</Root>

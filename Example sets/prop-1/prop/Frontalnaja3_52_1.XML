@@ -1,0 +1,58 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Root>
+	<Project Name="" Flag="SWJ008">
+		<Panels>
+			<Panel ID="Frontalnaja3_52_1" Name="Frontalnaja3_52_1" Width="256.000" Length="1710.000" Material="" Thickness="16.000" IsProduce="true" MachiningPoint="1" Type="1" Face5ID="" Face6ID="" Grain="L">
+				<Outline></Outline>
+				<Machines>
+					<Machining ID="1000" Type="3" IsGenCode="2" Face="5" Depth="16.000" X="1710.000" Y="155.000" Pocket="0" ToolOffset="右">
+						<Lines>
+							<Line LineID="1" EndX="1625.000" EndY="155.000" Angle="0.000000" />
+							<Line LineID="2" EndX="1600.000" EndY="180.000" Angle="90.000" />
+							<Line LineID="3" EndX="1600.000" EndY="256.000" Angle="0.000000" />
+						</Lines>
+					</Machining>
+					<Machining ID="1010" Type="3" IsGenCode="2" Face="5" Depth="16.000" X="110.000" Y="256.000" Pocket="0" ToolOffset="右">
+						<Lines>
+							<Line LineID="1" EndX="110.000" EndY="180.000" Angle="0.000000" />
+							<Line LineID="2" EndX="85.000" EndY="155.000" Angle="90.000" />
+							<Line LineID="3" EndX="0.000" EndY="155.000" Angle="0.000000" />
+						</Lines>
+					</Machining>
+					<Machining ID="1020" Type="1" IsGenCode="2" Face="4" X="0.000" Y="30.000" Z="8.000" Depth="34.000" Diameter="8.000" />
+					<Machining ID="1030" Type="1" IsGenCode="2" Face="4" X="0.000" Y="62.000" Z="8.000" Depth="18.000" Diameter="8.000" />
+					<Machining ID="1040" Type="1" IsGenCode="2" Face="4" X="0.000" Y="94.000" Z="8.000" Depth="18.000" Diameter="8.000" />
+					<Machining ID="1050" Type="1" IsGenCode="2" Face="4" X="0.000" Y="126.000" Z="8.000" Depth="34.000" Diameter="8.000" />
+					<Machining ID="1060" Type="1" IsGenCode="2" Face="3" X="1710.000" Y="30.000" Z="8.000" Depth="34.000" Diameter="8.000" />
+					<Machining ID="1070" Type="1" IsGenCode="2" Face="3" X="1710.000" Y="62.000" Z="8.000" Depth="18.000" Diameter="8.000" />
+					<Machining ID="1080" Type="1" IsGenCode="2" Face="3" X="1710.000" Y="94.000" Z="8.000" Depth="18.000" Diameter="8.000" />
+					<Machining ID="1090" Type="1" IsGenCode="2" Face="3" X="1710.000" Y="126.000" Z="8.000" Depth="34.000" Diameter="8.000" />
+					<Machining ID="1100" Type="2" IsGenCode="2" Face="5" X="34.000" Y="30.000" Depth="12.500" Diameter="15.000" />
+					<Machining ID="1110" Type="2" IsGenCode="2" Face="5" X="567.000" Y="30.000" Depth="17.000" Diameter="7.000" />
+					<Machining ID="1120" Type="2" IsGenCode="2" Face="5" X="1143.000" Y="30.000" Depth="17.000" Diameter="7.000" />
+					<Machining ID="1130" Type="2" IsGenCode="2" Face="5" X="1676.000" Y="30.000" Depth="12.500" Diameter="15.000" />
+					<Machining ID="1140" Type="2" IsGenCode="2" Face="5" X="118.000" Y="48.000" Depth="11.000" Diameter="8.000" />
+					<Machining ID="1150" Type="2" IsGenCode="2" Face="5" X="855.000" Y="48.000" Depth="11.000" Diameter="8.000" />
+					<Machining ID="1160" Type="2" IsGenCode="2" Face="5" X="1592.000" Y="48.000" Depth="11.000" Diameter="8.000" />
+					<Machining ID="1170" Type="2" IsGenCode="2" Face="5" X="34.000" Y="126.000" Depth="12.500" Diameter="15.000" />
+					<Machining ID="1180" Type="2" IsGenCode="2" Face="5" X="567.000" Y="126.000" Depth="17.000" Diameter="7.000" />
+					<Machining ID="1190" Type="2" IsGenCode="2" Face="5" X="1143.000" Y="126.000" Depth="17.000" Diameter="7.000" />
+					<Machining ID="1200" Type="2" IsGenCode="2" Face="5" X="1676.000" Y="126.000" Depth="12.500" Diameter="15.000" />
+					<Machining ID="1210" Type="2" IsGenCode="2" Face="5" X="118.000" Y="208.000" Depth="11.000" Diameter="8.000" />
+					<Machining ID="1220" Type="2" IsGenCode="2" Face="5" X="855.000" Y="208.000" Depth="11.000" Diameter="8.000" />
+					<Machining ID="1230" Type="2" IsGenCode="2" Face="5" X="1592.000" Y="208.000" Depth="11.000" Diameter="8.000" />
+					<Machining ID="1240" Type="2" IsGenCode="2" Face="6" X="567.000" Y="62.000" Depth="14.000" Diameter="8.000" />
+					<Machining ID="1250" Type="2" IsGenCode="2" Face="6" X="1143.000" Y="62.000" Depth="14.000" Diameter="8.000" />
+					<Machining ID="1260" Type="2" IsGenCode="2" Face="6" X="567.000" Y="94.000" Depth="14.000" Diameter="8.000" />
+					<Machining ID="1270" Type="2" IsGenCode="2" Face="6" X="1143.000" Y="94.000" Depth="14.000" Diameter="8.000" />
+				</Machines>
+				<EdgeGroup>
+					<Edge Face="1" Thickness="0.000000" />
+					<Edge Face="2" Thickness="1.000" />
+					<Edge Face="3" Thickness="0.000000" />
+					<Edge Face="4" Thickness="0.000000" />
+				</EdgeGroup>
+			</Panel>
+		</Panels>
+	</Project>
+</Root>

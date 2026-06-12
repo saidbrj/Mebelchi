@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Root>
+	<Project Name="" Flag="SWJ008">
+		<Panels>
+			<Panel ID="TR KICH OYOQ_61_1" Name="TR KICH OYOQ_61_1" Width="116.000" Length="404.000" Material="" Thickness="16.000" IsProduce="true" MachiningPoint="1" Type="1" Face5ID="" Face6ID="" Grain="L">
+				<Outline></Outline>
+				<Machines>
+					<Machining ID="1000" Type="1" IsGenCode="2" Face="1" X="74.000" Y="116.000" Z="8.000" Depth="34.000" Diameter="4.500" />
+					<Machining ID="1010" Type="1" IsGenCode="2" Face="1" X="106.000" Y="116.000" Z="8.000" Depth="18.000" Diameter="8.000" />
+					<Machining ID="1020" Type="1" IsGenCode="2" Face="1" X="298.000" Y="116.000" Z="8.000" Depth="18.000" Diameter="8.000" />
+					<Machining ID="1030" Type="1" IsGenCode="2" Face="1" X="330.000" Y="116.000" Z="8.000" Depth="34.000" Diameter="4.500" />
+					<Machining ID="1040" Type="1" IsGenCode="2" Face="4" X="0.000" Y="42.000" Z="8.000" Depth="34.000" Diameter="8.000" />
+					<Machining ID="1050" Type="1" IsGenCode="2" Face="4" X="0.000" Y="74.000" Z="8.000" Depth="18.000" Diameter="8.000" />
+					<Machining ID="1060" Type="1" IsGenCode="2" Face="2" X="186.000" Y="0.000" Z="8.000" Depth="10.000" Diameter="4.500" />
+					<Machining ID="1070" Type="1" IsGenCode="2" Face="2" X="218.000" Y="0.000" Z="8.000" Depth="10.000" Diameter="4.500" />
+					<Machining ID="1080" Type="1" IsGenCode="2" Face="3" X="404.000" Y="42.000" Z="8.000" Depth="34.000" Diameter="8.000" />
+					<Machining ID="1090" Type="1" IsGenCode="2" Face="3" X="404.000" Y="74.000" Z="8.000" Depth="18.000" Diameter="8.000" />
+					<Machining ID="1100" Type="2" IsGenCode="2" Face="5" X="34.000" Y="42.000" Depth="12.500" Diameter="15.000" />
+					<Machining ID="1110" Type="2" IsGenCode="2" Face="5" X="370.000" Y="42.000" Depth="12.500" Diameter="15.000" />
+				</Machines>
+				<EdgeGroup>
+					<Edge Face="1" Thickness="0.000000" />
+					<Edge Face="2" Thickness="0.000000" />
+					<Edge Face="3" Thickness="0.000000" />
+					<Edge Face="4" Thickness="0.000000" />
+				</EdgeGroup>
+			</Panel>
+		</Panels>
+	</Project>
+</Root>

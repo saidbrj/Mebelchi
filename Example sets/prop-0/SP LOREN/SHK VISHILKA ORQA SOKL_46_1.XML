@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Root>
+	<Project Name="" Flag="SWJ008">
+		<Panels>
+			<Panel ID="SHK VISHILKA ORQA SOKL_46_1" Name="SHK VISHILKA ORQA SOKL_46_1" Width="100.000" Length="681.000" Material="" Thickness="16.000" IsProduce="true" MachiningPoint="1" Type="1" Face5ID="" Face6ID="" Grain="L">
+				<Outline></Outline>
+				<Machines>
+					<Machining ID="1000" Type="1" IsGenCode="2" Face="4" X="0.000" Y="34.000" Z="8.000" Depth="34.000" Diameter="4.500" />
+					<Machining ID="1010" Type="1" IsGenCode="2" Face="4" X="0.000" Y="66.000" Z="8.000" Depth="34.000" Diameter="4.500" />
+					<Machining ID="1020" Type="1" IsGenCode="2" Face="3" X="681.000" Y="34.000" Z="8.000" Depth="34.000" Diameter="4.500" />
+					<Machining ID="1030" Type="1" IsGenCode="2" Face="3" X="681.000" Y="66.000" Z="8.000" Depth="34.000" Diameter="4.500" />
+					<Machining ID="1040" Type="2" IsGenCode="2" Face="5" X="49.500" Y="50.000" Depth="12.000" Diameter="16.500" />
+					<Machining ID="1050" Type="2" IsGenCode="2" Face="5" X="146.500" Y="50.000" Depth="12.000" Diameter="16.500" />
+					<Machining ID="1060" Type="2" IsGenCode="2" Face="5" X="243.500" Y="50.000" Depth="12.000" Diameter="16.500" />
+					<Machining ID="1070" Type="2" IsGenCode="2" Face="5" X="340.500" Y="50.000" Depth="12.000" Diameter="16.500" />
+					<Machining ID="1080" Type="2" IsGenCode="2" Face="5" X="437.500" Y="50.000" Depth="12.000" Diameter="16.500" />
+					<Machining ID="1090" Type="2" IsGenCode="2" Face="5" X="534.500" Y="50.000" Depth="12.000" Diameter="16.500" />
+					<Machining ID="1100" Type="2" IsGenCode="2" Face="5" X="631.500" Y="50.000" Depth="12.000" Diameter="16.500" />
+				</Machines>
+				<EdgeGroup>
+					<Edge Face="1" Thickness="1.000" />
+					<Edge Face="2" Thickness="1.000" />
+					<Edge Face="3" Thickness="0.000000" />
+					<Edge Face="4" Thickness="0.000000" />
+				</EdgeGroup>
+			</Panel>
+		</Panels>
+	</Project>
+</Root>

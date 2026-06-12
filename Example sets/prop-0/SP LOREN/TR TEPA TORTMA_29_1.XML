@@ -1,0 +1,33 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Root>
+	<Project Name="" Flag="SWJ008">
+		<Panels>
+			<Panel ID="TR TEPA TORTMA_29_1" Name="TR TEPA TORTMA_29_1" Width="260.000" Length="700.000" Material="" Thickness="22.000" IsProduce="true" MachiningPoint="1" Type="1" Face5ID="" Face6ID="" Grain="L">
+				<Outline></Outline>
+				<Machines>
+					<Machining ID="1000" Type="3" IsGenCode="2" Face="5" Depth="22.000" X="685.000" Y="0.000" Pocket="0" ToolOffset="右">
+						<Lines>
+							<Line LineID="1" EndX="700.000" EndY="15.000" Angle="-90.000" />
+						</Lines>
+					</Machining>
+					<Machining ID="1010" Type="3" IsGenCode="2" Face="5" Depth="22.000" X="0.000" Y="15.000" Pocket="0" ToolOffset="右">
+						<Lines>
+							<Line LineID="1" EndX="15.000" EndY="0.000" Angle="-90.000" />
+						</Lines>
+					</Machining>
+					<Machining ID="1020" Type="4" IsGenCode="2" Face="5" X="31.000" Y="188.000" EndX="669.000" EndY="188.000" Width="4.000" Depth="8.000" />
+					<Machining ID="1030" Type="2" IsGenCode="2" Face="5" X="31.000" Y="98.000" Depth="11.000" Diameter="8.000" />
+					<Machining ID="1040" Type="2" IsGenCode="2" Face="5" X="669.000" Y="98.000" Depth="11.000" Diameter="8.000" />
+					<Machining ID="1050" Type="2" IsGenCode="2" Face="5" X="31.000" Y="162.000" Depth="11.000" Diameter="8.000" />
+					<Machining ID="1060" Type="2" IsGenCode="2" Face="5" X="669.000" Y="162.000" Depth="11.000" Diameter="8.000" />
+				</Machines>
+				<EdgeGroup>
+					<Edge Face="1" Thickness="0.000000" />
+					<Edge Face="2" Thickness="0.000000" />
+					<Edge Face="3" Thickness="0.000000" />
+					<Edge Face="4" Thickness="0.000000" />
+				</EdgeGroup>
+			</Panel>
+		</Panels>
+	</Project>
+</Root>

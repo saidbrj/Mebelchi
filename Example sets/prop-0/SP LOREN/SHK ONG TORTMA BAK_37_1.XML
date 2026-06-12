@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8" ?>
+<Root>
+	<Project Name="" Flag="SWJ008">
+		<Panels>
+			<Panel ID="SHK ONG TORTMA BAK_37_1" Name="SHK ONG TORTMA BAK_37_1" Width="300.000" Length="293.000" Material="" Thickness="16.000" IsProduce="true" MachiningPoint="1" Type="1" Face5ID="" Face6ID="" Grain="L">
+				<Outline></Outline>
+				<Machines>
+					<Machining ID="1000" Type="2" IsGenCode="2" Face="5" X="40.000" Y="30.000" Depth="17.000" Diameter="7.000" />
+					<Machining ID="1010" Type="2" IsGenCode="2" Face="5" X="268.000" Y="30.000" Depth="17.000" Diameter="7.000" />
+					<Machining ID="1020" Type="2" IsGenCode="2" Face="5" X="155.000" Y="39.500" Depth="1.000" Diameter="3.000" />
+					<Machining ID="1030" Type="2" IsGenCode="2" Face="5" X="243.000" Y="118.000" Depth="1.000" Diameter="3.000" />
+					<Machining ID="1040" Type="2" IsGenCode="2" Face="5" X="155.000" Y="126.500" Depth="1.000" Diameter="3.000" />
+					<Machining ID="1050" Type="2" IsGenCode="2" Face="5" X="155.000" Y="246.000" Depth="1.000" Diameter="3.000" />
+					<Machining ID="1060" Type="2" IsGenCode="2" Face="5" X="243.000" Y="246.000" Depth="1.000" Diameter="3.000" />
+					<Machining ID="1070" Type="2" IsGenCode="2" Face="5" X="40.000" Y="270.000" Depth="17.000" Diameter="7.000" />
+					<Machining ID="1080" Type="2" IsGenCode="2" Face="5" X="268.000" Y="270.000" Depth="17.000" Diameter="7.000" />
+				</Machines>
+				<EdgeGroup>
+					<Edge Face="1" Thickness="1.000" />
+					<Edge Face="2" Thickness="0.000000" />
+					<Edge Face="3" Thickness="1.000" />
+					<Edge Face="4" Thickness="0.000000" />
+				</EdgeGroup>
+			</Panel>
+		</Panels>
+	</Project>
+</Root>
