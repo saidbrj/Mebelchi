@@ -1,0 +1,30 @@
+# UNMATCHED report — joint_decisions.dataset.json v0
+# 1010 of 3006 holes unassigned across 3 projects
+
+class           kind  dia mm  depth mm  count  panels  projects
+bolt_seat       face  8       11        224    38      prop-0,prop-1,prop-2
+deep_pilot      edge  4.5     34        172    42      prop-0,prop-1,prop-2
+bolt_seat       face  8       14        152    29      prop-0,prop-1,prop-2
+other           edge  8       18        122    23      prop-0,prop-1,prop-2
+edge_dowel      edge  8       34        53     22      prop-0,prop-1,prop-2
+other           face  5       14        36     4       prop-0,prop-1,prop-2
+other           edge  6       9.8       36     28      prop-0,prop-1,prop-2
+other           face  5       12        24     16      prop-0,prop-1,prop-2
+other           face  4.5     17        24     7       prop-1,prop-2
+other           face  5       13        24     3       prop-2
+other           face  4.5     2         18     2       prop-2
+other           face  10      14        16     4       prop-0
+other           face  7       10        16     6       prop-0,prop-1,prop-2
+other           face  4.5     10        16     1       prop-2
+other           face  16.5    12        14     2       prop-0
+other           face  3       3         12     12      prop-2
+other           face  7       4         10     1       prop-1,prop-2
+other           face  6       9.8       10     5       prop-2
+confirmat_bore  face  7       17        8      6       prop-0,prop-1,prop-2
+other           face  7       13        8      1       prop-2
+cam_seat        face  15      12.5      4      2       prop-0
+other           edge  8       22        4      1       prop-2
+other           face  8       17        2      1       prop-0
+other           face  10      17        2      1       prop-0
+other           face  7       33        2      1       prop-2
+confirmat_bore  face  7       16        1      1       prop-2

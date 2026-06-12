@@ -169,21 +169,45 @@ def close(a, b, tol=SPACING_TOL):
     return abs(a - b) <= tol
 
 
+# ----------------------------------------------------------- piece grouping
+
+def prefix_key(panel_id: str) -> str:
+    """
+    Piece-grouping key: the first 3 alphabetic characters of the panel ID,
+    uppercased. A dump folder mixes several furniture pieces (SHK/TR/TU/KR in
+    SP LOREN; SHKOF/TRIMO/CHESTR in prop-2) and the factory's own spelling
+    drifts (CHESTR / CHEST / CHETR are one chest) — 3 letters merges the
+    variants while keeping the pieces apart. Cross-piece matching is noise.
+    """
+    letters = []
+    for ch in panel_id:
+        if ch.isalpha():
+            letters.append(ch.upper())
+            if len(letters) == 3:
+                break
+        elif letters:
+            break
+    return "".join(letters) or "?"
+
+
 # ------------------------------------------------------------------ families
 
-def extract(folder, project):
-    panels, holes, grooves, notes = parse_folder(folder)
-    rows, flags = [], []
+def match_set(panels, holes, grooves, project, piece, rows, flags):
+    """Run the family matchers over ONE piece's panels (or a whole folder when
+    piece is None). Appends to rows/flags; marks matched holes assigned."""
     by_class = defaultdict(list)
     for h in holes:
         by_class[classify(h)].append(h)
 
     def add_row(panelA, panelB, family, positions, depth_class, confidence, evidence):
-        rows.append({
+        row = {
             "project": project, "panelA": panelA, "panelB": panelB, "family": family,
             "positions_mm10": positions, "depth_class": depth_class,
             "confidence": round(confidence, 2), "evidence": evidence,
-        })
+        }
+        if piece is not None:
+            row["piece"] = piece
+        rows.append(row)
 
     # --- marking (positional marks, not joints) ---------------------------------
     marks = defaultdict(list)
@@ -364,6 +388,25 @@ def extract(folder, project):
                 f"saw groove {g['width']/10:g}mm wide; thickness-matching panels: "
                 + (", ".join(matching) or "none in project (back panel likely not exported)"))
 
+
+def extract(folder, project, group_by_prefix=False):
+    panels, holes, grooves, notes = parse_folder(folder)
+    rows, flags = [], []
+
+    if group_by_prefix:
+        pieces = defaultdict(lambda: {"panels": {}, "holes": [], "grooves": []})
+        for pid, dims in panels.items():
+            pieces[prefix_key(pid)]["panels"][pid] = dims
+        for h in holes:
+            pieces[prefix_key(h.panel)]["holes"].append(h)
+        for g in grooves:
+            pieces[prefix_key(g["panel"])]["grooves"].append(g)
+        for key in sorted(pieces):
+            p = pieces[key]
+            match_set(p["panels"], p["holes"], p["grooves"], project, key, rows, flags)
+    else:
+        match_set(panels, holes, grooves, project, None, rows, flags)
+
     # --- UNMATCHED: every hole not assigned, grouped by class with counts -----------
     unmatched = defaultdict(lambda: {"count": 0, "panels": set()})
     for h in holes:
@@ -395,37 +438,71 @@ def extract(folder, project):
     }
 
 
-def main():
-    ap = argparse.ArgumentParser(description=__doc__.splitlines()[1])
-    ap.add_argument("folder", help="folder with ONE project's SWJ008 XMLs")
-    ap.add_argument("--out", default="joint_decisions.json")
-    ap.add_argument("--project", default=None, help="project name (default: folder name)")
-    args = ap.parse_args()
-
-    project = args.project or os.path.basename(os.path.normpath(args.folder))
-    result = extract(args.folder, project)
-
-    with open(args.out, "w", encoding="utf-8") as fh:
-        json.dump(result, fh, ensure_ascii=False, indent=2)
-
+def report(result):
     s = result["stats"]
-    print(f"OK: {s['panels']} panels, {s['holes']} holes "
+    print(f"[{result['project']}] {s['panels']} panels, {s['holes']} holes "
           f"({s['holes_assigned']} assigned), {s['grooves']} grooves -> "
-          f"{s['rows']} rows, {s['flags']} flags -> {args.out}")
+          f"{s['rows']} rows, {s['flags']} flags")
     fam = defaultdict(int)
     for r in result["rows"]:
         fam[r["family"]] += 1
-    print("families: " + ", ".join(f"{k}×{v}" for k, v in sorted(fam.items())))
+    print("  families: " + ", ".join(f"{k}×{v}" for k, v in sorted(fam.items())))
     confs = sorted(r["confidence"] for r in result["rows"])
     if confs:
-        print(f"confidence: min {confs[0]}, median {confs[len(confs)//2]}, max {confs[-1]}")
+        print(f"  confidence: min {confs[0]}, median {confs[len(confs)//2]}, max {confs[-1]}")
     if result["unmatched"]:
-        print("UNMATCHED holes by class:")
+        print("  UNMATCHED holes by class:")
         for u in result["unmatched"]:
-            print(f"  {u['class']:15} {u['kind']:4} Ø{u['diameter_mm']:g}×{u['depth_mm']:g}mm "
+            print(f"    {u['class']:15} {u['kind']:4} Ø{u['diameter_mm']:g}×{u['depth_mm']:g}mm "
                   f"×{u['count']} in {len(u['panels'])} panels")
     if result["flags"]:
-        print(f"!! {len(result['flags'])} ambiguity flags — review them, they are the product")
+        print(f"  !! {len(result['flags'])} ambiguity flags — review them, they are the product")
+
+
+def main():
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[1])
+    ap.add_argument("folders", nargs="+", help="folder(s); each folder = one project")
+    ap.add_argument("--out", default="joint_decisions.json")
+    ap.add_argument("--project", default=None,
+                    help="project name (single folder only; default: folder name)")
+    ap.add_argument("--group-by-prefix", action="store_true",
+                    help="group panels into pieces by name prefix (SHK/TR/TU/KR...) "
+                         "before matching; cross-piece matching is suppressed")
+    args = ap.parse_args()
+
+    results = []
+    for folder in args.folders:
+        project = (args.project if args.project and len(args.folders) == 1
+                   else os.path.basename(os.path.normpath(folder)))
+        results.append(extract(folder, project, group_by_prefix=args.group_by_prefix))
+
+    if len(results) == 1:
+        payload = results[0]  # back-compat single-project shape
+    else:
+        payload = {
+            "version": "v0",
+            "grouping": "prefix3" if args.group_by_prefix else "none",
+            "projects": results,
+            "totals": {
+                "projects": len(results),
+                "panels": sum(r["stats"]["panels"] for r in results),
+                "holes": sum(r["stats"]["holes"] for r in results),
+                "holes_assigned": sum(r["stats"]["holes_assigned"] for r in results),
+                "rows": sum(r["stats"]["rows"] for r in results),
+                "flags": sum(r["stats"]["flags"] for r in results),
+            },
+        }
+
+    with open(args.out, "w", encoding="utf-8") as fh:
+        json.dump(payload, fh, ensure_ascii=False, indent=2)
+
+    for r in results:
+        report(r)
+    if len(results) > 1:
+        t = payload["totals"]
+        print(f"\nDATASET: {t['projects']} projects, {t['panels']} panels, "
+              f"{t['holes']} holes ({t['holes_assigned']} assigned), "
+              f"{t['rows']} rows, {t['flags']} flags -> {args.out}")
 
 
 if __name__ == "__main__":
