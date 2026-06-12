@@ -61,7 +61,7 @@ verified values slot in by editing the JSON only; the functions never change.
 |---|---|---|
 | `shelfPinPattern` | front+back Ø5 rows per shelf position | ORTA_BAK Ø5 face holes |
 | `rastex15Pattern` | Ø15 cam seat (face) + Ø8 dowel (edge) | ORTA_BAK edge-3 joint |
-| `hingeCupPattern` | Ø35 cup + N mounting screws | **no door export yet** (todo) |
+| `hingeCupPattern` | Ø35×13 cup + Ø3×1 wing-screw marks | door golden `SHKOF_ORTA_CHAP_ESHIK_7_1` — **verified** |
 
 Each primitive has a proof test that feeds a real factory panel's dimensions +
 positions and diffs the **generated** ops against the **parsed real** ops (semantic,

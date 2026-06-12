@@ -1,11 +1,31 @@
 # Factory Visit Checklist — Layer-1 Primitive Verification
 
-## ADDED for the dump visit (June 12)
+## CLOSED by the dump (June 12) — hinge ground truth landed
 
-1. **One folder per cabinet/project** — without grouping, cross-panel joint matching is impossible. Include door, drawer and corner projects (Ø35 hinge ground truth still missing).
+The door golden fixture `SHKOF_ORTA_CHAP_ESHIK_7_1` (94 cups across 18 dump panels
+agree) closed the doc-15 hinge rows. `hingeCupPattern` is **verified: true,
+grade: manufacturing**; its proof test is now a hard gate.
+
+| doc-15 ask | Answer from the file |
+|---|---|
+| Cup diameter, cup depth | **Ø35 × 13.0mm** — research estimate 13 was right |
+| Cup centre from door edge ("E") | **21.5mm** — research said 22.5, WRONG |
+| Mounting screw count/Ø/depth/spacing | **Not drilled at all.** 2× **Ø3×1 marking pricks** per cup at cupX ± 26mm, 5.5mm beyond the cup centre (research claimed Ø8×11 at ±24 — wrong twice) |
+| Cup face | **Face 5** (engine Face A) |
+| Hinge count/positions (observed, → Layer-2 rule data) | 2170mm door → 4 hinges; end cups 100mm from door ends, middles evenly spaced |
+
+Still open on the hinge:
+- **Brand/SKU** the shop buys (pattern verified, name unknown).
+- **No-marks variant:** the 4 prop-0 `SHK ESHIK` doors carry 16 cups with ZERO Ø3 marks — different SKU or operator setting? Ask the constructor.
+- Overlay (full/half/inset) dependence of the 21.5 offset.
+
+## STILL OPEN for the dump visit (June 12)
+
+1. ~~One folder per cabinet/project~~ — DONE, dump arrived grouped (prop-0/1/2).
 2. **Hardware purchase list** — promotes/demotes core catalogue defaults (CORE_DOCTRINE R12).
-3. **Ø15 cam seats: why two depths (11.0 vs 12.5mm)?** Which connector SKU ↔ which depth.
-4. **Quarter-millimetre coordinates** (e.g. X=907.250 marking holes in SHKOF): ask whether Bazis emits sub-0.1mm positions on *structural* drills too, or only on marks. Drives the mm10→mm100 core decision — count them in the dump with `swj008_inventory.py` before deciding.
+3. **Ø15 cam seats: why two depths (11.0 vs 12.5mm)?** Dump says 12.5 is the standard (357×) and 11.0 is rare (4× in 1 panel) — confirm which SKU ↔ which depth.
+4. **Quarter-millimetre coordinates**: dump shows sub-0.1mm on *structural* drills too (hinge middles at X=710.670, depths 34.003/34.005, Ø6×9.8 class) — the mm10→mm100 question is now backed by data; decide before the dump grows.
+5. **22 UNIDENTIFIED hole classes** in `hole_classes.json` (Ø8×18 edge ×122, Ø16.5×12, Ø10×14, Ø6×9.8…) — walk the list with the constructor (doc 16 Source B).
 
 ---
 
@@ -24,7 +44,7 @@ The primitive **functions are done and never need editing** — only the JSON.
 | `shelfPinPattern` | `system32.frontRowSetback` | 37 mm | **91.5 mm** (ORTA_BAK) | confirm front vs back separately |
 | `shelfPinPattern` | `system32.backRowSetback` | 37 mm | **91.5 mm** (ORTA_BAK) | confirm |
 | `rastex15Pattern` | `connectors.DUMMY_RASTEX_15.camSeat.fromMatingEdge` | 20 mm | **34 mm** (ORTA_BAK) | added field — confirm |
-| `hingeCupPattern` | *all* | research estimates | **no data** | get a door export (no Ø35 holes exist) |
+| ~~`hingeCupPattern`~~ | ~~*all*~~ | — | — | **CLOSED 2026-06-12** — verified against the door golden fixture (see top of file) |
 
 Field diffs are also printed live by `npm test` (the `[checklist]` diagnostic tests):
 
