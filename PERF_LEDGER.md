@@ -21,6 +21,18 @@ once the on-device suite exists.
 | exportSWJ008 (suite) | 0.204 | 0.310 | same 6-file suite | v22.17.0 | darwin/x64 i7-9750H | 2026-06-11 | 9c1b4ba+T34 | new full-suite reference |
 | solveFull (suite) | 0.014 | 0.041 | same 6-file suite | v22.17.0 | darwin/x64 i7-9750H | 2026-06-11 | 9c1b4ba+T34 | new full-suite reference |
 
+| parseSWJ008 (prop-0 scale ref) | 4.997 | 6.292 | 64 files / 64 panels / 710 ops (real factory project) | v22.17.0 | darwin/x64 i7-9750H | 2026-06-12 | 2cac660 | scale reference added — measurement only, no optimization |
+| canonicalizeParts (prop-0 scale ref) | 0.103 | 0.148 | same 64-panel project | v22.17.0 | darwin/x64 i7-9750H | 2026-06-12 | 2cac660 | scale reference |
+| exportSWJ008 (prop-0 scale ref) | 1.607 | 2.066 | same 64-panel project | v22.17.0 | darwin/x64 i7-9750H | 2026-06-12 | 2cac660 | scale reference |
+
+The scale reference (`bench: 64-panel project scale reference`) reads the committed
+factory dump at `Example sets/prop-0` in place — a realistic denominator for future
+deltas. Per-panel cost at real-project size: parse ~0.078 ms, export ~0.025 ms.
+Extrapolated to the dump's largest set (193 panels) parse stays ~15 ms — far inside
+any budget; no optimization warranted. (Note: the golden suite itself grew to
+7 files / 109 ops with the door fixture — golden-suite rows across dates are only
+comparable via `BENCH_FILTER`.)
+
 Budget context (doc 18 §3): `solveFull` 8-cabinet budget is ≤ 400 ms on the floor
 device; the current suite at ~0.01 ms median is ~4 orders inside it. The value
 of this table is the **delta** the next rows show, not the absolute numbers.

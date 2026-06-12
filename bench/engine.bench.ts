@@ -20,6 +20,10 @@ import {
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const GOLDEN_DIR = join(HERE, "..", "tests", "golden", "xml");
+// Scale reference: one full factory project (64 panels / 710 ops), read in place
+// from the committed dump. Goldens prove correctness; this answers "what does a
+// real project cost", so PERF_LEDGER deltas have a realistic denominator.
+const SCALE_DIR = join(HERE, "..", "Example sets", "prop-0");
 
 const WARMUP_RUNS = 30;
 const MEASURED_RUNS = 100; // >= 20 required by the session spec
@@ -48,15 +52,18 @@ async function measure(label: string, fn: () => unknown | Promise<unknown>) {
   };
 }
 
-it("bench: golden suite", async () => {
-  // BENCH_FILTER (optional regex) restricts the suite — used for apples-to-apples
-  // ledger deltas when the golden suite itself grows.
-  const filter = process.env.BENCH_FILTER ? new RegExp(process.env.BENCH_FILTER) : null;
-  const xmlFiles = readdirSync(GOLDEN_DIR)
+async function benchSuite(
+  label: string,
+  dir: string,
+  fileFilter: RegExp | null,
+  includeSolveFull: boolean,
+) {
+  const xmlFiles = readdirSync(dir, { recursive: true })
+    .map(String)
     .filter((f) => f.toUpperCase().endsWith(".XML"))
-    .filter((f) => !filter || filter.test(f))
+    .filter((f) => !fileFilter || fileFilter.test(f))
     .sort();
-  const xmls = xmlFiles.map((f) => readFileSync(join(GOLDEN_DIR, f), "utf8"));
+  const xmls = xmlFiles.map((f) => readFileSync(join(dir, f), "utf8"));
 
   // Pre-parsed inputs for the downstream stages (so each stage is measured alone).
   const partsPerFile: Part[][] = xmls.map((x) => parseSWJ008(x));
@@ -67,32 +74,51 @@ it("bench: golden suite", async () => {
   }));
 
   const rows = [
-    await measure("parseSWJ008 (suite)", () => {
+    await measure(`parseSWJ008 (${label})`, () => {
       for (const x of xmls) parseSWJ008(x);
     }),
-    await measure("canonicalizeParts (suite)", () => {
+    await measure(`canonicalizeParts (${label})`, () => {
       for (const p of partsPerFile) canonicalizeParts(p);
     }),
-    await measure("exportSWJ008 (suite)", () => {
+    await measure(`exportSWJ008 (${label})`, () => {
       for (const p of projects) exportSWJ008(p);
     }),
-    await measure("solveFull (suite)", async () => {
-      for (const p of projects) await solveFull(p);
-    }),
   ];
+  if (includeSolveFull) {
+    rows.push(
+      await measure(`solveFull (${label})`, async () => {
+        for (const p of projects) await solveFull(p);
+      }),
+    );
+  }
 
   const cpu = cpus()[0]?.model ?? "unknown";
   const pad = (s: string, n: number) => s.padEnd(n);
   console.log(
-    `\nBENCH — golden suite: ${xmlFiles.length} files, ` +
+    `\nBENCH — ${label}: ${xmlFiles.length} files, ` +
       `${partsPerFile.flat().length} panels, ` +
       `${partsPerFile.flat().reduce((n, p) => n + p.operations.length, 0)} ops` +
       `\nnode ${process.version} | ${platform()}/${arch()} | ${cpu}` +
       `\nwarmup ${WARMUP_RUNS}, measured ${MEASURED_RUNS}\n\n` +
-      pad("operation", 30) + pad("median ms", 12) + "p95 ms\n" +
+      pad("operation", 40) + pad("median ms", 12) + "p95 ms\n" +
       rows
-        .map((r) => pad(r.label, 30) + pad(r.median.toFixed(3), 12) + r.p95.toFixed(3))
+        .map((r) => pad(r.label, 40) + pad(r.median.toFixed(3), 12) + r.p95.toFixed(3))
         .join("\n") +
       "\n",
   );
+}
+
+// BENCH_FILTER (optional regex) restricts a suite — used for apples-to-apples
+// ledger deltas when the golden suite itself grows.
+const filter = process.env.BENCH_FILTER ? new RegExp(process.env.BENCH_FILTER) : null;
+
+it("bench: golden suite", async () => {
+  await benchSuite("golden suite", GOLDEN_DIR, filter, true);
+}, 120_000);
+
+// Scale reference, not a golden: a real 64-panel factory project. solveFull is
+// omitted because its input (a designed Project) isn't what this measures —
+// these rows answer what parse/canonical/export cost at real-project size.
+it("bench: 64-panel project scale reference (prop-0)", async () => {
+  await benchSuite("prop-0 64 panels", SCALE_DIR, filter, false);
 }, 120_000);
