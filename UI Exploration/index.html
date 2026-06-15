@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mebelchi · UI Exploration</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+  .lead{color:#f2eee3;padding:72px 0 24px;max-width:880px}
+  .lead .kick{font-family:var(--mono);font-size:12px;letter-spacing:.24em;text-transform:uppercase;color:#9a958a}
+  .lead h1{font-size:clamp(34px,6vw,62px);font-weight:600;letter-spacing:-.025em;margin:16px 0 12px;line-height:1.02;color:#fff}
+  .lead h1 b{color:#e0b878;font-weight:600}
+  .lead .lede{font-size:18px;color:#c8c3b6;font-weight:300;max-width:720px}
+  .cards{display:grid;grid-template-columns:repeat(3,1fr);gap:18px;margin-top:36px}
+  @media(max-width:880px){.cards{grid-template-columns:1fr}}
+  .vc{background:linear-gradient(165deg,#23242a,#1b1c21);border:1px solid rgba(255,255,255,.08);border-radius:20px;
+    padding:22px;text-decoration:none;color:inherit;display:block;transition:transform .15s,border-color .15s}
+  .vc:hover{transform:translateY(-3px);border-color:rgba(224,184,120,.4)}
+  .vc .v{font-family:var(--mono);font-size:11px;color:#e0b878;letter-spacing:.1em}
+  .vc h2{color:#fff;font-size:22px;font-weight:600;margin:6px 0 4px}
+  .vc .ru{color:#9a958a;font-size:12px;font-family:var(--mono);margin-bottom:12px}
+  .vc p{color:#bdb8ab;font-size:13.5px;font-weight:300;line-height:1.5}
+  .vc .for{margin-top:14px;font-size:11.5px;color:#8a877d}
+  .vc .for b{color:#d8d3c6;font-weight:500}
+  .vc .arrow{margin-top:14px;color:#e0b878;font-size:13px;font-weight:600}
+  .miniframe{height:128px;border-radius:12px;margin:-4px -4px 16px;overflow:hidden;background:var(--bg);position:relative}
+  .block{color:#cfcabd;margin-top:64px;max-width:880px}
+  .block h3{color:#f2eee3;font-size:18px;font-weight:600;margin-bottom:6px;display:flex;align-items:baseline;gap:10px}
+  .block h3 .num{font-family:var(--mono);color:#e0b878;font-size:13px}
+  .block p{font-size:14px;font-weight:300;color:#b6b1a4;line-height:1.6}
+  .kgrid{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-top:14px}
+  @media(max-width:700px){.kgrid{grid-template-columns:1fr}}
+  .kitem{background:rgba(255,255,255,.04);border:1px solid rgba(255,255,255,.07);border-radius:12px;padding:12px 14px}
+  .kitem .src{font-family:var(--mono);font-size:10px;color:#e0b878;letter-spacing:.04em}
+  .kitem .tt{color:#e8e3d6;font-size:13.5px;font-weight:600;margin:3px 0 2px}
+  .kitem .dd{font-size:12px;color:#9a958a;font-weight:300;line-height:1.45}
+  .foot{color:#6f6c63;font-size:12px;font-family:var(--mono);margin-top:64px;border-top:1px solid rgba(255,255,255,.08);padding-top:20px;line-height:1.7}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <span class="home">Mebelchi · UI Exploration</span>
+  <span class="sp"></span>
+  <a href="v5-live.html" style="color:#e0b878;opacity:1">★ Конструктор · live</a>
+  <a href="v5-constructor.html">Листы</a>
+  <a href="v4-living-lines.html">Линии</a>
+  <a href="v1-principles.html">V1</a><a href="v2-workbench.html">V2</a><a href="v3-flow.html">V3</a>
+</div>
+
+<div class="wrap">
+  <div class="lead">
+    <div class="kick">замена imos iX · с телефона</div>
+    <h1>Мебель — это линии,<br><b>которые ты тянешь.</b></h1>
+    <p class="lede">Главный концепт — «Живые линии»: рисуешь форму, она оживает, тянешь линии — они щёлкают по сетке, цена считается как счёт в игре. Полная свобода самым лёгким и приятным способом. Ниже — он, и три ранних направления для сравнения.</p>
+  </div>
+
+  <a class="vc" href="v5-live.html" style="display:block;margin-bottom:14px;border-color:rgba(224,184,120,.45);background:linear-gradient(165deg,#2a2620,#1c1b18)">
+    <div class="v">★ ГЛАВНЫЙ · ИНТЕРАКТИВНЫЙ КОНСТРУКТОР</div>
+    <h2 style="font-size:26px">Конструктор · live</h2>
+    <div class="ru">одна модель · 4 вида переключаются вживую</div>
+    <p style="max-width:680px">Не вид мебели — конструктор. Переключай перспективу/фронт/бок/план кубом, кликай секции, меняй ширину/высоту/<b>глубину</b> — все виды, цена, листы и проверка назначения обновляются мгновенно. Глубина полки, X-ray узлов, назначение с последствиями (одежда на глубине 400 → нарушение), адаптивные секции, конкретные усиления. Тёплая бумага и интеллект движка сохранены.</p>
+    <div class="arrow">Открыть и покрутить →</div>
+  </a>
+  <a class="vc" href="v5-constructor.html" style="display:block;margin-bottom:18px;border-color:rgba(255,255,255,.08)">
+    <div class="v">ПОЛНЫЙ КОНСТРУКТОР · 7 листов high-fidelity</div>
+    <h2 style="font-size:20px">Конструктор — листы (планшет → телефон)</h2>
+    <div class="ru">детальная подача: узлы в 3 видах, усиления, назначение</div>
+    <p style="max-width:680px">Статичные листы с максимумом деталей: рабочее место, мультивид, узел-в-4-видах с классами отверстий, назначение→ограничения, адаптивный лоток, итемизированные усиления, сворачивание на телефон.</p>
+    <div class="arrow">Смотреть листы →</div>
+  </a>
+  <a class="vc" href="v4-living-lines.html" style="display:block;margin-bottom:18px;border-color:rgba(255,255,255,.08)">
+    <div class="v">ИНТЕРАКТИВНЫЙ ЭСКИЗ · «игровой» подход</div>
+    <h2 style="font-size:20px">Живые линии</h2>
+    <div class="ru">можно потрогать · черновик идеи «как игра»</div>
+    <p style="max-width:640px">Тянешь живые линии, цена тикает как счёт. Ощущалось как «вид мебели», а не инструмент — поэтому уступил место Конструктору, но оставлен как взгляд на игровую лёгкость.</p>
+    <div class="arrow">Потрогать →</div>
+  </a>
+
+  <div style="color:#8a877d;font-family:var(--mono);font-size:11px;letter-spacing:.1em;margin:30px 0 14px">РАННИЕ НАПРАВЛЕНИЯ (для сравнения)</div>
+  <div class="cards">
+    <a class="vc" href="v1-principles.html">
+      <div class="v">ВЕРСИЯ 1</div>
+      <h2>Принципы</h2>
+      <div class="ru">голос мастера · 11 экранов</div>
+      <p>Ваше описание дословно: кухня и есть интерфейс, никакого хрома, «медленно — это плавно». Линии и секции, свайп по секции, глобально-первой, NFS-камера, цвет соединений, очень детальный PDF.</p>
+      <div class="for"><b>Для кого:</b> ваше видение «как я это вижу сейчас».</div>
+      <div class="arrow">Смотреть V1 →</div>
+    </a>
+    <a class="vc" href="v2-workbench.html">
+      <div class="v">ВЕРСИЯ 2</div>
+      <h2>Верстак</h2>
+      <div class="ru">закреплено R7 · 7 экранов</div>
+      <p>Плотный профи-инструмент, где каждый «лок» из последнего вердикта виден: кольца раскрытия, type-first numpad, мульти-выбор тумблером, панель проблем со ссылкой на норму, таблица переменных, материалы по ролям.</p>
+      <div class="for"><b>Для кого:</b> мастер, который живёт в инструменте каждый день.</div>
+      <div class="arrow">Смотреть V2 →</div>
+    </a>
+    <a class="vc" href="v3-flow.html">
+      <div class="v">ВЕРСИЯ 3</div>
+      <h2>Поток</h2>
+      <div class="ru">генерация-первой · 6 экранов</div>
+      <p>История скорости: движок генерирует 4 готовых кухни из комнаты и техники — мастер подтверждает, а не собирает. Техника как ограничения, decor вне пути, экономия листа, ≤5 / ≤15 мин, пакет на вывод.</p>
+      <div class="for"><b>Для кого:</b> закрыть заказ дома у клиента за один визит.</div>
+      <div class="arrow">Смотреть V3 →</div>
+    </a>
+  </div>
+
+  <div class="block">
+    <h3><span class="num">01</span> Что общего у всех трёх</h3>
+    <p>Все три версии стоят на одной модели и одних фактах из базы — расходятся только в том, как навигировать. Линия и секция как первоклассные сущности; объём действия Локально·Линия·Ряд·Все; амбиентный счётчик листов + цена; decor как поздняя привязка; и выход в детальный PDF («Паспорт изделия» + «Лист фасадов»), потому что именно это, по вашим словам об imos, «даёт доверие».</p>
+  </div>
+
+  <div class="block">
+    <h3><span class="num">02</span> Лучшее, что вошло из исследований</h3>
+    <div class="kgrid">
+      <div class="kitem"><div class="src">R7U_0 verdict · L1</div><div class="tt">Тип-первым, drag — грубо</div><div class="dd">Мастер знает размер: тап → numpad с выражениями (720−2×18). Детент 50 мм, не 32. → V1·04, V2·02</div></div>
+      <div class="kitem"><div class="src">R7U_0 · L2 / imos P4</div><div class="tt">Мульти-выбор = тумблер</div><div class="dd">Не долгое нажатие (рушится на грубых руках). Бейдж «N секций», гашение остального. → V1·09, V2·03</div></div>
+      <div class="kitem"><div class="src">R7U_0 · §3 камера</div><div class="tt">Тап = выбор + тихий pivot</div><div class="dd">Камера не летит на каждом выборе. Двойной тап = NFS-полёт. Полёт масштабируется по расстоянию. → V1·10</div></div>
+      <div class="kitem"><div class="src">R7U_0 · V1 / M3</div><div class="tt">Ворота на выходе, не нытьё</div><div class="dd">Панель проблем по требованию: измерено vs норма, источник, 3 призрака. Жёсткость — куб закона ×1.42. → V2·04</div></div>
+      <div class="kitem"><div class="src">imos walkthrough · P5/S1</div><div class="tt">Таблица переменных + Паспорт</div><div class="dd">Construction / Connection_situation / Back; и взрыв-схема изделия с деталями и фурнитурой. → V2·05, V2·07, V1·11</div></div>
+      <div class="kitem"><div class="src">F1/F2 field · I2/D1-D3</div><div class="tt">Генерация + decor вне пути</div><div class="dd">Узкое место — конструктор. Генерируем 4 кухни; техника = ограничения; фасады поздно, через «Лист фасадов». → вся V3</div></div>
+      <div class="kitem"><div class="src">R7U_0 · M5 / F</div><div class="tt">«Сколько листов» с зубами</div><div class="dd">Счётчик листов — валюта мастера; формула защищает малые группы декора (min 0.5 листа). → V3·05</div></div>
+      <div class="kitem"><div class="src">DB/19 §1 · кольца</div><div class="tt">Частота = расстояние</div><div class="dd">M→Ring 0 жест, H→контекст, P→фаза, W→профиль, A→амбиент. Закон размещения каждого контрола. → V2·01</div></div>
+    </div>
+  </div>
+
+  <div class="block">
+    <h3><span class="num">03</span> Честная заметка о расхождениях</h3>
+    <p>10_UI_PRINCIPLES v1.0 («пять входов», «нет орбиты») помечен в 19_FUNCTION_MAP как замещённый: примат — за линией/секцией, кольцами и ручной орбитой + NFS-ассистом. V1 держится ваших формулировок там, где они расходятся с локами R7 (например «свободная орбита»), и это помечено прямо в шапке V1. V2 и V3 строго следуют закреплённым решениям R7. Так у вас на руках обе крайности — чистое видение и дисциплина исследований — плюс гибрид-поток между ними.</p>
+  </div>
+
+  <div class="foot">
+    Источники: DB/19_FUNCTION_MAP · DB/16–18 · Researches/-R7U_0 verdict · -R7U_1 imos walkthrough · -R7F_1_2 field findings · -r3/-r4 UI · -r6 accessories · UI Handover/10_UI_PRINCIPLES<br>
+    Папка: /UI Exploration · открой index.html · макеты статичны (показ, не функционал) · 2026-06-13
+  </div>
+</div>
+</body>
+</html>

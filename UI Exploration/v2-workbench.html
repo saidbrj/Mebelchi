@@ -1,0 +1,383 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mebelchi · V2 — Верстак</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+  /* V2 voice: the master's workbench. Denser, technical, every lock from R7 made visible:
+     rings, type-first numpad, multi-select toggle, scope, problems panel, variables table. */
+  .wb-top{position:absolute;top:24px;left:12px;right:12px;z-index:25;display:flex;justify-content:space-between;align-items:flex-start;gap:8px}
+  .wb-readout{background:var(--card-tint);backdrop-filter:blur(16px);border:.5px solid var(--line);border-radius:14px;padding:8px 12px;box-shadow:var(--shadow-sm)}
+  .wb-readout .p{font-size:17px;font-weight:600;letter-spacing:-.01em}
+  .wb-readout .s{font-family:var(--mono);font-size:10px;color:var(--ink-muted)}
+  .wb-readout .s b{color:var(--green)}
+  .wb-chip{display:flex;align-items:center;gap:5px;background:var(--green-bg);color:var(--green);border-radius:11px;padding:8px 11px;font-size:11px;font-weight:600;font-family:var(--mono)}
+  .wb-chip.amber{background:var(--amber-bg);color:var(--amber)}
+  /* ring rail */
+  .rings{position:absolute;left:12px;top:50%;transform:translateY(-50%);z-index:24;display:flex;flex-direction:column;gap:6px}
+  .rings .r{width:30px;height:30px;border-radius:9px;background:var(--card-tint);backdrop-filter:blur(14px);border:.5px solid var(--line);
+    display:flex;align-items:center;justify-content:center;font-size:13px;color:var(--ink-muted);box-shadow:var(--shadow-sm)}
+  .rings .r.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  /* bottom toolbar — persistent */
+  .wb-tools{position:absolute;bottom:14px;left:12px;right:12px;z-index:25;background:var(--card-tint);backdrop-filter:blur(20px);
+    border:.5px solid var(--line);border-radius:18px;box-shadow:var(--shadow-lg);padding:9px;display:flex;gap:6px;align-items:center}
+  .wb-tools .t{flex:1;text-align:center;padding:9px 4px;border-radius:11px;font-size:10px;font-weight:500;color:var(--ink-soft)}
+  .wb-tools .t .ic{font-size:17px;display:block;margin-bottom:2px}
+  .wb-tools .t.on{background:var(--ink);color:#fff}
+  .wb-tools .t.go{background:var(--green);color:#fff;flex:1.3}
+  /* selection bar above tools */
+  .wb-sel{position:absolute;bottom:84px;left:12px;right:12px;z-index:25;background:var(--card-tint);backdrop-filter:blur(20px);
+    border:.5px solid var(--line);border-radius:16px;box-shadow:var(--shadow-md);padding:11px 12px}
+  .wb-sel .hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}
+  .wb-sel .hd b{font-size:13.5px}
+  .wb-sel .hd .badge{font-family:var(--mono);font-size:10px;background:var(--ink);color:#fff;border-radius:99px;padding:3px 9px}
+  .scope2{display:flex;background:#efeadd;border-radius:10px;padding:3px;gap:2px;margin-bottom:9px}
+  .scope2 b{flex:1;text-align:center;font-size:10.5px;padding:6px 0;border-radius:8px;color:var(--ink-muted);font-weight:500}
+  .scope2 b.on{background:#fff;color:var(--ink);box-shadow:var(--shadow-sm)}
+  .chiprow{display:flex;gap:6px;flex-wrap:wrap}
+  .chiprow .c{background:#fff;border:1px solid var(--line);border-radius:10px;padding:7px 10px;font-size:11.5px;font-weight:500;color:var(--ink-soft);display:flex;align-items:center;gap:5px}
+  .chiprow .c .dim{font-family:var(--mono);color:var(--ink);font-weight:600}
+  /* numpad (shared look w/ v1) */
+  .numpad{position:absolute;bottom:0;left:0;right:0;z-index:30;background:#f4efe3;border-radius:22px 22px 0 0;padding:14px 14px 20px;box-shadow:0 -10px 40px rgba(0,0,0,.13)}
+  .numpad .scopehd{display:flex;justify-content:space-between;align-items:center;margin-bottom:8px}
+  .numpad .scopehd b{font-size:12px}
+  .numpad .scopehd .tg{font-family:var(--mono);font-size:10px;background:var(--ink);color:#fff;border-radius:99px;padding:4px 10px}
+  .numpad .disp{background:#fff;border-radius:13px;padding:12px 15px;display:flex;align-items:baseline;justify-content:space-between;margin-bottom:4px;border:1px solid var(--line)}
+  .numpad .disp .v{font-family:var(--mono);font-size:24px;font-weight:600}
+  .numpad .disp .u{font-family:var(--mono);font-size:12px;color:var(--ink-muted)}
+  .numpad .hint{font-family:var(--mono);font-size:10px;color:var(--ink-muted);height:14px;margin-bottom:8px}
+  .keys{display:grid;grid-template-columns:repeat(3,1fr);gap:7px}
+  .keys b{background:#fff;border:1px solid var(--line);border-radius:11px;text-align:center;padding:13px 0;font-size:18px;font-family:var(--mono);font-weight:500}
+  .keys b.fn{background:#e7e1d3;color:var(--ink-soft);font-size:14px}
+  .keys b.go{background:var(--ink);color:#fff;border-color:var(--ink)}
+  /* problems panel */
+  .panel{position:absolute;bottom:0;left:0;right:0;top:120px;z-index:30;background:#f4efe3;border-radius:22px 22px 0 0;padding:14px 14px 18px;box-shadow:0 -10px 40px rgba(0,0,0,.15);overflow-y:auto}
+  .panel .grab{width:38px;height:5px;background:var(--ink-faint);border-radius:99px;margin:0 auto 12px}
+  .panel h4{font-size:15px;font-weight:600;margin-bottom:2px}
+  .panel .sub{font-size:11.5px;color:var(--ink-muted);margin-bottom:13px}
+  .prow{display:flex;gap:10px;padding:11px;border-radius:13px;margin-bottom:8px;background:#fff;border:1px solid var(--line)}
+  .prow .sev{width:8px;height:8px;border-radius:50%;margin-top:5px;flex:0 0 auto}
+  .prow.red .sev{background:var(--red)} .prow.amber .sev{background:var(--amber)} .prow.blue .sev{background:var(--blue)}
+  .prow .bd{flex:1}
+  .prow .bd .t{font-size:13px;font-weight:600}
+  .prow .bd .m{font-family:var(--mono);font-size:10.5px;color:var(--ink-muted);margin-top:2px}
+  .prow .go{align-self:center;color:var(--ink-faint);font-size:16px}
+  .vcard{background:#fff;border:1.5px solid var(--red);border-radius:14px;padding:13px;margin-top:6px}
+  .vcard .rl{font-size:13px;font-weight:600;margin-bottom:7px}
+  .vcard .kv{display:flex;justify-content:space-between;font-family:var(--mono);font-size:11px;padding:4px 0;border-bottom:1px dashed var(--line)}
+  .vcard .kv .req{color:var(--red);font-weight:600}
+  .vcard .srcline{font-family:var(--mono);font-size:9.5px;color:var(--ink-muted);margin-top:8px}
+  .vcard .acts{display:flex;gap:7px;margin-top:10px}
+  .vcard .acts .b{flex:1;text-align:center;font-size:11px;font-weight:600;border-radius:10px;padding:9px;background:#efeadd;color:var(--ink-soft)}
+  .vcard .acts .b.dark{background:var(--ink);color:#fff}
+  /* variables table */
+  .vartbl{position:absolute;bottom:0;left:0;right:0;top:90px;z-index:30;background:#f4efe3;border-radius:22px 22px 0 0;padding:14px 14px 18px;box-shadow:0 -10px 40px rgba(0,0,0,.15);overflow-y:auto}
+  .vartbl .grab{width:38px;height:5px;background:var(--ink-faint);border-radius:99px;margin:0 auto 12px}
+  .vartbl h4{font-size:15px;font-weight:600}
+  .vartbl .sub{font-size:11.5px;color:var(--ink-muted);margin-bottom:12px}
+  .vfam{font-family:var(--mono);font-size:9.5px;letter-spacing:.08em;color:var(--ink-faint);text-transform:uppercase;margin:12px 0 5px}
+  .vline{display:flex;align-items:center;gap:8px;padding:9px 11px;background:#fff;border:1px solid var(--line);border-radius:11px;margin-bottom:6px}
+  .vline .nm{flex:1;font-size:12.5px}
+  .vline .def{font-family:var(--mono);font-size:11px;color:var(--ink-muted)}
+  .vline .val{font-family:var(--mono);font-size:11.5px;font-weight:600;background:#efeadd;border-radius:7px;padding:3px 8px}
+  .vline .ov{font-size:8.5px;font-family:var(--mono);background:var(--amber-bg);color:var(--amber);border-radius:6px;padding:2px 6px;font-weight:600}
+  /* materials drawer */
+  .mat{position:absolute;bottom:0;left:0;right:0;top:120px;z-index:30;background:#f4efe3;border-radius:22px 22px 0 0;padding:14px 14px 18px;box-shadow:0 -10px 40px rgba(0,0,0,.15);overflow-y:auto}
+  .mat .grab{width:38px;height:5px;background:var(--ink-faint);border-radius:99px;margin:0 auto 12px}
+  .mrow{display:flex;align-items:center;gap:10px;padding:10px 11px;background:#fff;border:1px solid var(--line);border-radius:12px;margin-bottom:7px}
+  .mrow .sw{width:30px;height:30px;border-radius:8px;flex:0 0 auto;border:1px solid var(--line)}
+  .mrow .nm{flex:1}
+  .mrow .nm .r{font-size:12.5px;font-weight:600}
+  .mrow .nm .d{font-family:var(--mono);font-size:10px;color:var(--ink-muted)}
+  .mrow .th{display:flex;gap:3px}
+  .mrow .th b{font-family:var(--mono);font-size:10px;border:1px solid var(--line);border-radius:6px;padding:4px 7px;color:var(--ink-muted)}
+  .mrow .th b.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .matfoot{background:var(--ink);color:#fff;border-radius:13px;padding:11px 13px;margin-top:10px;display:flex;justify-content:space-between;align-items:center}
+  .matfoot .l{font-size:11px;opacity:.7;font-family:var(--mono)}
+  .matfoot .v{font-family:var(--mono);font-size:14px;font-weight:600}
+  /* facade schedule / passport tabs */
+  .doc{position:absolute;inset:0;background:#54514b}
+  .doctabs{position:absolute;top:26px;left:12px;right:12px;z-index:5;display:flex;gap:6px}
+  .doctabs b{flex:1;text-align:center;font-size:11px;font-weight:600;padding:8px;border-radius:10px;background:rgba(255,255,255,.14);color:#fff}
+  .doctabs b.on{background:#fff;color:var(--ink)}
+  .docpaper{position:absolute;top:64px;left:14px;right:14px;bottom:18px;background:#fff;border-radius:5px;box-shadow:0 14px 30px rgba(0,0,0,.35);padding:13px;overflow:hidden}
+  .docpaper .ph{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1.5px solid var(--ink);padding-bottom:6px;margin-bottom:8px}
+  .docpaper .ph b{font-size:11.5px;letter-spacing:.03em}
+  .docpaper .ph span{font-family:var(--mono);font-size:8px;color:var(--ink-muted)}
+  .ftbl{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:8px}
+  .ftbl td,.ftbl th{border:.5px solid #ddd;padding:3px 4px;text-align:left}
+  .ftbl th{background:#f3f0e8}
+  .swrow{display:flex;gap:6px;margin:9px 0}
+  .swrow .c{flex:1;height:34px;border-radius:5px;border:1px solid #ccc}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="home" href="index.html">◀ Mebelchi UI</a>
+  <span class="sp"></span>
+  <a href="v1-principles.html">V1 · Принципы</a>
+  <a href="v2-workbench.html" style="opacity:1;color:#e0b878">V2 · Верстак</a>
+  <a href="v3-flow.html">V3 · Поток</a>
+</div>
+
+<div class="wrap">
+  <div class="hero">
+    <div class="kick">Версия 2 — закреплено исследованиями</div>
+    <h1>Верстак мастера.</h1>
+    <p class="lede">Та же мебель, но плотнее и технологичнее. Каждый «лок» из R7-verdict сделан видимым: кольца раскрытия, тип-первым numpad, мульти-выбор <b>тумблером</b>, селектор объёма, панель проблем со ссылкой на норму, таблица переменных (Стандарт сборки + переопределения), амбиентный счётчик листов.</p>
+    <div class="meta">
+      <span class="tag on">R7 locks</span>
+      <span class="tag">кольца 0–3</span>
+      <span class="tag">type-first numpad</span>
+      <span class="tag">мульти-выбор = тумблер</span>
+      <span class="tag">панель проблем + источник</span>
+      <span class="tag">таблица переменных</span>
+      <span class="tag">материалы по ролям</span>
+    </div>
+  </div>
+
+  <div class="gallery">
+
+    <!-- 1. Workbench canvas -->
+    <div class="screen">
+      <div class="frame">
+        <div class="statusbar"></div>
+        <div class="canvas">
+          <svg viewBox="0 0 300 600" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+            <defs><linearGradient id="r2" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#efe9dc"/><stop offset="1" stop-color="#e1dbcc"/></linearGradient></defs>
+            <rect width="300" height="600" fill="url(#r2)"/>
+            <ellipse cx="150" cy="470" rx="140" ry="36" fill="#000" opacity=".04"/>
+            <!-- kitchen run: base row + upper row -->
+            <g transform="translate(34,250)">
+              <!-- base row -->
+              <rect x="0" y="60" width="232" height="120" rx="3" fill="var(--carcass)" stroke="var(--carcass-line)" stroke-width="2"/>
+              <line x1="58" y1="60" x2="58" y2="180" stroke="var(--carcass-line)" stroke-width="2"/>
+              <line x1="116" y1="60" x2="116" y2="180" stroke="var(--carcass-line)" stroke-width="2"/>
+              <line x1="174" y1="60" x2="174" y2="180" stroke="var(--carcass-line)" stroke-width="2"/>
+              <!-- worktop (continuous element) -->
+              <rect x="-4" y="50" width="240" height="12" rx="2" fill="var(--wood-dk)"/>
+              <!-- upper row -->
+              <rect x="0" y="-60" width="232" height="80" rx="3" fill="var(--carcass)" stroke="var(--carcass-line)" stroke-width="2"/>
+              <line x1="77" y1="-60" x2="77" y2="20" stroke="var(--carcass-line)" stroke-width="2"/>
+              <line x1="155" y1="-60" x2="155" y2="20" stroke="var(--carcass-line)" stroke-width="2"/>
+            </g>
+          </svg>
+        </div>
+        <div class="wb-top">
+          <div class="wb-readout"><div class="p">4 280 000</div><div class="s">3.8 ЛДСП · 0.5 ХДФ · <b>маржа 31%</b></div></div>
+          <div class="wb-chip">● норм</div>
+        </div>
+        <div class="rings">
+          <div class="r on">0</div><div class="r">1</div><div class="r">2</div><div class="r">⚙</div>
+        </div>
+        <div class="wb-tools">
+          <div class="t on"><span class="ic">✥</span>выбор</div>
+          <div class="t"><span class="ic">⊟</span>мульти</div>
+          <div class="t"><span class="ic">◳</span>линза</div>
+          <div class="t"><span class="ic">◇</span>проверить</div>
+          <div class="t go"><span class="ic">↧</span>вывод</div>
+        </div>
+      </div>
+      <div class="cap">
+        <div class="n">01 · ВЕРСТАК</div>
+        <h3>Плотный, но тихий хром</h3>
+        <p>Амбиент: цена + листы + маржа. Слева кольца раскрытия 0–3. Снизу — постоянная панель инструментов. Ряды (низ/верх) и непрерывная столешница — first-class сущности.</p>
+        <div class="src">DB/19 §1,§6 · imos P2 непрерывные элементы</div>
+      </div>
+    </div>
+
+    <!-- 2. Selection + scope + numpad -->
+    <div class="screen">
+      <div class="frame">
+        <div class="statusbar"></div>
+        <div class="canvas">
+          <svg viewBox="0 0 300 600" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+            <rect width="300" height="600" fill="url(#r2)"/>
+            <g transform="translate(34,140)" opacity=".55">
+              <rect x="0" y="0" width="232" height="120" rx="3" fill="var(--carcass)" stroke="var(--carcass-line)" stroke-width="2"/>
+              <line x1="116" y1="0" x2="116" y2="120" stroke="var(--ink)" stroke-width="3"/>
+            </g>
+          </svg>
+        </div>
+        <div class="numpad">
+          <div class="scopehd"><b>Ширина секции</b><span class="tg">шаг 50 мм ▾</span></div>
+          <div class="disp"><span class="v">600</span><span class="u">мм</span></div>
+          <div class="hint">≈ 568 внутр · стандарт 600 ✓</div>
+          <div class="keys">
+            <b>7</b><b>8</b><b>9</b><b>4</b><b>5</b><b>6</b><b>1</b><b>2</b><b>3</b>
+            <b class="fn">+−×÷</b><b>0</b><b class="go">✓</b>
+          </div>
+        </div>
+      </div>
+      <div class="cap">
+        <div class="n">02 · ТИП-ПЕРВЫМ</div>
+        <h3>Numpad — основной ввод</h3>
+        <p>Первый тап по размеру открывает numpad (Ring-0 primary). Выражения, подсказка ближайшего стандарта/внутреннего размера. Детент-режим переключается пилюлей.</p>
+        <div class="src">R7 L1 инверсия · numpad headline-фича</div>
+      </div>
+    </div>
+
+    <!-- 3. Multi-select + scope -->
+    <div class="screen">
+      <div class="frame">
+        <div class="statusbar"></div>
+        <div class="canvas">
+          <svg viewBox="0 0 300 600" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+            <rect width="300" height="600" fill="url(#r2)"/>
+            <g transform="translate(34,200)">
+              <rect x="0" y="0" width="56" height="120" rx="3" fill="#1c1c1a" opacity=".08" stroke="var(--ink)" stroke-width="2.5"/>
+              <rect x="60" y="0" width="56" height="120" rx="3" fill="var(--carcass)" stroke="var(--carcass-line)" stroke-width="2" opacity=".35"/>
+              <rect x="120" y="0" width="56" height="120" rx="3" fill="#1c1c1a" opacity=".08" stroke="var(--ink)" stroke-width="2.5"/>
+              <rect x="180" y="0" width="56" height="120" rx="3" fill="#1c1c1a" opacity=".08" stroke="var(--ink)" stroke-width="2.5"/>
+            </g>
+          </svg>
+        </div>
+        <div class="wb-sel">
+          <div class="hd"><b>Мульти-выбор</b><span class="badge">3 секции</span></div>
+          <div class="scope2"><b>Локально</b><b class="on">Линия</b><b>Ряд</b><b>Все</b></div>
+          <div class="chiprow">
+            <span class="c">Усилить</span><span class="c">Выровнять</span>
+            <span class="c">Ширина <span class="dim">— мм</span></span><span class="c">Материал ▾</span>
+          </div>
+        </div>
+        <div class="wb-tools">
+          <div class="t"><span class="ic">✥</span>выбор</div>
+          <div class="t on"><span class="ic">⊟</span>мульти</div>
+          <div class="t"><span class="ic">◳</span>линза</div>
+          <div class="t"><span class="ic">◇</span>проверить</div>
+          <div class="t go"><span class="ic">↧</span>вывод</div>
+        </div>
+      </div>
+      <div class="cap">
+        <div class="n">03 · МУЛЬТИ-ВЫБОР</div>
+        <h3>Тумблер, не долгое нажатие</h3>
+        <p>Тумблер «мульти» включён → тапы добавляют/убирают, бейдж «3 секции», остальное гаснет. Объём действия + групповые операции (усилить, выровнять, материал) через лист с подтверждением N.</p>
+        <div class="src">R7 L2 · imos P4 own Multiselect</div>
+      </div>
+    </div>
+
+    <!-- 4. Problems panel + violation card -->
+    <div class="screen">
+      <div class="frame">
+        <div class="statusbar"></div>
+        <div class="canvas"><svg viewBox="0 0 300 600" width="100%" height="100%" preserveAspectRatio="xMidYMid slice"><rect width="300" height="600" fill="url(#r2)"/></svg></div>
+        <div class="wb-top">
+          <div class="wb-readout"><div class="p">4 280 000</div><div class="s">3.8 ЛДСП · 0.5 ХДФ</div></div>
+          <div class="wb-chip amber">▲ 1 · 2</div>
+        </div>
+        <div class="panel">
+          <div class="grab"></div>
+          <h4>Проверка сцены</h4>
+          <div class="sub">по требованию · песочница внутри, ворота на выходе</div>
+          <div class="prow red"><span class="sev"></span><div class="bd"><div class="t">Полка 5 · прогиб</div><div class="m">8.1 мм &gt; 3.0 мм лимита</div></div><span class="go">›</span></div>
+          <div class="vcard">
+            <div class="rl">Прогиб полки (L/300)</div>
+            <div class="kv"><span>измерено</span><span>8.1 мм · пролёт 900</span></div>
+            <div class="kv"><span>лимит</span><span class="req">3.0 мм</span></div>
+            <div class="kv"><span>нагрузка</span><span>посуда · 40 кг/м</span></div>
+            <div class="srcline">δ=5qL⁴/384EI · 18мм = ×1.42 жёстче 16мм · Барташевич</div>
+            <div class="acts"><div class="b">Показать замер</div><div class="b dark">3 варианта ⌁</div></div>
+          </div>
+          <div class="prow amber" style="margin-top:8px"><span class="sev"></span><div class="bd"><div class="t">Верхний ряд · зона досягаемости</div><div class="m">1850 &gt; 1800 мм комфорт</div></div><span class="go">›</span></div>
+          <div class="prow blue"><span class="sev"></span><div class="bd"><div class="t">SKU: можно 18мм</div><div class="m">+42% жёсткости, +1 лист</div></div><span class="go">›</span></div>
+        </div>
+      </div>
+      <div class="cap">
+        <div class="n">04 · ПРОВЕРКА</div>
+        <h3>Проблемы со ссылкой на норму</h3>
+        <p>Гейт жёсткий только на выводе. Список по серьёзности → тап раскрывает карточку: измерено vs требуется, источник, зум, «3 варианта-призрака». Без авто-фикса и без постоянных гало.</p>
+        <div class="src">R7 V1 · M3 куб закона жёсткости</div>
+      </div>
+    </div>
+
+    <!-- 5. Variables table (Construction Standard + overrides) -->
+    <div class="screen">
+      <div class="frame">
+        <div class="statusbar"></div>
+        <div class="canvas"><svg viewBox="0 0 300 600" width="100%" height="100%" preserveAspectRatio="xMidYMid slice"><rect width="300" height="600" fill="url(#r2)"/></svg></div>
+        <div class="vartbl">
+          <div class="grab"></div>
+          <h4>Переменные изделия</h4>
+          <div class="sub">Стандарт сборки → значение по умолчанию · значение детали</div>
+          <div class="vfam">Construction</div>
+          <div class="vline"><span class="nm">Конвенция дна</span><span class="def">А: между боковин</span></div>
+          <div class="vline"><span class="nm">Задняя стенка</span><span class="def">паз</span><span class="val">паз 8</span></div>
+          <div class="vfam">Connection_situation</div>
+          <div class="vline"><span class="nm">Каркас/каркас</span><span class="def">конфирмат</span><span class="val">конфирмат</span></div>
+          <div class="vline"><span class="nm">Полка съёмная</span><span class="def">минификс</span><span class="val">минификс</span><span class="ov">переопр.</span></div>
+          <div class="vfam">Adjustable shelves</div>
+          <div class="vline"><span class="nm">Шаг отверстий</span><span class="def">Система 32</span><span class="val">32 мм</span></div>
+          <div style="background:var(--amber-bg);border-radius:11px;padding:9px 11px;font-size:11px;color:var(--ink-soft);margin-top:10px">
+            <b style="color:var(--amber)">⟲ Сбросить к шаблону.</b> «Сохранить как новый шаблон» не меняет оригинал. История версий — на шаблоне.
+          </div>
+        </div>
+      </div>
+      <div class="cap">
+        <div class="n">05 · ПЕРЕМЕННЫЕ</div>
+        <h3>Стандарт сборки + переопределения</h3>
+        <p>Прямой ответ на таблицу переменных imos (img 14): Materials / Construction / Connection_situation / Back / Adjustable. Default vs article value, бейджи переопределений, reset-to-template.</p>
+        <div class="src">imos P5 variables table · R7 L7 3-noun</div>
+      </div>
+    </div>
+
+    <!-- 6. Materials by role -->
+    <div class="screen">
+      <div class="frame">
+        <div class="statusbar"></div>
+        <div class="canvas"><svg viewBox="0 0 300 600" width="100%" height="100%" preserveAspectRatio="xMidYMid slice"><rect width="300" height="600" fill="url(#r2)"/></svg></div>
+        <div class="mat">
+          <div class="grab"></div>
+          <h4 style="font-size:15px;font-weight:600">Материалы по ролям</h4>
+          <div class="sub" style="font-size:11.5px;color:var(--ink-muted);margin-bottom:13px">фаза, не на каждом выборе · «не везде 16»</div>
+          <div class="mrow"><span class="sw" style="background:#efe7d6"></span><div class="nm"><div class="r">Каркас</div><div class="d">ЛДСП Egger W1000</div></div><div class="th"><b>16</b><b class="on">18</b></div></div>
+          <div class="mrow"><span class="sw" style="background:#f6f2ea"></span><div class="nm"><div class="r">Задняя стенка</div><div class="d">ХДФ белёный · паз</div></div><div class="th"><b class="on">4</b><b>8</b></div></div>
+          <div class="mrow"><span class="sw" style="background:#e6dcc6"></span><div class="nm"><div class="r">Дно/полки</div><div class="d">ЛДСП W1000</div></div><div class="th"><b class="on">16</b><b>18</b></div></div>
+          <div class="mrow"><span class="sw" style="background:#cdb89a"></span><div class="nm"><div class="r">Фасад</div><div class="d" style="color:var(--amber)">базовые · привяжем позже</div></div><div class="th"><b style="border:none;color:var(--amber)">late ⏳</b></div></div>
+          <div class="matfoot"><span class="l">лист 2800×2070 · керф 4.0</span><span class="v">3.8 + 0.5</span></div>
+        </div>
+      </div>
+      <div class="cap">
+        <div class="n">06 · МАТЕРИАЛЫ</div>
+        <h3>По ролям, с late-binding фасада</h3>
+        <p>Роль-каркас / задняя / дно / фасад, у каждой своя толщина и лист. Фасад помечен «базовые · привяжем позже» — decor вне критического пути. Счётчик листов считает по реальному листу декора.</p>
+        <div class="src">DB/19 §E · F2 D1 decor late · M5 sheet math</div>
+      </div>
+    </div>
+
+    <!-- 7. Facade schedule / passport -->
+    <div class="screen">
+      <div class="frame">
+        <div class="statusbar"></div>
+        <div class="doc">
+          <div class="doctabs"><b>Паспорт</b><b class="on">Лист фасадов</b><b>Раскрой</b></div>
+          <div class="docpaper">
+            <div class="ph"><b>ЛИСТ ФАСАДОВ</b><span>для салона · 18 шт</span></div>
+            <div class="swrow"><span class="c" style="background:#cdb89a"></span><span class="c" style="background:#cdb89a"></span><span class="c" style="background:#b89d7d"></span></div>
+            <table class="ftbl">
+              <tr><th>Фасад</th><th>В×Ш мм</th><th>м²</th><th>кром м</th><th>Q</th></tr>
+              <tr><td>Ф-низ дверь</td><td>716×396</td><td>0.28</td><td>2.24</td><td>6</td></tr>
+              <tr><td>Ф-низ ящик</td><td>140×396</td><td>0.06</td><td>1.07</td><td>4</td></tr>
+              <tr><td>Ф-верх</td><td>716×396</td><td>0.28</td><td>2.24</td><td>6</td></tr>
+              <tr><td>Ф-пенал</td><td>1316×396</td><td>0.52</td><td>3.42</td><td>2</td></tr>
+            </table>
+            <div style="font-family:var(--mono);font-size:8px;color:var(--ink-muted);margin-top:8px;line-height:1.5">
+              Σ 18 фасадов · 5.1 м² · кром 39.4 м · ручки: 18× позиция отмечена<br>
+              <b style="color:var(--ink)">→ клиент несёт в салон, консультант привязывает декор, цена финализируется</b>
+            </div>
+          </div>
+        </div>
+      </div>
+      <div class="cap">
+        <div class="n">07 · ВЫВОД</div>
+        <h3>Лист фасадов + Паспорт</h3>
+        <p>Новый артефакт-мост к салону: пофасадный список (кол-во, В×Ш, м², кромка, позиции ручек). Рядом — Паспорт изделия и раскрой. Мы остаёмся системой записи, салон делает свою 2-часовую консультацию.</p>
+        <div class="src">F2 D2 Facade Schedule · imos S1 passport</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

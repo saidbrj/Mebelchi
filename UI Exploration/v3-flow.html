@@ -1,0 +1,299 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mebelchi · V3 — Поток</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+  /* V3 voice: generation replaces placement. Guided, linear, the speed story (≤5 / ≤15 min).
+     The master designs at the client's home and closes the same day. */
+  .step{position:absolute;top:24px;left:14px;right:14px;z-index:20;display:flex;align-items:center;gap:7px}
+  .step .dots{flex:1;display:flex;gap:4px}
+  .step .dots i{height:4px;flex:1;border-radius:99px;background:var(--ink-faint);opacity:.4}
+  .step .dots i.on{background:var(--ink);opacity:1}
+  .step .t{font-family:var(--mono);font-size:10px;color:var(--ink-muted);white-space:nowrap}
+  .v3title{position:absolute;top:48px;left:18px;right:18px;z-index:15}
+  .v3title h2{font-size:21px;font-weight:600;letter-spacing:-.01em}
+  .v3title p{font-size:12.5px;color:var(--ink-muted);margin-top:2px}
+  .v3cta{position:absolute;bottom:18px;left:14px;right:14px;z-index:20}
+  .v3cta .sub{text-align:center;font-family:var(--mono);font-size:10px;color:var(--ink-muted);margin-bottom:9px}
+  /* room input */
+  .roomcard{position:absolute;top:120px;left:14px;right:14px;bottom:80px;z-index:10}
+  .roomsvg{background:#fff;border:1px solid var(--line);border-radius:16px;padding:14px;box-shadow:var(--shadow-sm)}
+  .field{display:flex;align-items:center;justify-content:space-between;background:#fff;border:1px solid var(--line);border-radius:12px;padding:11px 14px;margin-top:8px}
+  .field .l{font-size:13px;color:var(--ink-soft)}
+  .field .v{font-family:var(--mono);font-size:14px;font-weight:600}
+  .field .v small{color:var(--ink-muted);font-weight:400}
+  /* appliance forks */
+  .appl{position:absolute;top:118px;left:14px;right:14px;bottom:80px;z-index:10;overflow-y:auto}
+  .arow{background:#fff;border:1px solid var(--line);border-radius:14px;padding:11px 12px;margin-bottom:9px}
+  .arow .hd{display:flex;align-items:center;gap:9px;margin-bottom:9px}
+  .arow .hd .ic{font-size:19px}
+  .arow .hd .nm{font-size:13.5px;font-weight:600;flex:1}
+  .fork{display:flex;gap:6px}
+  .fork .o{flex:1;border:1px solid var(--line);border-radius:10px;padding:8px;text-align:center}
+  .fork .o.on{border-color:var(--ink);background:#1c1c1a;color:#fff}
+  .fork .o .lb{font-size:11.5px;font-weight:500}
+  .fork .o .pr{font-family:var(--mono);font-size:9px;margin-top:2px;opacity:.7}
+  /* generation grid */
+  .gen{position:absolute;top:108px;left:14px;right:14px;bottom:80px;z-index:10;display:grid;grid-template-columns:1fr 1fr;gap:9px}
+  .gencard{background:#fff;border:1px solid var(--line);border-radius:14px;padding:9px;position:relative;overflow:hidden}
+  .gencard.on{border:2px solid var(--ink);box-shadow:var(--shadow-md)}
+  .gencard .tag{position:absolute;top:7px;right:7px;font-family:var(--mono);font-size:8px;background:var(--ink);color:#fff;border-radius:6px;padding:2px 6px}
+  .gencard .nm{font-size:11px;font-weight:600;margin-top:4px}
+  .gencard .pr{font-family:var(--mono);font-size:10px;color:var(--ink-muted)}
+  .gencard .pr b{color:var(--ink)}
+  /* confirm/edit */
+  .ctxbar3{position:absolute;bottom:78px;left:14px;right:14px;z-index:22;background:var(--card-tint);backdrop-filter:blur(18px);
+    border:.5px solid var(--line);border-radius:16px;box-shadow:var(--shadow-md);padding:11px 12px}
+  .ctxbar3 .hd{display:flex;justify-content:space-between;align-items:center;margin-bottom:9px}
+  .ctxbar3 .hd b{font-size:13px}
+  .ctxbar3 .hd .d{font-family:var(--mono);font-size:11px;color:var(--ink-muted)}
+  .ctxbar3 .row{display:flex;gap:6px}
+  .ctxbar3 .row .c{flex:1;text-align:center;background:#fff;border:1px solid var(--line);border-radius:10px;padding:8px 4px;font-size:11px;font-weight:500}
+  .ctxbar3 .row .c.on{background:var(--ink);color:#fff}
+  /* save a board alert */
+  .alert{position:absolute;left:14px;right:14px;bottom:78px;z-index:24;background:#fff;border-radius:16px;box-shadow:var(--shadow-lg);
+    padding:14px;border:1px solid var(--line)}
+  .alert .h{display:flex;align-items:center;gap:8px;font-size:14px;font-weight:600;margin-bottom:5px}
+  .alert .b{font-size:12px;color:var(--ink-soft);line-height:1.45}
+  .alert .b b{color:var(--ink)}
+  .alert .conf{display:inline-block;font-family:var(--mono);font-size:9px;background:var(--green-bg);color:var(--green);border-radius:6px;padding:2px 7px;margin:7px 0}
+  .alert .acts{display:flex;gap:7px;margin-top:8px}
+  .alert .acts .x{flex:1;text-align:center;font-size:12px;font-weight:600;border-radius:11px;padding:10px}
+  .alert .acts .x.dark{background:var(--green);color:#fff}
+  .alert .acts .x.ghost{background:#efeadd;color:var(--ink-soft)}
+  /* outputs bundle */
+  .out{position:absolute;top:118px;left:14px;right:14px;bottom:80px;z-index:10;overflow-y:auto}
+  .ocard{display:flex;align-items:center;gap:11px;background:#fff;border:1px solid var(--line);border-radius:14px;padding:12px;margin-bottom:9px}
+  .ocard .ic{width:38px;height:38px;border-radius:10px;background:#efeadd;display:flex;align-items:center;justify-content:center;font-size:18px;flex:0 0 auto}
+  .ocard .nm{flex:1}
+  .ocard .nm .t{font-size:13px;font-weight:600}
+  .ocard .nm .d{font-family:var(--mono);font-size:10px;color:var(--ink-muted)}
+  .ocard .ck{color:var(--green);font-size:17px}
+  .bigtimer{background:var(--green-bg);border:1px solid rgba(63,125,84,.2);border-radius:14px;padding:13px;text-align:center;margin-bottom:11px}
+  .bigtimer .t{font-family:var(--mono);font-size:22px;font-weight:600;color:var(--green)}
+  .bigtimer .l{font-size:11px;color:var(--ink-soft);margin-top:2px}
+  /* hero generation visual */
+  .genwrap{position:absolute;inset:0;display:flex;align-items:center;justify-content:center}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="home" href="index.html">◀ Mebelchi UI</a>
+  <span class="sp"></span>
+  <a href="v1-principles.html">V1 · Принципы</a>
+  <a href="v2-workbench.html">V2 · Верстак</a>
+  <a href="v3-flow.html" style="opacity:1;color:#e0b878">V3 · Поток</a>
+</div>
+
+<div class="wrap">
+  <div class="hero">
+    <div class="kick">Версия 3 — генерация вместо расстановки</div>
+    <h1>Узкое место — <b>конструктор.</b></h1>
+    <p class="lede">Спрос есть, станки есть, лист ожидания — 1.5 месяца за одним человеком. imos всё ещё расставляет шкафы по одному. Здесь движок <b>генерирует 4 готовых кухни</b> из комнаты и техники — мастер подтверждает, а не собирает. Дизайн дома у клиента, заказ закрыт в тот же визит.</p>
+    <div class="meta">
+      <span class="tag on">генерация-первой</span>
+      <span class="tag">≤5 мин → раскладка</span>
+      <span class="tag">≤15 мин → файлы</span>
+      <span class="tag">техника = ограничения</span>
+      <span class="tag">decor вне пути</span>
+      <span class="tag">экономь лист</span>
+    </div>
+  </div>
+
+  <div class="gallery">
+
+    <!-- 1. Room measure -->
+    <div class="screen">
+      <div class="frame">
+        <div class="statusbar"></div>
+        <div class="step"><div class="dots"><i class="on"></i><i></i><i></i><i></i><i></i></div><span class="t">шаг 1 / 5</span></div>
+        <div class="v3title"><h2>Замер комнаты</h2><p>стены, проёмы, розетки, газ</p></div>
+        <div class="roomcard">
+          <div class="roomsvg">
+            <svg viewBox="0 0 250 150" width="100%" height="120">
+              <!-- L-shape room plan -->
+              <path d="M20,20 L230,20 L230,90 L120,90 L120,130 L20,130 Z" fill="#f3efe4" stroke="var(--ink)" stroke-width="2"/>
+              <!-- window -->
+              <line x1="80" y1="20" x2="150" y2="20" stroke="var(--blue)" stroke-width="4"/>
+              <!-- gas -->
+              <circle cx="210" cy="35" r="5" fill="var(--red)"/>
+              <text x="210" y="52" font-size="7" font-family="var(--mono)" text-anchor="middle" fill="var(--red)">газ</text>
+              <!-- dims -->
+              <text x="125" y="14" font-size="8" font-family="var(--mono)" text-anchor="middle">2400</text>
+              <text x="238" y="58" font-size="8" font-family="var(--mono)">1800</text>
+            </svg>
+          </div>
+          <div class="field"><span class="l">Стена A</span><span class="v">2400 <small>мм</small></span></div>
+          <div class="field"><span class="l">Стена B</span><span class="v">1800 <small>мм</small></span></div>
+          <div class="field"><span class="l">Высота потолка</span><span class="v">2700 <small>мм</small></span></div>
+          <div class="field"><span class="l">Форма</span><span class="v">Г-образная ▾</span></div>
+        </div>
+        <div class="v3cta"><button class="btn-primary">Далее · техника →</button></div>
+      </div>
+      <div class="cap">
+        <div class="n">01 · ЗАМЕР</div>
+        <h3>Комната, не пустой холст</h3>
+        <p>Один путь: стены, форма (Г/П/линейная), проёмы и газ/розетки. Это Phase A — единственный ручной ввод перед генерацией.</p>
+        <div class="src">DB/19 §2-A · F1 «schoolboy ≤5 мин»</div>
+      </div>
+    </div>
+
+    <!-- 2. Appliances as constraints -->
+    <div class="screen">
+      <div class="frame">
+        <div class="statusbar"></div>
+        <div class="step"><div class="dots"><i></i><i class="on"></i><i></i><i></i><i></i></div><span class="t">шаг 2 / 5</span></div>
+        <div class="v3title"><h2>Техника = раскладка</h2><p>отдельно / встроенный — меняет геометрию и цену</p></div>
+        <div class="appl">
+          <div class="arow">
+            <div class="hd"><span class="ic">🧊</span><span class="nm">Холодильник</span></div>
+            <div class="fork"><div class="o on"><div class="lb">Отдельностоящий</div><div class="pr">базовый</div></div><div class="o"><div class="lb">Встроенный</div><div class="pr">+корпус</div></div></div>
+          </div>
+          <div class="arow">
+            <div class="hd"><span class="ic">🔥</span><span class="nm">Варочная + духовка</span></div>
+            <div class="fork"><div class="o"><div class="lb">Отд. плита</div><div class="pr">базовый</div></div><div class="o on"><div class="lb">Встроенные</div><div class="pr">+220к</div></div></div>
+          </div>
+          <div class="arow">
+            <div class="hd"><span class="ic">💨</span><span class="nm">Вытяжка</span></div>
+            <div class="fork"><div class="o on"><div class="lb">Купольная</div><div class="pr">базовый</div></div><div class="o"><div class="lb">В шкаф</div><div class="pr">ломает верх</div></div></div>
+          </div>
+          <div class="arow">
+            <div class="hd"><span class="ic">🍽️</span><span class="nm">Посудомойка</span></div>
+            <div class="fork"><div class="o on"><div class="lb">Нет</div><div class="pr"> </div></div><div class="o"><div class="lb">45</div><div class="pr">встр.</div></div><div class="o"><div class="lb">60</div><div class="pr">встр.</div></div></div>
+          </div>
+        </div>
+        <div class="v3cta"><button class="btn-primary">Сгенерировать 4 кухни ✦</button></div>
+      </div>
+      <div class="cap">
+        <div class="n">02 · ТЕХНИКА</div>
+        <h3>Не decor, а ограничения</h3>
+        <p>Техника движет геометрию, поэтому она в Phase A с вилкой отдельно/встроенный и подсказкой Δцены. Decor (фасады/цвет) сознательно НЕ здесь — он вне критического пути.</p>
+        <div class="src">F2 D3 appliances · F2 D1 decor late</div>
+      </div>
+    </div>
+
+    <!-- 3. Generation -->
+    <div class="screen">
+      <div class="frame">
+        <div class="statusbar"></div>
+        <div class="step"><div class="dots"><i></i><i></i><i class="on"></i><i></i><i></i></div><span class="t">шаг 3 / 5</span></div>
+        <div class="v3title"><h2>4 готовых кухни</h2><p>выберите — движок собрал, не вы</p></div>
+        <div class="gen">
+          <div class="gencard on"><span class="tag">бюджет</span>
+            <svg viewBox="0 0 100 60" width="100%" height="52"><rect x="6" y="34" width="88" height="22" fill="var(--carcass)" stroke="var(--carcass-line)"/><rect x="6" y="6" width="40" height="18" fill="var(--carcass)" stroke="var(--carcass-line)"/><rect x="58" y="6" width="36" height="18" fill="var(--carcass)" stroke="var(--carcass-line)"/></svg>
+            <div class="nm">Линейная</div><div class="pr"><b>3.9М</b> · 3.2 листа</div>
+          </div>
+          <div class="gencard"><span class="tag">баланс</span>
+            <svg viewBox="0 0 100 60" width="100%" height="52"><path d="M6,34 H94 V56 H6 Z M6,34 V20 H6" fill="none"/><rect x="6" y="34" width="60" height="22" fill="var(--carcass)" stroke="var(--carcass-line)"/><rect x="66" y="20" width="28" height="36" fill="var(--carcass)" stroke="var(--carcass-line)"/><rect x="6" y="6" width="48" height="16" fill="var(--carcass)" stroke="var(--carcass-line)"/></svg>
+            <div class="nm">Г-образная</div><div class="pr"><b>4.3М</b> · 3.8 листа</div>
+          </div>
+          <div class="gencard"><span class="tag">ёмкая</span>
+            <svg viewBox="0 0 100 60" width="100%" height="52"><rect x="6" y="34" width="88" height="22" fill="var(--carcass)" stroke="var(--carcass-line)"/><rect x="6" y="4" width="88" height="20" fill="var(--carcass)" stroke="var(--carcass-line)"/><line x1="50" y1="4" x2="50" y2="24" stroke="var(--carcass-line)"/></svg>
+            <div class="nm">+ пенал</div><div class="pr"><b>4.9М</b> · 4.6 листа</div>
+          </div>
+          <div class="gencard"><span class="tag">премиум</span>
+            <svg viewBox="0 0 100 60" width="100%" height="52"><rect x="6" y="38" width="56" height="18" fill="var(--carcass)" stroke="var(--carcass-line)"/><rect x="40" y="44" width="48" height="12" fill="var(--wood-dk)"/><rect x="6" y="6" width="56" height="18" fill="var(--carcass)" stroke="var(--carcass-line)"/></svg>
+            <div class="nm">С островом</div><div class="pr"><b>5.7М</b> · 5.4 листа</div>
+          </div>
+        </div>
+        <div class="v3cta"><div class="sub">⏱ сгенерировано за 4.2 c · вы на 3-й минуте визита</div><button class="btn-primary">Взять Г-образную →</button></div>
+      </div>
+      <div class="cap">
+        <div class="n">03 · ГЕНЕРАЦИЯ</div>
+        <h3>Подтверждаешь, а не собираешь</h3>
+        <p>Главный механизм скорости: 4 полные, изготовимые кухни из комнаты + техники + дефолтов (joint intelligence, авто-наполнители). imos расставляет по одной — мы генерируем.</p>
+        <div class="src">F1 I2 «генерация заменяет расстановку»</div>
+      </div>
+    </div>
+
+    <!-- 4. Confirm + edit by click -->
+    <div class="screen">
+      <div class="frame">
+        <div class="statusbar"></div>
+        <div class="canvas">
+          <svg viewBox="0 0 300 600" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+            <defs><linearGradient id="r3" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#efe9dc"/><stop offset="1" stop-color="#e1dbcc"/></linearGradient></defs>
+            <rect width="300" height="600" fill="url(#r3)"/>
+            <ellipse cx="150" cy="450" rx="135" ry="34" fill="#000" opacity=".04"/>
+            <g transform="translate(36,250)">
+              <rect x="-4" y="48" width="240" height="12" rx="2" fill="var(--wood-dk)"/>
+              <rect x="0" y="60" width="232" height="118" rx="3" fill="var(--carcass)" stroke="var(--carcass-line)" stroke-width="2"/>
+              <line x1="64" y1="60" x2="64" y2="178" stroke="var(--carcass-line)" stroke-width="2"/>
+              <line x1="128" y1="60" x2="128" y2="178" stroke="var(--carcass-line)" stroke-width="2"/>
+              <line x1="180" y1="60" x2="180" y2="178" stroke="var(--carcass-line)" stroke-width="2"/>
+              <rect x="2" y="62" width="60" height="114" rx="2" fill="#1c1c1a" opacity=".07" stroke="var(--ink)" stroke-width="2" stroke-dasharray="5 4"/>
+              <rect x="0" y="-58" width="232" height="76" rx="3" fill="var(--carcass)" stroke="var(--carcass-line)" stroke-width="2"/>
+              <line x1="116" y1="-58" x2="116" y2="18" stroke="var(--carcass-line)" stroke-width="2"/>
+            </g>
+          </svg>
+        </div>
+        <div class="step" style="z-index:30"><div class="dots"><i></i><i></i><i></i><i class="on"></i><i></i></div><span class="t">шаг 4 / 5</span></div>
+        <div class="ctxbar3">
+          <div class="hd"><b>Секция · мойка</b><span class="d">600 мм · ↔ свайп</span></div>
+          <div class="row" style="margin-bottom:7px"><div class="c on">Мойка</div><div class="c">Ящики</div><div class="c">Дверь</div><div class="c">Сушка</div></div>
+          <div class="row"><div class="c">Ширина</div><div class="c">Усилить</div><div class="c">Глубина · все</div></div>
+        </div>
+        <div class="v3cta" style="bottom:14px"><button class="btn-primary">Всё верно · к выводу →</button></div>
+      </div>
+      <div class="cap">
+        <div class="n">04 · ПРАВКА</div>
+        <h3>Секции меняются по клику</h3>
+        <p>Сгенерированную кухню донастраиваешь тем же языком: тап секции → свайп вариантов, ширина/глубина, усилить. Глубина по умолчанию — глобально. Ничего не собираешь с нуля.</p>
+        <div class="src">DB/19 §2-B/C · «по клику», группа-первой</div>
+      </div>
+    </div>
+
+    <!-- 5. Save a board alert -->
+    <div class="screen">
+      <div class="frame">
+        <div class="canvas"><svg viewBox="0 0 300 600" width="100%" height="100%" preserveAspectRatio="xMidYMid slice"><rect width="300" height="600" fill="url(#r3)"/>
+          <g transform="translate(36,250)" opacity=".5"><rect x="0" y="60" width="232" height="118" rx="3" fill="var(--carcass)" stroke="var(--carcass-line)" stroke-width="2"/></g>
+        </svg></div>
+        <div class="statusbar"></div>
+        <div class="alert">
+          <div class="h">💡 Сэкономить лист — −40 000</div>
+          <div class="b">Лист 4 заполнен на <b>18%</b>. Если уменьшить ширину секции B на <b>52 мм</b> (600 → 548), все детали лягут на 3 листа вместо 4.</div>
+          <span class="conf">высокая уверенность</span>
+          <div class="b" style="font-size:11px;color:var(--ink-muted)">Причина: задние стенки станут 680 мм → 3 в ряд вместо 2. Малая группа декора иначе тарифицируется как 0.5 листа.</div>
+          <div class="acts"><div class="x ghost">Другие варианты</div><div class="x dark">Применить</div></div>
+        </div>
+      </div>
+      <div class="cap">
+        <div class="n">05 · ЭКОНОМЬ ЛИСТ</div>
+        <h3>«Сколько листов» с зубами</h3>
+        <p>Движок ловит недозаполненный лист и предлагает правку с Δцены и причиной. Малые группы декора (3 акцентные детали) защищены формулой min 0.5 листа — это бережёт маржу на премиум-заказах.</p>
+        <div class="src">R7 M5 sheet math · F findings «сколько листов»</div>
+      </div>
+    </div>
+
+    <!-- 6. Outputs bundle -->
+    <div class="screen">
+      <div class="frame">
+        <div class="statusbar"></div>
+        <div class="step"><div class="dots"><i></i><i></i><i></i><i></i><i class="on"></i></div><span class="t">шаг 5 / 5</span></div>
+        <div class="v3title"><h2>Вывод</h2><p>всё для цеха, салона и клиента</p></div>
+        <div class="out">
+          <div class="bigtimer"><div class="t">12:40</div><div class="l">комната → файлы · цель ≤15 мин (imos ~25)</div></div>
+          <div class="ocard"><span class="ic">📄</span><div class="nm"><div class="t">Паспорт изделия ×6</div><div class="d">взрыв-схема · детали · фурнитура · вес</div></div><span class="ck">✓</span></div>
+          <div class="ocard"><span class="ic">🎨</span><div class="nm"><div class="t">Лист фасадов</div><div class="d">18 шт · в салон, привязать декор</div></div><span class="ck">✓</span></div>
+          <div class="ocard"><span class="ic">▦</span><div class="nm"><div class="t">Карта раскроя</div><div class="d">3.8 листа · керф 4.0 · 82% выход</div></div><span class="ck">✓</span></div>
+          <div class="ocard"><span class="ic">⚙</span><div class="nm"><div class="t">SWJ008 / DXF</div><div class="d">в D:\MPR · готово для ЧПУ</div></div><span class="ck">✓</span></div>
+          <div class="ocard"><span class="ic">🛒</span><div class="nm"><div class="t">Закупочный лист</div><div class="d">петли, направляющие, конфирматы</div></div><span class="ck">✓</span></div>
+        </div>
+        <div class="v3cta"><button class="btn-primary">Отправить в Telegram ↗</button></div>
+      </div>
+      <div class="cap">
+        <div class="n">06 · ВЫВОД</div>
+        <h3>Bazis-уровень с телефона</h3>
+        <p>Гейты прогнаны, пакет собран: паспорта, лист фасадов, раскрой, SWJ008/DXF, закупка. Таймер показывает историю скорости — оружие для дилерского питча. «Это даёт доверие».</p>
+        <div class="src">imos S1 · F2 D2 · -b breakthrough SWJ008</div>
+      </div>
+    </div>
+
+  </div>
+</div>
+</body>
+</html>

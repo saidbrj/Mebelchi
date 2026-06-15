@@ -1,0 +1,551 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mebelchi · V1 — Принципы</title>
+<link rel="stylesheet" href="_shared.css">
+<style>
+  /* V1 voice: the kitchen IS the UI. Almost no persistent chrome. Warm, calm, “slow is smooth”. */
+  .v1-amb{position:absolute;top:30px;left:16px;z-index:20}
+  .v1-amb .price{font-size:20px;font-weight:600;letter-spacing:-.01em}
+  .v1-amb .sheets{font-family:var(--mono);font-size:11px;color:var(--ink-muted);margin-top:1px}
+  .v1-val{position:absolute;top:32px;right:16px;z-index:20;width:30px;height:30px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;font-size:14px}
+  .v1-val.ok{background:var(--green-bg);color:var(--green)}
+  .v1-lens{position:absolute;right:16px;top:50%;transform:translateY(-50%);z-index:20;display:flex;flex-direction:column;
+    gap:2px;border-radius:14px;overflow:hidden;background:var(--card-tint);backdrop-filter:blur(16px);
+    border:.5px solid var(--line);box-shadow:var(--shadow-sm)}
+  .v1-lens span{padding:9px 0;width:34px;text-align:center;font-size:9px;font-family:var(--mono);color:var(--ink-muted);letter-spacing:.02em}
+  .v1-lens span.on{background:var(--ink);color:#fff}
+  .v1-cta{position:absolute;bottom:18px;left:16px;right:16px;z-index:20}
+  .ctxbar{position:absolute;bottom:18px;left:14px;right:14px;z-index:25;border-radius:20px;padding:12px 12px 14px;
+    background:var(--card-tint);backdrop-filter:blur(20px);border:.5px solid var(--line);box-shadow:var(--shadow-lg)}
+  .ctxbar .hd{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .ctxbar .hd b{font-size:14px}
+  .ctxbar .hd .dim{font-family:var(--mono);font-size:12px;color:var(--ink-muted)}
+  .ctx-acts{display:flex;gap:7px;flex-wrap:wrap}
+  .ctx-acts .a{flex:1;min-width:0;text-align:center;background:#fff;border:1px solid var(--line);border-radius:12px;
+    padding:9px 4px;font-size:11.5px;font-weight:500;color:var(--ink-soft)}
+  .ctx-acts .a.dark{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .swipe-dots{display:flex;gap:5px;justify-content:center;margin-top:11px}
+  .swipe-dots i{width:6px;height:6px;border-radius:50%;background:var(--ink-faint);display:block}
+  .swipe-dots i.on{background:var(--ink);width:18px;border-radius:99px}
+  .scope{display:flex;background:#efeadd;border-radius:12px;padding:3px;gap:2px;margin-bottom:10px}
+  .scope b{flex:1;text-align:center;font-size:11px;padding:7px 0;border-radius:9px;color:var(--ink-muted);font-weight:500}
+  .scope b.on{background:#fff;color:var(--ink);box-shadow:var(--shadow-sm)}
+  /* numpad */
+  .numpad{position:absolute;bottom:0;left:0;right:0;z-index:30;background:#f4efe3;border-radius:24px 24px 0 0;
+    padding:16px 14px 22px;box-shadow:0 -10px 40px rgba(0,0,0,.12)}
+  .numpad .disp{background:#fff;border-radius:14px;padding:14px 16px;display:flex;align-items:baseline;justify-content:space-between;margin-bottom:6px;border:1px solid var(--line)}
+  .numpad .disp .v{font-family:var(--mono);font-size:26px;font-weight:600}
+  .numpad .disp .u{font-family:var(--mono);font-size:13px;color:var(--ink-muted)}
+  .numpad .expr{font-family:var(--mono);font-size:11px;color:var(--green);text-align:right;height:14px;margin-bottom:10px}
+  .keys{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .keys b{background:#fff;border:1px solid var(--line);border-radius:12px;text-align:center;padding:14px 0;font-size:19px;
+    font-family:var(--mono);font-weight:500}
+  .keys b.fn{background:#e7e1d3;color:var(--ink-soft);font-size:15px}
+  .keys b.go{background:var(--ink);color:#fff;border-color:var(--ink)}
+  /* joints menu */
+  .sheet{position:absolute;bottom:0;left:0;right:0;z-index:30;background:#f4efe3;border-radius:24px 24px 0 0;padding:16px 16px 22px;box-shadow:0 -10px 40px rgba(0,0,0,.14)}
+  .sheet .grab{width:38px;height:5px;background:var(--ink-faint);border-radius:99px;margin:0 auto 12px}
+  .sheet h4{font-size:15px;font-weight:600;margin-bottom:3px}
+  .sheet .sub{font-size:12px;color:var(--ink-muted);margin-bottom:14px}
+  .jrow{display:flex;align-items:center;gap:11px;padding:11px 12px;background:#fff;border:1px solid var(--line);border-radius:14px;margin-bottom:8px}
+  .jrow.on{border-color:var(--ink);box-shadow:0 0 0 1.5px var(--ink)}
+  .jdot{width:14px;height:14px;border-radius:4px;flex:0 0 auto}
+  .jrow .nm{flex:1;font-size:13.5px;font-weight:500}
+  .jrow .nm small{display:block;font-size:11px;color:var(--ink-muted);font-weight:400}
+  .jrow .ck{color:var(--green);font-size:15px}
+  .why{background:var(--blue-bg);border-radius:12px;padding:10px 12px;font-size:11.5px;color:var(--ink-soft);margin-top:4px}
+  .why b{color:var(--blue)}
+  /* accessory grid */
+  .agrid{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
+  .acard{background:#fff;border:1px solid var(--line);border-radius:14px;padding:10px 6px;text-align:center}
+  .acard .ic{font-size:24px;display:block;margin-bottom:5px}
+  .acard .lb{font-size:10.5px;font-weight:500;line-height:1.2}
+  .acard .pr{font-family:var(--mono);font-size:9px;color:var(--ink-muted);margin-top:2px}
+  .seg{display:flex;background:#efeadd;border-radius:11px;padding:3px;margin-bottom:12px}
+  .seg b{flex:1;text-align:center;font-size:11.5px;padding:7px 0;border-radius:8px;color:var(--ink-muted);font-weight:500}
+  .seg b.on{background:#fff;color:var(--ink);box-shadow:var(--shadow-sm)}
+  /* customer view */
+  .cust{position:absolute;inset:0;background:linear-gradient(170deg,#cdb9a0,#8f7a63)}
+  .cust .swatches{position:absolute;bottom:18px;left:14px;right:14px;display:flex;gap:8px;justify-content:center}
+  .cust .sw{width:38px;height:38px;border-radius:50%;border:2px solid rgba(255,255,255,.7);box-shadow:0 3px 10px rgba(0,0,0,.25)}
+  .cust .sw.on{outline:2px solid #fff;outline-offset:2px}
+  /* pdf */
+  .pdf{position:absolute;inset:0;background:#54514b;overflow:hidden}
+  .pdfpaper{position:absolute;top:30px;left:18px;right:18px;bottom:64px;background:#fff;border-radius:4px;box-shadow:0 14px 30px rgba(0,0,0,.35);padding:14px;overflow:hidden}
+  .pdfpaper .ph{display:flex;justify-content:space-between;align-items:baseline;border-bottom:1.5px solid var(--ink);padding-bottom:7px;margin-bottom:9px}
+  .pdfpaper .ph b{font-size:12px;letter-spacing:.04em}
+  .pdfpaper .ph span{font-family:var(--mono);font-size:8px;color:var(--ink-muted)}
+  .ptable{width:100%;border-collapse:collapse;font-family:var(--mono);font-size:7.5px}
+  .ptable td,.ptable th{border:.5px solid #ddd;padding:2.5px 4px;text-align:left}
+  .ptable th{background:#f3f0e8;font-weight:600}
+  .pdfbar{position:absolute;bottom:16px;left:18px;right:18px;display:flex;gap:8px}
+  .pdfbar .b{flex:1;text-align:center;background:rgba(255,255,255,.14);color:#fff;border:1px solid rgba(255,255,255,.2);border-radius:12px;padding:11px;font-size:12px;font-weight:600}
+  .pdfbar .b.go{background:#fff;color:var(--ink);border-color:#fff}
+  .tap{position:absolute;width:34px;height:34px;border-radius:50%;border:2px solid var(--ink);opacity:.5;z-index:40}
+  .tap::after{content:'';position:absolute;inset:-9px;border-radius:50%;border:1.5px solid var(--ink);opacity:.4}
+</style>
+</head>
+<body>
+<div class="topbar">
+  <a class="home" href="index.html">◀ Mebelchi UI</a>
+  <span class="sp"></span>
+  <a href="v1-principles.html" style="opacity:1;color:#e0b878">V1 · Принципы</a>
+  <a href="v2-workbench.html">V2 · Верстак</a>
+  <a href="v3-flow.html">V3 · Поток</a>
+</div>
+
+<div class="wrap">
+  <div class="hero">
+    <div class="kick">Версия 1 — голос мастера</div>
+    <h1>Кухня <b>и есть</b> интерфейс.</h1>
+    <p class="lede">Ваше описание, экран за экраном. Никакого хрома, кроме цены и одной кнопки. «Медленно — это плавно»: ничего не торопит, каждое касание меняет именно то, чего касаешься. Цель MVP — собрать очень нестандартную <b>G-образную</b> полку прямо здесь.</p>
+    <div class="meta">
+      <span class="tag on">принципы основателя</span>
+      <span class="tag">линии + секции</span>
+      <span class="tag">секция меняется свайпом</span>
+      <span class="tag">глобально / группа — первый приоритет</span>
+      <span class="tag">NFS-камера</span>
+      <span class="tag">цвет суставов</span>
+      <span class="tag">детальный PDF</span>
+    </div>
+    <p class="note" style="margin-top:18px">Принято из исследований (R7 verdict): тип-первым numpad, мульти-выбор тумблером, камера = выбор+pivot без полёта, decor late-binding. Несовместимое с локами здесь сознательно подчинено вашим формулировкам — это «версия принципов».</p>
+  </div>
+
+  <div class="gallery">
+
+    <!-- 1. Arrival -->
+    <div class="screen">
+      <div class="frame">
+        <div class="statusbar"></div>
+        <div class="canvas">
+          <!-- G-shape shelf elevation -->
+          <svg viewBox="0 0 300 600" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+            <defs>
+              <linearGradient id="room1" x1="0" y1="0" x2="0" y2="1">
+                <stop offset="0" stop-color="#efe9dc"/><stop offset="1" stop-color="#e3ddcf"/>
+              </linearGradient>
+            </defs>
+            <rect width="300" height="600" fill="url(#room1)"/>
+            <ellipse cx="150" cy="500" rx="150" ry="42" fill="#000" opacity="0.04"/>
+            <!-- shelving carcass, sectioned -->
+            <g transform="translate(58,150)">
+              <rect x="0" y="0" width="184" height="300" rx="3" fill="var(--carcass)" stroke="var(--carcass-line)" stroke-width="2"/>
+              <!-- vertical divider lines -->
+              <line x1="92" y1="2" x2="92" y2="298" stroke="var(--carcass-line)" stroke-width="2"/>
+              <!-- horizontal shelf lines (left col) -->
+              <line x1="2" y1="75" x2="92" y2="75" stroke="var(--carcass-line)" stroke-width="2"/>
+              <line x1="2" y1="150" x2="92" y2="150" stroke="var(--carcass-line)" stroke-width="2"/>
+              <line x1="2" y1="225" x2="92" y2="225" stroke="var(--carcass-line)" stroke-width="2"/>
+              <!-- right col: drawers + door -->
+              <line x1="92" y1="100" x2="182" y2="100" stroke="var(--carcass-line)" stroke-width="2"/>
+              <line x1="92" y1="150" x2="182" y2="150" stroke="var(--carcass-line)" stroke-width="2"/>
+              <rect x="98" y="158" width="78" height="134" rx="2" fill="#fff" opacity=".5" stroke="var(--carcass-line)"/>
+            </g>
+            <!-- G return wing (perspective hint) -->
+            <g transform="translate(228,150)" opacity=".85">
+              <path d="M0,0 L40,-18 L40,272 L0,300 Z" fill="#e6dfce" stroke="var(--carcass-line)" stroke-width="2"/>
+              <line x1="0" y1="75" x2="40" y2="57" stroke="var(--carcass-line)" stroke-width="1.5"/>
+              <line x1="0" y1="150" x2="40" y2="132" stroke="var(--carcass-line)" stroke-width="1.5"/>
+              <line x1="0" y1="225" x2="40" y2="207" stroke="var(--carcass-line)" stroke-width="1.5"/>
+            </g>
+          </svg>
+        </div>
+        <div class="v1-amb">
+          <div class="price">4 280 000</div>
+          <div class="sheets">3.8 листа ЛДСП · 0.5 ХДФ</div>
+        </div>
+        <div class="v1-val ok">✓</div>
+        <div class="v1-lens">
+          <span class="on">3D</span><span>X-RAY</span><span>ПЛАН</span><span>РЕЗ</span>
+        </div>
+        <div class="v1-cta"><button class="btn-primary">Проверить и вывести</button></div>
+      </div>
+      <div class="cap">
+        <div class="n">01 · ОТКРЫТИЕ</div>
+        <h3>Сразу стоит мебель</h3>
+        <p>Никогда не пустой холст. На сцене — стартовая G-полка. Видны только цена, счётчик листов, значок проверки, линзы и одна кнопка. Камера в покое.</p>
+        <div class="src">DB/19 §6 · R7 D3 «стартовый проект встроен»</div>
+      </div>
+    </div>
+
+    <!-- 2. Section selected + swipe variants -->
+    <div class="screen">
+      <div class="frame">
+        <div class="statusbar"></div>
+        <div class="canvas">
+          <svg viewBox="0 0 300 600" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+            <rect width="300" height="600" fill="url(#room1)"/>
+            <g transform="translate(58,120)">
+              <rect x="0" y="0" width="184" height="300" rx="3" fill="var(--carcass)" stroke="var(--carcass-line)" stroke-width="2"/>
+              <line x1="92" y1="2" x2="92" y2="298" stroke="var(--carcass-line)" stroke-width="2"/>
+              <line x1="2" y1="75" x2="92" y2="75" stroke="var(--carcass-line)" stroke-width="2"/>
+              <line x1="2" y1="150" x2="92" y2="150" stroke="var(--carcass-line)" stroke-width="2"/>
+              <line x1="2" y1="225" x2="92" y2="225" stroke="var(--carcass-line)" stroke-width="2"/>
+              <!-- selected section highlight (top-left) -->
+              <rect x="3" y="3" width="86" height="69" rx="2" fill="#1c1c1a" opacity=".07" stroke="var(--ink)" stroke-width="2" stroke-dasharray="5 4"/>
+              <line x1="92" y1="100" x2="182" y2="100" stroke="var(--carcass-line)" stroke-width="2"/>
+              <line x1="92" y1="150" x2="182" y2="150" stroke="var(--carcass-line)" stroke-width="2"/>
+            </g>
+          </svg>
+        </div>
+        <div class="ctxbar">
+          <div class="hd"><b>Секция · полка</b><span class="dim">880 × 320 мм</span></div>
+          <div class="ctx-acts">
+            <div class="a">Полки ×3</div><div class="a">Ящики</div><div class="a">Дверь</div><div class="a dark">Штанга</div>
+          </div>
+          <div class="swipe-dots"><i></i><i></i><i class="on"></i><i></i><i></i></div>
+          <div style="text-align:center;font-size:10.5px;color:var(--ink-muted);margin-top:7px">← свайп по секции меняет наполнение →</div>
+        </div>
+        <div class="tap" style="left:80px;top:150px"></div>
+      </div>
+      <div class="cap">
+        <div class="n">02 · СЕКЦИЯ</div>
+        <h3>Каждая секция — свайпом</h3>
+        <p>Тап по секции — поднимается контекст-бар. Горизонтальный свайп прокручивает варианты наполнения: полки → ящики → дверь → штанга. «Каждая секция меняется по клику».</p>
+        <div class="src">DB/19 §2-C · imos P1 select→apply</div>
+      </div>
+    </div>
+
+    <!-- 3. Move line + scope selector -->
+    <div class="screen">
+      <div class="frame">
+        <div class="statusbar"></div>
+        <div class="canvas">
+          <svg viewBox="0 0 300 600" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+            <rect width="300" height="600" fill="url(#room1)"/>
+            <g transform="translate(58,120)">
+              <rect x="0" y="0" width="184" height="300" rx="3" fill="var(--carcass)" stroke="var(--carcass-line)" stroke-width="2"/>
+              <line x1="92" y1="2" x2="92" y2="298" stroke="var(--carcass-line)" stroke-width="2"/>
+              <!-- glowing affected lines (line group / scope=Линия) -->
+              <line x1="2" y1="150" x2="182" y2="150" stroke="var(--amber)" stroke-width="4"/>
+              <line x1="2" y1="75" x2="92" y2="75" stroke="var(--carcass-line)" stroke-width="2"/>
+              <line x1="2" y1="225" x2="92" y2="225" stroke="var(--carcass-line)" stroke-width="2"/>
+              <line x1="92" y1="100" x2="182" y2="100" stroke="var(--carcass-line)" stroke-width="2"/>
+              <!-- drag handle -->
+              <circle cx="92" cy="150" r="11" fill="#fff" stroke="var(--amber)" stroke-width="3"/>
+              <!-- label jumps to value -->
+              <g transform="translate(196,138)">
+                <rect width="62" height="26" rx="7" fill="var(--ink)"/>
+                <text x="31" y="17" fill="#fff" font-family="var(--mono)" font-size="12" text-anchor="middle">432 мм</text>
+              </g>
+            </g>
+          </svg>
+        </div>
+        <div class="ctxbar">
+          <div class="hd"><b>Двигаю линию</b><span class="dim">шаг 50 мм</span></div>
+          <div class="scope">
+            <b>Локально</b><b class="on">Линия</b><b>Ряд</b><b>Все</b>
+          </div>
+          <div style="text-align:center;font-size:10.5px;color:var(--ink-muted)">подсвечены линии, которые изменятся</div>
+        </div>
+      </div>
+      <div class="cap">
+        <div class="n">03 · ЛИНИЯ + ОБЪЁМ</div>
+        <h3>Глобально — первый приоритет</h3>
+        <p>Тянем линию — детент 50 мм, ярлык прыгает к значению. Селектор объёма: <b>Локально · Линия · Ряд · Все</b>. По умолчанию — группа линий; затронутые линии светятся до отпускания.</p>
+        <div class="src">DB/19 §4 · R7 L1 «50мм детент» / L3</div>
+      </div>
+    </div>
+
+    <!-- 4. Numpad -->
+    <div class="screen">
+      <div class="frame">
+        <div class="statusbar"></div>
+        <div class="canvas">
+          <svg viewBox="0 0 300 600" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+            <rect width="300" height="600" fill="url(#room1)"/>
+            <g transform="translate(58,70)" opacity=".5">
+              <rect x="0" y="0" width="184" height="200" rx="3" fill="var(--carcass)" stroke="var(--carcass-line)" stroke-width="2"/>
+              <line x1="92" y1="2" x2="92" y2="198" stroke="var(--carcass-line)" stroke-width="2"/>
+              <line x1="2" y1="100" x2="92" y2="100" stroke="var(--ink)" stroke-width="3"/>
+            </g>
+          </svg>
+        </div>
+        <div class="numpad">
+          <div class="disp"><span class="v">684</span><span class="u">мм</span></div>
+          <div class="expr">= 720 − 2×18</div>
+          <div class="keys">
+            <b>7</b><b>8</b><b>9</b><b>4</b><b>5</b><b>6</b><b>1</b><b>2</b><b>3</b>
+            <b class="fn">−×÷</b><b>0</b><b class="go">✓</b>
+          </div>
+        </div>
+      </div>
+      <div class="cap">
+        <div class="n">04 · ТОЧНЫЙ ВВОД</div>
+        <h3>Мастер уже знает размер</h3>
+        <p>Тап по ярлыку размера — сразу numpad. Поддержка выражений: <span class="mono" style="font-size:11px">720−2×18</span>. Тип-первым, перетаскивание — только грубая раскладка.</p>
+        <div class="src">R7 L1 (инверсия) · imos P3 type-first</div>
+      </div>
+    </div>
+
+    <!-- 5. Section dive / X-ray with coloured joints -->
+    <div class="screen">
+      <div class="frame dark">
+        <div class="statusbar"></div>
+        <div class="canvas">
+          <svg viewBox="0 0 300 600" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+            <rect width="300" height="600" fill="#16181c"/>
+            <!-- isolated section, outer faded -->
+            <g transform="translate(70,180)">
+              <rect x="0" y="0" width="160" height="200" rx="2" fill="none" stroke="#5b6168" stroke-width="2"/>
+              <line x1="0" y1="100" x2="160" y2="100" stroke="#8a929b" stroke-width="2"/>
+              <!-- joint markers, colour-coded -->
+              <circle cx="8" cy="8" r="7" fill="var(--j-confirmat)"/>
+              <circle cx="152" cy="8" r="7" fill="var(--j-confirmat)"/>
+              <circle cx="8" cy="100" r="7" fill="var(--j-minifix)"/>
+              <circle cx="152" cy="100" r="7" fill="var(--j-minifix)"/>
+              <circle cx="8" cy="192" r="7" fill="var(--j-confirmat)"/>
+              <circle cx="152" cy="192" r="7" fill="var(--j-confirmat)"/>
+              <circle cx="40" cy="100" r="6" fill="var(--j-dowel)"/>
+              <circle cx="120" cy="100" r="6" fill="var(--j-dowel)"/>
+              <!-- selected joint -->
+              <circle cx="8" cy="100" r="13" fill="none" stroke="#fff" stroke-width="2"/>
+            </g>
+            <text x="150" y="150" fill="#9aa0a8" font-size="11" font-family="var(--mono)" text-anchor="middle">внешние слои погасли</text>
+          </svg>
+        </div>
+        <div class="sheet" style="background:#1f2228;color:#e8e3d6">
+          <div class="grab" style="background:#4a4f57"></div>
+          <h4 style="color:#fff">Соединение полки</h4>
+          <div class="sub" style="color:#9aa0a8">тап по узлу в X-ray</div>
+          <div class="jrow" style="background:#272b32;border-color:#3a3f47">
+            <span class="jdot" style="background:var(--j-minifix)"></span>
+            <span class="nm" style="color:#fff">Минификс (эксцентрик)<small style="color:#9aa0a8">съёмная полка · скрытый</small></span>
+            <span class="ck">✓</span>
+          </div>
+          <div class="why" style="background:rgba(58,110,165,.18);color:#cdd6e2">
+            <b style="color:#8fb4dd">Почему:</b> съёмная полка → разборное соединение. Конфирмат был бы виден с торца.
+          </div>
+        </div>
+      </div>
+      <div class="cap">
+        <div class="n">05 · НЫРЯЕМ В СЕКЦИЮ</div>
+        <h3>Слои исчезают, узлы видны</h3>
+        <p>Pinch в секцию — внешние панели гаснут, соединения становятся кликабельными и <b>раскрашены по семействам</b>. Каждое решение — с пояснением «почему».</p>
+        <div class="src">DB/19 §H, §F · doc 16 trust layer</div>
+      </div>
+    </div>
+
+    <!-- 6. Joints menu -->
+    <div class="screen">
+      <div class="frame">
+        <div class="statusbar"></div>
+        <div class="canvas">
+          <svg viewBox="0 0 300 600" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+            <rect width="300" height="600" fill="url(#room1)"/>
+          </svg>
+        </div>
+        <div class="sheet" style="bottom:0;top:54px;border-radius:24px 24px 0 0;overflow-y:auto">
+          <div class="grab"></div>
+          <h4>Меню соединений</h4>
+          <div class="sub">несколько цветов на каждый узел · можно менять</div>
+          <div class="jrow on"><span class="jdot" style="background:var(--j-confirmat)"></span><span class="nm">Конфирмат 7мм<small>каркас · силовой</small></span><span class="ck">✓</span></div>
+          <div class="jrow"><span class="jdot" style="background:var(--j-minifix)"></span><span class="nm">Минификс<small>разборное · скрытый</small></span></div>
+          <div class="jrow"><span class="jdot" style="background:var(--j-dowel)"></span><span class="nm">Шкант (клей)<small>невидимый · неразборный</small></span></div>
+          <div class="jrow"><span class="jdot" style="background:var(--j-screw)"></span><span class="nm">Саморез<small>задняя стенка · черновой</small></span></div>
+          <div class="why"><b>Цвет = семейство.</b> Профиль мастерской задаёт, что в наличии; движок ставит по контексту, вы переопределяете тут.</div>
+        </div>
+      </div>
+      <div class="cap">
+        <div class="n">06 · СОЕДИНЕНИЯ</div>
+        <h3>Меню узлов с цветом</h3>
+        <p>Палитра соединений: конфирмат, минификс, шкант, саморез — каждый со своим цветом. Выбор семейства + «почему». Профиль мастерской («у нас конфирматы») задаётся в настройках.</p>
+        <div class="src">DB/19 §F · ваш запрос «цвет суставов»</div>
+      </div>
+    </div>
+
+    <!-- 7. Accessories / furniture -->
+    <div class="screen">
+      <div class="frame">
+        <div class="statusbar"></div>
+        <div class="canvas"><svg viewBox="0 0 300 600" width="100%" height="100%" preserveAspectRatio="xMidYMid slice"><rect width="300" height="600" fill="url(#room1)"/></svg></div>
+        <div class="sheet" style="bottom:0;top:54px;border-radius:24px 24px 0 0;overflow-y:auto">
+          <div class="grab"></div>
+          <h4>Аксессуары и фурнитура</h4>
+          <div class="seg"><b class="on">Фурнитура</b><b>Наполнение</b><b>Техника</b></div>
+          <div class="agrid">
+            <div class="acard"><span class="ic">🪝</span><span class="lb">Петля clip-top</span><span class="pr">Blum</span></div>
+            <div class="acard"><span class="ic">🗄️</span><span class="lb">Направляющие</span><span class="pr">soft-close</span></div>
+            <div class="acard"><span class="ic">⬛</span><span class="lb">Ручка-профиль</span><span class="pr">gola</span></div>
+            <div class="acard"><span class="ic">🧺</span><span class="lb">Карго</span><span class="pr">300мм</span></div>
+            <div class="acard"><span class="ic">🍶</span><span class="lb">Сушка</span><span class="pr">верх</span></div>
+            <div class="acard"><span class="ic">💡</span><span class="lb">LED-подсветка</span><span class="pr">+0.4м</span></div>
+          </div>
+          <div class="why" style="margin-top:10px"><b>Привязка к секции.</b> Аксессуар садится в выбранную секцию и попадает в спецификацию и закупочный лист.</div>
+        </div>
+      </div>
+      <div class="cap">
+        <div class="n">07 · АКСЕССУАРЫ</div>
+        <h3>Фурнитура и наполнение</h3>
+        <p>Меню фурнитуры / наполнения / техники. Всё привязано к секции, попадает в закупочный лист и паспорт. Из доков по аксессуарам (r6).</p>
+        <div class="src">Researches/-r6 accessories 01–02</div>
+      </div>
+    </div>
+
+    <!-- 8. Custom section builder -->
+    <div class="screen">
+      <div class="frame">
+        <div class="statusbar"></div>
+        <div class="canvas">
+          <svg viewBox="0 0 300 600" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+            <rect width="300" height="600" fill="url(#room1)"/>
+            <g transform="translate(70,90)">
+              <rect x="0" y="0" width="160" height="220" rx="3" fill="#fff" stroke="var(--ink)" stroke-width="2"/>
+              <line x1="0" y1="60" x2="160" y2="60" stroke="var(--carcass-line)" stroke-width="2" stroke-dasharray="4 3"/>
+              <line x1="0" y1="130" x2="160" y2="130" stroke="var(--carcass-line)" stroke-width="2" stroke-dasharray="4 3"/>
+              <line x1="80" y1="130" x2="80" y2="220" stroke="var(--carcass-line)" stroke-width="2" stroke-dasharray="4 3"/>
+              <!-- split affordances -->
+              <g transform="translate(150,25)"><circle r="9" fill="var(--ink)"/><text y="4" fill="#fff" font-size="13" text-anchor="middle">—</text></g>
+              <g transform="translate(150,95)"><circle r="9" fill="var(--ink)"/><text y="4" fill="#fff" font-size="13" text-anchor="middle">|</text></g>
+            </g>
+          </svg>
+        </div>
+        <div class="sheet">
+          <div class="grab"></div>
+          <h4>Конструктор секции</h4>
+          <div class="sub">любую секцию можно настроить</div>
+          <div class="ctx-acts" style="margin-bottom:9px">
+            <div class="a dark">＋ полка (—)</div><div class="a dark">＋ стойка (|)</div>
+          </div>
+          <div class="ctx-acts" style="margin-bottom:9px">
+            <div class="a">Равные промежутки</div><div class="a">Назначение ▾</div>
+          </div>
+          <div class="ctx-acts">
+            <div class="a">В мою библиотеку ☆</div>
+          </div>
+        </div>
+      </div>
+      <div class="cap">
+        <div class="n">08 · КОНСТРУКТОР</div>
+        <h3>Своя секция «с нуля»</h3>
+        <p>Делим секцию аффордансами — / | (это заменяет кнопку «+»). Назначение секции (посуда / книги / штанга) задаёт эргономику. «Сохранить в мою библиотеку» — каждый строит свою.</p>
+        <div class="src">DB/19 §2-B/C · R7 L7 шаблоны</div>
+      </div>
+    </div>
+
+    <!-- 9. Group vs individual -->
+    <div class="screen">
+      <div class="frame">
+        <div class="statusbar"></div>
+        <div class="canvas">
+          <svg viewBox="0 0 300 600" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+            <rect width="300" height="600" fill="url(#room1)"/>
+            <g transform="translate(40,150)">
+              <!-- 3 cabinets, 2 selected (group), 1 dimmed -->
+              <rect x="0" y="0" width="68" height="220" rx="3" fill="#1c1c1a" opacity=".08" stroke="var(--ink)" stroke-width="2.5"/>
+              <rect x="78" y="0" width="68" height="220" rx="3" fill="#1c1c1a" opacity=".08" stroke="var(--ink)" stroke-width="2.5"/>
+              <rect x="156" y="0" width="68" height="220" rx="3" fill="var(--carcass)" stroke="var(--carcass-line)" stroke-width="2" opacity=".4"/>
+              <g transform="translate(8,8)"><circle r="9" fill="var(--ink)"/><text y="4" fill="#fff" font-size="11" text-anchor="middle">✓</text></g>
+              <g transform="translate(86,8)"><circle r="9" fill="var(--ink)"/><text y="4" fill="#fff" font-size="11" text-anchor="middle">✓</text></g>
+            </g>
+          </svg>
+        </div>
+        <div class="ctxbar">
+          <div class="hd"><b>Выбрано: 2 секции</b><span class="dim">тумблер мульти ●</span></div>
+          <div class="ctx-acts" style="margin-bottom:8px">
+            <div class="a dark">Усилить</div><div class="a">Выровнять</div><div class="a">Материал</div><div class="a">Глубина</div>
+          </div>
+          <div class="why" style="background:var(--amber-bg);color:var(--ink-soft)"><b style="color:var(--amber)">Группой, но можно точечно:</b> снять тумблер → правка одной секции. Изменение применится к 2 элементам, потом подтверждение.</div>
+        </div>
+      </div>
+      <div class="cap">
+        <div class="n">09 · ГРУППА ↔ ЭЛЕМЕНТ</div>
+        <h3>Изменение действует на группу</h3>
+        <p>Тумблер мульти-выбора (не долгое нажатие). Тапы добавляют, счётчик «2 секции», остальное гаснет. Bulk-правка через лист с подтверждением. Но при желании — одна секция.</p>
+        <div class="src">R7 L2 тумблер · imos P4 · §2-B</div>
+      </div>
+    </div>
+
+    <!-- 10. NFS camera + customer view -->
+    <div class="screen">
+      <div class="frame">
+        <div class="statusbar"></div>
+        <div class="cust">
+          <svg viewBox="0 0 300 600" width="100%" height="100%" preserveAspectRatio="xMidYMid slice" style="position:absolute;inset:0">
+            <g transform="translate(55,150)" opacity=".95">
+              <rect x="0" y="0" width="190" height="300" rx="4" fill="#a98f72" stroke="#6f5b45" stroke-width="2"/>
+              <rect x="6" y="6" width="84" height="288" rx="2" fill="#c4ab8c"/>
+              <rect x="100" y="6" width="84" height="138" rx="2" fill="#c4ab8c"/>
+              <rect x="100" y="152" width="84" height="142" rx="2" fill="#b89d7d"/>
+            </g>
+          </svg>
+          <div style="position:absolute;top:32px;left:16px;color:#fff;text-shadow:0 1px 6px rgba(0,0,0,.4)">
+            <div style="font-size:12px;letter-spacing:.16em;font-family:var(--mono);opacity:.85">ВИД КЛИЕНТА</div>
+            <div style="font-size:18px;font-weight:600;margin-top:2px">Дуб натуральный</div>
+          </div>
+          <div class="swatches">
+            <span class="sw" style="background:#ece7dd"></span>
+            <span class="sw on" style="background:#b89364"></span>
+            <span class="sw" style="background:#6e5847"></span>
+            <span class="sw" style="background:#2c2c2e"></span>
+            <span class="sw" style="background:#7d8b78"></span>
+            <span class="sw" style="background:#9c4a3c"></span>
+          </div>
+        </div>
+      </div>
+      <div class="cap">
+        <div class="n">10 · КАМЕРА + ЦВЕТ</div>
+        <h3>Полёт и decor — в конце</h3>
+        <p>Тап = выбор + тихий разворот pivot (камера не летит). Двойной тап = кинематографичный NFS-полёт к фокусу. Цвет/декор живут только здесь, в «виде клиента» — late-binding.</p>
+        <div class="src">R7 §3 камера · F2 D1 decor late-binding</div>
+      </div>
+    </div>
+
+    <!-- 11. Detailed PDF -->
+    <div class="screen">
+      <div class="frame">
+        <div class="statusbar"></div>
+        <div class="pdf">
+          <div class="pdfpaper">
+            <div class="ph"><b>ПАСПОРТ ИЗДЕЛИЯ</b><span>Секция L · 1/14</span></div>
+            <svg viewBox="0 0 250 130" width="100%" height="92">
+              <!-- exploded x-ray with leader lines -->
+              <g stroke="#222" fill="none" stroke-width="1">
+                <rect x="60" y="20" width="120" height="90"/>
+                <line x1="60" y1="65" x2="180" y2="65"/>
+                <rect x="64" y="24" width="52" height="36" fill="#f0ead9"/>
+              </g>
+              <g stroke="#b5402c" stroke-width=".7" stroke-dasharray="2 2">
+                <line x1="60" y1="20" x2="20" y2="14"/><line x1="180" y1="20" x2="220" y2="14"/>
+                <line x1="60" y1="110" x2="20" y2="118"/>
+              </g>
+              <text x="14" y="12" font-size="6" font-family="var(--mono)">бок 720×320</text>
+              <text x="196" y="12" font-size="6" font-family="var(--mono)">бок 720×320</text>
+              <text x="14" y="124" font-size="6" font-family="var(--mono)">дно 568×320</text>
+            </svg>
+            <table class="ptable">
+              <tr><th>Деталь</th><th>Д×Ш×Т</th><th>Кром</th><th>Кол</th></tr>
+              <tr><td>Бок</td><td>720×320×16</td><td>2мм F</td><td>2</td></tr>
+              <tr><td>Дно/верх</td><td>568×320×16</td><td>2мм F</td><td>2</td></tr>
+              <tr><td>Полка</td><td>568×300×16</td><td>2мм F</td><td>3</td></tr>
+              <tr><td>Задняя ХДФ</td><td>588×708×4</td><td>—</td><td>1</td></tr>
+            </table>
+            <div style="font-family:var(--mono);font-size:7px;color:var(--ink-muted);margin-top:6px;display:flex;justify-content:space-between">
+              <span>Фурнитура: 8× конфирмат · 12× шкант · 4× минификс</span><span>вес 14.2 кг</span>
+            </div>
+          </div>
+          <div class="pdfbar">
+            <div class="b">Лист фасадов</div><div class="b">Раскрой</div><div class="b go">Telegram ↗</div>
+          </div>
+        </div>
+      </div>
+      <div class="cap">
+        <div class="n">11 · ВЫВОД</div>
+        <h3>Очень детальный PDF</h3>
+        <p>«Паспорт изделия»: взрыв-схема с выносками → таблица деталей → фурнитура → кромка → вес → штрих-код. Плюс «Лист фасадов» и раскрой. <b>«Это даёт доверие»</b> (слова основателя об imos).</p>
+        <div class="src">imos S1 Article Passport · F2 D2 Лист фасадов</div>
+      </div>
+    </div>
+
+  </div><!-- /gallery -->
+
+  <div style="color:#8a877d;font-size:12px;font-family:var(--mono);margin-top:50px;border-top:1px solid rgba(255,255,255,.08);padding-top:20px">
+    V1 — интерпретация ваших принципов. Где формулировки расходятся с локами R7 (напр. «свободная орбита»), приоритет отдан вашему тексту и помечен в заметке выше.
+  </div>
+</div>
+</body>
+</html>

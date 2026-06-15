@@ -1,0 +1,78 @@
+/* Mebelchi UI Exploration — shared design language
+   Palette + type lifted from UI Handover/mebelchi_studio.html so the three
+   explorations read as one product. Each version then diverges in layout density. */
+@import url('https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap&subset=cyrillic');
+
+:root{
+  --bg:#e8e3d7; --bg-soft:#f0ebde; --bg-deep:#1a1a1c;
+  --card:#ffffff; --card-tint:rgba(255,255,255,.9);
+  --ink:#1c1c1a; --ink-soft:#4a4a48; --ink-muted:#7a7972; --ink-faint:#aaa8a0;
+  --line:rgba(28,28,26,.10); --line-soft:rgba(28,28,26,.05);
+  --accent:#1c1c1a;
+  --green:#3f7d54; --green-bg:rgba(63,125,84,.10);
+  --amber:#b8841d; --amber-bg:rgba(184,132,29,.12);
+  --red:#b5402c; --red-bg:rgba(181,64,44,.10);
+  --blue:#3a6ea5; --blue-bg:rgba(58,110,165,.10);
+  /* joint family colours — “several colours for every joint” */
+  --j-confirmat:#c2410c; --j-minifix:#7c3aed; --j-dowel:#0891b2; --j-screw:#ca8a04;
+  --wood:#d8b98a; --wood-dk:#bd9a68; --wood-edge:#9c7c4f;
+  --carcass:#efe7d6; --carcass-line:#cdbf9f;
+  --shadow-sm:0 1px 3px rgba(0,0,0,.05),0 1px 2px rgba(0,0,0,.03);
+  --shadow-md:0 4px 14px rgba(0,0,0,.07),0 1px 4px rgba(0,0,0,.04);
+  --shadow-lg:0 14px 40px rgba(0,0,0,.10),0 4px 10px rgba(0,0,0,.05);
+  --font:'IBM Plex Sans',system-ui,-apple-system,sans-serif;
+  --mono:'IBM Plex Mono',ui-monospace,monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html{scroll-behavior:smooth}
+body{font-family:var(--font);color:var(--ink);background:var(--bg-deep);line-height:1.5;-webkit-font-smoothing:antialiased}
+
+/* ---- page scaffold ---- */
+.wrap{max-width:1280px;margin:0 auto;padding:0 28px 120px}
+.topbar{position:sticky;top:0;z-index:50;background:rgba(26,26,28,.82);backdrop-filter:blur(14px);
+  border-bottom:1px solid rgba(255,255,255,.07);padding:14px 28px;display:flex;align-items:center;gap:18px}
+.topbar a{color:#cfcabd;text-decoration:none;font-size:13px;font-weight:500;letter-spacing:.02em;opacity:.8}
+.topbar a:hover{opacity:1}
+.topbar .home{color:#fff;font-weight:600;letter-spacing:.06em}
+.topbar .sp{flex:1}
+.topbar .v{color:#8a877d;font-size:11px;font-family:var(--mono)}
+
+.hero{color:#f2eee3;padding:64px 0 30px;max-width:840px}
+.hero .kick{font-family:var(--mono);font-size:12px;letter-spacing:.22em;text-transform:uppercase;color:#9a958a}
+.hero h1{font-size:clamp(30px,5vw,52px);font-weight:600;letter-spacing:-.02em;margin:14px 0 8px;line-height:1.05}
+.hero h1 b{color:#e0b878;font-weight:600}
+.hero .lede{font-size:17px;color:#c8c3b6;font-weight:300;max-width:680px}
+.hero .meta{margin-top:22px;display:flex;flex-wrap:wrap;gap:8px}
+.tag{font-size:11px;font-family:var(--mono);letter-spacing:.04em;color:#d8d3c6;background:rgba(255,255,255,.07);
+  border:1px solid rgba(255,255,255,.10);padding:5px 11px;border-radius:999px}
+.tag.on{background:#e0b878;color:#1a1a1c;border-color:#e0b878;font-weight:600}
+
+.note{color:#b6b1a4;font-size:13px;max-width:760px;margin:8px 0 0;font-weight:300}
+.note b{color:#e6e1d4;font-weight:500}
+
+/* ---- screen gallery ---- */
+.gallery{display:flex;flex-wrap:wrap;gap:30px 26px;margin-top:30px;align-items:flex-start}
+.screen{width:300px;flex:0 0 auto}
+.screen .frame{width:300px;height:632px;background:var(--bg);border-radius:34px;position:relative;overflow:hidden;
+  box-shadow:0 24px 60px rgba(0,0,0,.42),0 0 0 1px rgba(255,255,255,.05),inset 0 0 0 5px #111}
+.screen .frame.dark{background:#16181c}
+.screen .cap{margin-top:14px;color:#e8e3d6}
+.screen .cap .n{font-family:var(--mono);font-size:11px;color:#e0b878;letter-spacing:.08em}
+.screen .cap h3{font-size:15px;font-weight:600;margin:3px 0 4px}
+.screen .cap p{font-size:12.5px;color:#a8a394;font-weight:300;line-height:1.45}
+.screen .cap .src{font-family:var(--mono);font-size:10px;color:#6f6c63;margin-top:6px;letter-spacing:.02em}
+
+.sec-h{color:#f2eee3;margin:64px 0 4px;display:flex;align-items:baseline;gap:12px}
+.sec-h .num{font-family:var(--mono);color:#e0b878;font-size:14px}
+.sec-h h2{font-size:24px;font-weight:600;letter-spacing:-.01em}
+.sec-sub{color:#9a958a;font-size:14px;font-weight:300;max-width:720px}
+
+/* ---- in-phone primitives ---- */
+.statusbar{height:22px;display:flex;align-items:center;justify-content:center;position:relative}
+.statusbar::after{content:'';position:absolute;top:7px;width:80px;height:5px;background:rgba(0,0,0,.18);border-radius:99px}
+.canvas{position:absolute;inset:0}
+.glass{background:var(--card-tint);backdrop-filter:blur(16px);border:.5px solid var(--line);box-shadow:var(--shadow-sm)}
+.pill{border-radius:999px;padding:8px 14px;font-size:13px;font-weight:500}
+.mono{font-family:var(--mono)}
+.btn-primary{background:var(--ink);color:#fff;border:none;border-radius:14px;padding:14px;font-family:var(--font);
+  font-size:15px;font-weight:600;width:100%;letter-spacing:.01em}

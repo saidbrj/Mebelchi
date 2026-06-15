@@ -1,0 +1,729 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mebelchi · Конструктор</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap&subset=cyrillic" rel="stylesheet">
+<style>
+  :root{
+    --ink:#211d16; --ink-2:#6a6256; --ink-3:#9a917f;
+    --cream:#efe9db; --cream-2:#e6dfcd; --paper:#fbf8f1; --panel:#f4efe4;
+    --line:rgba(33,29,22,.12); --line-2:rgba(33,29,22,.06);
+    --amber:#c2781c; --amber-soft:rgba(194,120,28,.14);
+    --green:#3f7d54; --green-soft:rgba(63,125,84,.12);
+    --red:#b5402c; --red-soft:rgba(181,64,44,.10);
+    --blue:#3a6ea5; --blue-soft:rgba(58,110,165,.10);
+    --dim:#9a8f78; --dimtx:#6a6256;
+    --j-confirmat:#c2410c; --j-cam:#7b5cff; --j-dowel:#16a7c0; --j-screw:#d49a16; --j-pin:#3f7d54;
+    --wood:#d8b98a; --wood-edge:#9c7c4f; --carcass:#e8dcc2; --carcass-edge:#c4ad82;
+    --sans:'IBM Plex Sans',system-ui,sans-serif; --mono:'IBM Plex Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--sans);background:#13120e;color:#ece5d6;line-height:1.5;
+    background-image:radial-gradient(1400px 700px at 50% -10%,#201d16,#13120e 70%);-webkit-font-smoothing:antialiased}
+  .nav{position:sticky;top:0;z-index:80;display:flex;gap:16px;align-items:center;padding:13px 26px;
+    background:rgba(19,18,14,.8);backdrop-filter:blur(16px);border-bottom:1px solid rgba(255,255,255,.06)}
+  .nav a{color:#cfc6b4;text-decoration:none;font-size:13px;font-weight:500;opacity:.78}
+  .nav a:hover{opacity:1}.nav .home{color:#fff;font-weight:600}.nav .sp{flex:1}.nav .now{color:var(--amber);opacity:1}
+  .wrap{max-width:1280px;margin:0 auto;padding:0 26px 110px}
+
+  .hero{padding:58px 0 26px;max-width:880px}
+  .hero .kick{font-family:var(--mono);font-size:12px;letter-spacing:.2em;text-transform:uppercase;color:#9a9484}
+  .hero h1{font-size:clamp(32px,5vw,54px);font-weight:600;letter-spacing:-.02em;line-height:1.04;margin:14px 0 14px;color:#fff}
+  .hero h1 b{color:var(--amber)}
+  .hero .lede{font-size:17px;color:#c6bfb0;font-weight:300;max-width:680px}
+  .hero .tags{margin-top:20px;display:flex;flex-wrap:wrap;gap:8px}
+  .tg{font-family:var(--mono);font-size:11px;color:#d6cdba;background:rgba(255,255,255,.06);border:1px solid rgba(255,255,255,.1);
+    padding:5px 11px;border-radius:999px}
+  .tg.on{background:var(--amber);color:#1a1206;border-color:var(--amber);font-weight:600}
+
+  .board{margin-top:52px}
+  .bh{display:flex;align-items:baseline;gap:14px;margin-bottom:6px;flex-wrap:wrap}
+  .bh .num{font-family:var(--mono);font-size:13px;color:var(--amber)}
+  .bh h2{font-size:23px;font-weight:600;letter-spacing:-.01em;color:#f4eee0}
+  .bh .ans{font-family:var(--mono);font-size:10.5px;color:#1a1206;background:var(--amber);border-radius:6px;padding:3px 9px;font-weight:600}
+  .bsub{color:#9a9484;font-size:14px;font-weight:300;max-width:760px;margin-bottom:18px}
+
+  .surface{background:var(--cream);border-radius:18px;border:1px solid rgba(0,0,0,.25);overflow:hidden;
+    box-shadow:0 30px 70px rgba(0,0,0,.45)}
+  svg{display:block}
+  .mono{font-family:var(--mono)}
+
+  /* ---------- TABLET APP SHELL ---------- */
+  .app{display:grid;grid-template-rows:auto 1fr auto;height:660px;background:var(--cream)}
+  .topbar{display:flex;align-items:center;gap:14px;padding:10px 16px;background:var(--paper);border-bottom:1px solid var(--line)}
+  .topbar .logo{font-weight:600;font-size:14px;letter-spacing:.02em;color:var(--ink)}
+  .topbar .logo span{color:var(--ink-3);font-weight:400}
+  .vtabs{display:flex;gap:3px;background:var(--cream-2);border-radius:10px;padding:3px}
+  .vtabs b{font-size:12px;font-weight:500;color:var(--ink-2);padding:6px 13px;border-radius:7px;cursor:default}
+  .vtabs b.on{background:var(--ink);color:#fff}
+  .topbar .grow{flex:1}
+  .topbar .tbtn{font-size:12px;color:var(--ink-2);border:1px solid var(--line);border-radius:8px;padding:7px 11px;background:var(--paper);display:flex;gap:6px;align-items:center}
+  .topbar .tbtn.go{background:var(--ink);color:#fff;border-color:var(--ink);font-weight:600}
+  .appbody{display:grid;grid-template-columns:236px 1fr 304px;min-height:0}
+  /* tree */
+  .tree{background:var(--paper);border-right:1px solid var(--line);padding:12px 10px;overflow:auto}
+  .tree .th{font-family:var(--mono);font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--ink-3);padding:4px 8px 8px}
+  .tnode{display:flex;align-items:center;gap:7px;padding:6px 8px;border-radius:8px;font-size:12.5px;color:var(--ink-2)}
+  .tnode .tw{width:14px;color:var(--ink-3);font-size:10px;text-align:center}
+  .tnode.sel{background:var(--amber-soft);color:var(--ink);font-weight:500}
+  .tnode.lvl1{padding-left:20px}.tnode.lvl2{padding-left:34px}
+  .tnode .pu{margin-left:auto;font-family:var(--mono);font-size:9px;color:#fff;background:var(--ink-3);border-radius:5px;padding:1px 5px}
+  .tnode.sel .pu{background:var(--amber)}
+  /* viewport */
+  .viewport{position:relative;background:
+    linear-gradient(var(--line-2) 1px,transparent 1px) 0 0/26px 26px,
+    linear-gradient(90deg,var(--line-2) 1px,transparent 1px) 0 0/26px 26px,var(--cream)}
+  .viewcube{position:absolute;top:14px;right:14px;width:62px;height:62px}
+  .vlabel{position:absolute;top:14px;left:16px;font-family:var(--mono);font-size:11px;color:var(--ink-2);
+    background:var(--paper);border:1px solid var(--line);border-radius:7px;padding:5px 9px}
+  .planmini{position:absolute;left:16px;bottom:14px;width:120px;height:92px;background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:8px}
+  .planmini .pl{font-family:var(--mono);font-size:8px;color:var(--ink-3);margin-bottom:3px}
+  .viewrail{position:absolute;right:14px;bottom:14px;display:flex;gap:6px}
+  .viewrail .vt{width:50px;height:42px;background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:3px;display:flex;flex-direction:column;align-items:center;justify-content:center}
+  .viewrail .vt.on{border-color:var(--amber);box-shadow:0 0 0 1.5px var(--amber)}
+  .viewrail .vt span{font-family:var(--mono);font-size:7.5px;color:var(--ink-2);margin-top:1px}
+  /* inspector */
+  .insp{background:var(--paper);border-left:1px solid var(--line);display:flex;flex-direction:column;min-height:0}
+  .itabs{display:flex;border-bottom:1px solid var(--line);padding:0 6px}
+  .itabs b{font-size:11px;font-weight:500;color:var(--ink-2);padding:11px 9px;border-bottom:2px solid transparent;cursor:default}
+  .itabs b.on{color:var(--ink);border-bottom-color:var(--amber);font-weight:600}
+  .ibody{padding:14px;overflow:auto}
+  .seclabel{font-size:13px;font-weight:600;color:var(--ink);margin-bottom:2px}
+  .secsub{font-family:var(--mono);font-size:10px;color:var(--ink-3);margin-bottom:13px}
+  .dimrow{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+  .dimrow .lb{font-size:12px;color:var(--ink-2);width:64px}
+  .dimrow .fld{flex:1;display:flex;align-items:center;justify-content:space-between;background:var(--cream);border:1px solid var(--line);border-radius:9px;padding:9px 11px}
+  .dimrow .fld .v{font-family:var(--mono);font-size:14px;font-weight:600;color:var(--ink)}
+  .dimrow .fld .u{font-family:var(--mono);font-size:10px;color:var(--ink-3)}
+  .dimrow .fld.amber{border-color:var(--amber);background:var(--amber-soft)}
+  .scopebar{display:flex;background:var(--cream-2);border-radius:9px;padding:3px;gap:2px;margin:4px 0 14px}
+  .scopebar b{flex:1;text-align:center;font-size:10.5px;padding:6px 0;border-radius:7px;color:var(--ink-2);font-weight:500}
+  .scopebar b.on{background:var(--paper);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.06)}
+  .note{border-radius:10px;padding:10px 11px;font-size:11.5px;line-height:1.45;margin-top:6px}
+  .note.amber{background:var(--amber-soft);color:#7a4a0c}.note.amber b{color:var(--amber)}
+  .note.red{background:var(--red-soft);color:#7a2a1c}.note.red b{color:var(--red)}
+  .note.green{background:var(--green-soft);color:#2c5a3c}
+  /* status */
+  .status{display:flex;align-items:center;gap:18px;padding:9px 16px;background:var(--paper);border-top:1px solid var(--line)}
+  .status .s{font-family:var(--mono);font-size:11.5px;color:var(--ink-2)}
+  .status .s b{color:var(--ink);font-weight:600}
+  .status .grow{flex:1}
+  .status .chip{display:flex;align-items:center;gap:6px;font-family:var(--mono);font-size:11px;font-weight:600;border-radius:99px;padding:5px 11px}
+  .status .chip.amber{background:var(--amber-soft);color:var(--amber)}
+
+  /* generic dim text helper colors handled per-svg */
+  .cap{color:#8f897a;font-size:12.5px;font-weight:300;margin-top:12px;font-family:var(--mono);line-height:1.6}
+  .cap b{color:#d8d0bf;font-weight:500}
+
+  /* multi-view grid */
+  .grid4{display:grid;grid-template-columns:1fr 1fr;gap:0}
+  .grid4 .cell{padding:16px;border-right:1px solid var(--line);border-bottom:1px solid var(--line);position:relative}
+  .grid4 .cell:nth-child(2n){border-right:none}
+  .grid4 .cell:nth-child(n+3){border-bottom:none}
+  .cell .tag{position:absolute;top:12px;left:14px;font-family:var(--mono);font-size:10px;color:#fff;background:var(--ink);border-radius:6px;padding:3px 9px;letter-spacing:.04em}
+  .cell .tag.iso{background:var(--amber)}
+
+  /* purpose board */
+  .purpose-wrap{display:grid;grid-template-columns:300px 1fr;gap:0}
+  .plist{background:var(--paper);border-right:1px solid var(--line);padding:14px}
+  .pcard{display:flex;gap:11px;align-items:flex-start;padding:11px;border-radius:11px;border:1px solid var(--line);margin-bottom:8px;background:var(--cream)}
+  .pcard.sel{border-color:var(--amber);background:var(--amber-soft)}
+  .pcard .ic{font-size:18px;line-height:1.2}
+  .pcard .nm{font-size:13px;font-weight:600;color:var(--ink)}
+  .pcard .cn{font-family:var(--mono);font-size:10px;color:var(--ink-2);margin-top:2px;line-height:1.4}
+  .pdetail{padding:18px}
+  .constraint{display:flex;align-items:center;gap:10px;padding:10px 0;border-bottom:1px dashed var(--line)}
+  .constraint .k{font-size:12.5px;color:var(--ink-2);flex:1}
+  .constraint .v{font-family:var(--mono);font-size:12.5px;font-weight:600;color:var(--ink)}
+  .constraint .st{font-family:var(--mono);font-size:9px;border-radius:5px;padding:2px 7px;font-weight:600}
+  .constraint .st.ok{background:var(--green-soft);color:var(--green)}
+  .constraint .st.bad{background:var(--red-soft);color:var(--red)}
+
+  /* adaptive board */
+  .adapt{display:grid;grid-template-columns:1fr 1fr 1fr;gap:0}
+  .adapt .step{padding:16px;border-right:1px solid var(--line);position:relative}
+  .adapt .step:last-child{border-right:none}
+  .adapt .step .w{font-family:var(--mono);font-size:11px;color:var(--ink);font-weight:600;margin-bottom:2px}
+  .adapt .step .d{font-family:var(--mono);font-size:9.5px;color:var(--ink-2);margin-bottom:10px}
+
+  /* strengthening board */
+  .str-wrap{display:grid;grid-template-columns:1fr 320px;gap:0}
+  .str-list{background:var(--paper);border-left:1px solid var(--line);padding:14px;overflow:auto}
+  .str-head{display:flex;justify-content:space-between;align-items:center;margin-bottom:10px}
+  .str-head .h{font-size:13px;font-weight:600;color:var(--ink)}
+  .str-head .add{font-family:var(--mono);font-size:10px;color:#fff;background:var(--ink);border-radius:7px;padding:5px 9px}
+  .sitem{border:1px solid var(--line);border-radius:11px;padding:10px;margin-bottom:8px;background:var(--cream)}
+  .sitem .top{display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .sitem .sw{width:13px;height:13px;border-radius:3px}
+  .sitem .nm{font-size:12.5px;font-weight:600;color:var(--ink);flex:1}
+  .sitem .tp{font-family:var(--mono);font-size:9px;color:var(--ink-2);background:var(--cream-2);border-radius:5px;padding:2px 6px}
+  .sitem .params{display:flex;gap:6px;flex-wrap:wrap}
+  .sitem .pm{font-family:var(--mono);font-size:9.5px;color:var(--ink-2);border:1px solid var(--line);border-radius:6px;padding:3px 7px;background:var(--paper)}
+  .sitem .pm b{color:var(--ink)}
+  .strcat{font-family:var(--mono);font-size:9px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-3);margin:12px 0 6px}
+
+  /* phone collapse */
+  .phones{display:flex;gap:24px;flex-wrap:wrap;justify-content:center;padding:22px;background:var(--cream-2)}
+  .ph{width:248px}
+  .ph .frame{width:248px;height:510px;background:#111;border-radius:30px;padding:6px;box-shadow:0 18px 40px rgba(0,0,0,.4)}
+  .ph .scr{width:100%;height:100%;border-radius:24px;overflow:hidden;background:var(--cream);position:relative}
+  .ph .cp{text-align:center;font-family:var(--mono);font-size:10.5px;color:#8f897a;margin-top:10px}
+
+  .foot{color:#6b675c;font-size:12px;font-family:var(--mono);margin-top:54px;border-top:1px solid rgba(255,255,255,.07);padding-top:18px;line-height:1.8}
+  .foot b{color:#cfc6b4;font-weight:500}
+</style>
+</head>
+<body>
+<div class="nav">
+  <a class="home" href="index.html">◀ Mebelchi UI</a><span class="sp"></span>
+  <a href="v5-live.html" style="color:var(--amber);opacity:1">▶ Конструктор · live</a>
+  <a class="now" href="v5-constructor.html">Листы</a>
+  <a href="v4-living-lines.html">Линии</a><a href="v1-principles.html">V1</a><a href="v2-workbench.html">V2</a><a href="v3-flow.html">V3</a>
+</div>
+
+<div class="wrap">
+  <div class="hero">
+    <div class="kick">Полный инструмент · планшет → телефон</div>
+    <h1>Не вид мебели.<br><b>Конструктор</b> мебели.</h1>
+    <p class="lede">Перестроено вокруг твоих замечаний: настоящие проекции (перспектива + фронт/бок/план), редактирование глубины, узлы в трёх видах и перспективе, Г-форма, назначение секции с последствиями, секции, которые перестраиваются под размер, и конкретные усиления — не одна кнопка. Тёплая бумага и интеллект движка остаются. Визуально опирается на imos iX.</p>
+    <div class="tags">
+      <span class="tg on">перспектива + 3 вида</span>
+      <span class="tg on">глубина</span>
+      <span class="tg on">узлы в 3 видах</span>
+      <span class="tg on">Г-форма</span>
+      <span class="tg on">назначение → ограничения</span>
+      <span class="tg on">адаптивные секции</span>
+      <span class="tg on">конкретные усиления</span>
+    </div>
+  </div>
+
+  <!-- ===================== BOARD 1 — WORKSPACE ===================== -->
+  <div class="board">
+    <div class="bh"><span class="num">01</span><h2>Рабочее место (планшет)</h2><span class="ans">полный UI · solid</span></div>
+    <div class="bsub">Постоянный каркас как у профи-CAD: дерево структуры слева, видовой куб и проекции в окне, инспектор справа с реальной глубиной и назначением, статус с листами/ценой/проверкой. Ничего не плавает в пустоте.</div>
+    <div class="surface">
+      <div class="app">
+        <!-- top -->
+        <div class="topbar">
+          <div class="logo">Mebelchi <span>· Кухня Алишера · Г-стеллаж</span></div>
+          <div class="vtabs"><b class="on">Перспектива</b><b>Фронт</b><b>Бок</b><b>План</b><b>4 вида</b></div>
+          <div class="grow"></div>
+          <div class="tbtn">↶ ↷</div>
+          <div class="tbtn">◇ Проверить</div>
+          <div class="tbtn go">↧ Вывод</div>
+        </div>
+        <!-- body -->
+        <div class="appbody">
+          <!-- tree -->
+          <div class="tree">
+            <div class="th">Структура</div>
+            <div class="tnode">▾ <span class="tw"></span> Г-стеллаж</div>
+            <div class="tnode lvl1">▾ Ряд A · 1800</div>
+            <div class="tnode lvl2 sel">Секция · одежда <span class="pu">штанга</span></div>
+            <div class="tnode lvl2">Секция · книги <span class="pu">полки</span></div>
+            <div class="tnode lvl2">Секция · ящики <span class="pu">ящики</span></div>
+            <div class="tnode lvl1">▾ Ряд B · 1200 <span class="pu">угол</span></div>
+            <div class="tnode lvl2">Секция · обувь <span class="pu">обувь</span></div>
+            <div class="tnode lvl2">Секция · открытая</div>
+            <div class="th" style="margin-top:14px">Непрерывные</div>
+            <div class="tnode lvl1">Цоколь · 100</div>
+            <div class="tnode lvl1">Топ-панель</div>
+          </div>
+          <!-- viewport -->
+          <div class="viewport">
+            <div class="vlabel">Перспектива · оближняя проекция · мм</div>
+            <!-- view cube -->
+            <svg class="viewcube" viewBox="0 0 62 62">
+              <polygon points="14,22 38,22 48,12 24,12" fill="#e8dcc2" stroke="#c4ad82" stroke-width="1"/>
+              <polygon points="14,22 38,22 38,50 14,50" fill="#fbf8f1" stroke="#c4ad82" stroke-width="1"/>
+              <polygon points="38,22 48,12 48,40 38,50" fill="#ded0b2" stroke="#c4ad82" stroke-width="1"/>
+              <text x="26" y="40" font-family="var(--mono)" font-size="8" fill="#6a6256" text-anchor="middle">ФР</text>
+            </svg>
+            <!-- ISO L-run A drawing -->
+            <svg viewBox="0 0 560 470" width="100%" height="100%" preserveAspectRatio="xMidYMid meet">
+              <defs>
+                <marker id="da" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M1,1 L7,4 L1,7" fill="none" stroke="var(--dim)" stroke-width="1"/></marker>
+              </defs>
+              <!-- floor shadow -->
+              <ellipse cx="300" cy="402" rx="190" ry="22" fill="#000" opacity=".05"/>
+              <!-- depth vector d=(46,-28). Run A front face: TL(150,96) W=250 H=270 -->
+              <!-- top face -->
+              <polygon points="150,96 400,96 446,68 196,68" fill="#f1e8d4" stroke="var(--carcass-edge)" stroke-width="1.6"/>
+              <!-- right side face -->
+              <polygon points="400,96 446,68 446,338 400,366" fill="#e4d7bc" stroke="var(--carcass-edge)" stroke-width="1.6"/>
+              <!-- front face carcass -->
+              <rect x="150" y="96" width="250" height="270" fill="var(--carcass)" stroke="var(--carcass-edge)" stroke-width="1.8"/>
+              <!-- section dividers (vertical) at x=235, x=315 -->
+              <line x1="235" y1="96" x2="235" y2="366" stroke="var(--carcass-edge)" stroke-width="1.6"/>
+              <line x1="315" y1="96" x2="315" y2="366" stroke="var(--carcass-edge)" stroke-width="1.6"/>
+              <!-- depth edges on dividers (top) -->
+              <line x1="235" y1="96" x2="281" y2="68" stroke="var(--carcass-edge)" stroke-width="1" stroke-dasharray="3 3"/>
+              <line x1="315" y1="96" x2="361" y2="68" stroke="var(--carcass-edge)" stroke-width="1" stroke-dasharray="3 3"/>
+              <!-- SECTION 1: clothes rod (selected, amber) -->
+              <rect x="150" y="96" width="85" height="270" fill="var(--amber-soft)" stroke="var(--amber)" stroke-width="2.2"/>
+              <line x1="160" y1="120" x2="225" y2="120" stroke="var(--amber)" stroke-width="3" stroke-linecap="round"/>
+              <line x1="178" y1="120" x2="178" y2="150" stroke="var(--wood-edge)" stroke-width="1.4"/>
+              <line x1="200" y1="120" x2="200" y2="150" stroke="var(--wood-edge)" stroke-width="1.4"/>
+              <rect x="170" y="150" width="46" height="80" fill="none" stroke="var(--wood-edge)" stroke-width="1" stroke-dasharray="2 2"/>
+              <!-- SECTION 2: book shelves x5 -->
+              <line x1="235" y1="150" x2="315" y2="150" stroke="var(--carcass-edge)" stroke-width="1.5"/>
+              <line x1="235" y1="200" x2="315" y2="200" stroke="var(--carcass-edge)" stroke-width="1.5"/>
+              <line x1="235" y1="255" x2="315" y2="255" stroke="var(--carcass-edge)" stroke-width="1.5"/>
+              <line x1="235" y1="310" x2="315" y2="310" stroke="var(--carcass-edge)" stroke-width="1.5"/>
+              <!-- SECTION 3: drawers x4 -->
+              <rect x="322" y="103" width="71" height="58" fill="var(--wood)" stroke="var(--wood-edge)" stroke-width="1.2"/>
+              <rect x="322" y="166" width="71" height="58" fill="var(--wood)" stroke="var(--wood-edge)" stroke-width="1.2"/>
+              <rect x="322" y="229" width="71" height="58" fill="var(--wood)" stroke="var(--wood-edge)" stroke-width="1.2"/>
+              <rect x="322" y="292" width="71" height="68" fill="var(--wood)" stroke="var(--wood-edge)" stroke-width="1.2"/>
+              <line x1="345" y1="132" x2="370" y2="132" stroke="var(--wood-edge)" stroke-width="2" stroke-linecap="round"/>
+              <line x1="345" y1="195" x2="370" y2="195" stroke="var(--wood-edge)" stroke-width="2" stroke-linecap="round"/>
+              <line x1="345" y1="258" x2="370" y2="258" stroke="var(--wood-edge)" stroke-width="2" stroke-linecap="round"/>
+              <line x1="345" y1="326" x2="370" y2="326" stroke="var(--wood-edge)" stroke-width="2" stroke-linecap="round"/>
+              <!-- joint markers (cam=purple, dowel=teal, confirmat=orange) -->
+              <circle cx="150" cy="96" r="4.5" fill="var(--j-confirmat)"/><circle cx="400" cy="96" r="4.5" fill="var(--j-confirmat)"/>
+              <circle cx="150" cy="366" r="4.5" fill="var(--j-confirmat)"/><circle cx="400" cy="366" r="4.5" fill="var(--j-confirmat)"/>
+              <circle cx="235" cy="150" r="4" fill="var(--j-cam)"/><circle cx="315" cy="150" r="4" fill="var(--j-cam)"/>
+              <!-- dimension: width 1800 -->
+              <line x1="150" y1="392" x2="400" y2="392" stroke="var(--dim)" stroke-width="1" marker-start="url(#da)" marker-end="url(#da)"/>
+              <line x1="150" y1="380" x2="150" y2="396" stroke="var(--dim)" stroke-width=".8"/><line x1="400" y1="380" x2="400" y2="396" stroke="var(--dim)" stroke-width=".8"/>
+              <text x="275" y="388" font-family="var(--mono)" font-size="12" fill="var(--dimtx)" text-anchor="middle">1800</text>
+              <!-- dimension: height 2100 (left) -->
+              <line x1="128" y1="96" x2="128" y2="366" stroke="var(--dim)" stroke-width="1" marker-start="url(#da)" marker-end="url(#da)"/>
+              <text x="120" y="235" font-family="var(--mono)" font-size="12" fill="var(--dimtx)" text-anchor="middle" transform="rotate(-90 120 235)">2100</text>
+              <!-- dimension: depth 400 (top-right oblique) -->
+              <line x1="408" y1="92" x2="454" y2="64" stroke="var(--dim)" stroke-width="1" marker-end="url(#da)"/>
+              <text x="450" y="58" font-family="var(--mono)" font-size="11" fill="var(--dimtx)" text-anchor="middle">глуб 400</text>
+            </svg>
+            <!-- plan mini map (shows full L) -->
+            <div class="planmini">
+              <div class="pl">ПЛАН · вся Г-форма</div>
+              <svg viewBox="0 0 104 64" width="100%" height="58">
+                <path d="M6,8 H78 V24 H30 V56 H6 Z" fill="var(--paper)" stroke="var(--carcass-edge)" stroke-width="1.4"/>
+                <rect x="6" y="8" width="72" height="16" fill="var(--amber-soft)" stroke="var(--amber)" stroke-width="1.4"/>
+                <text x="40" y="19" font-family="var(--mono)" font-size="6" fill="#7a4a0c" text-anchor="middle">ряд A</text>
+                <text x="17" y="44" font-family="var(--mono)" font-size="6" fill="#6a6256" text-anchor="middle">ряд B</text>
+              </svg>
+            </div>
+            <!-- view rail -->
+            <div class="viewrail">
+              <div class="vt on"><svg viewBox="0 0 30 24" width="30" height="20"><polygon points="6,8 20,8 24,5 10,5" fill="none" stroke="#9c7c4f" stroke-width="1"/><rect x="6" y="8" width="14" height="12" fill="none" stroke="#9c7c4f" stroke-width="1"/></svg><span>персп</span></div>
+              <div class="vt"><svg viewBox="0 0 30 24" width="30" height="20"><rect x="8" y="4" width="14" height="16" fill="none" stroke="#9c7c4f" stroke-width="1"/><line x1="8" y1="10" x2="22" y2="10" stroke="#9c7c4f" stroke-width=".8"/></svg><span>фронт</span></div>
+              <div class="vt"><svg viewBox="0 0 30 24" width="30" height="20"><rect x="11" y="4" width="8" height="16" fill="none" stroke="#9c7c4f" stroke-width="1"/></svg><span>бок</span></div>
+              <div class="vt"><svg viewBox="0 0 30 24" width="30" height="20"><path d="M6,8 H22 V12 H12 V20 H6 Z" fill="none" stroke="#9c7c4f" stroke-width="1"/></svg><span>план</span></div>
+            </div>
+          </div>
+          <!-- inspector -->
+          <div class="insp">
+            <div class="itabs"><b class="on">Размеры</b><b>Назначение</b><b>Соединения</b><b>Усиление</b><b>Материал</b></div>
+            <div class="ibody">
+              <div class="seclabel">Секция · одежда</div>
+              <div class="secsub">ряд A · позиция 1 · штанга</div>
+              <div class="dimrow"><span class="lb">Ширина</span><div class="fld"><span class="v">850</span><span class="u">мм ✎</span></div></div>
+              <div class="dimrow"><span class="lb">Высота</span><div class="fld"><span class="v">1100</span><span class="u">мм ✎</span></div></div>
+              <div class="dimrow"><span class="lb">Глубина</span><div class="fld amber"><span class="v">400</span><span class="u">мм ✎</span></div></div>
+              <div class="scopebar"><b>Локально</b><b class="on">Секция</b><b>Ряд</b><b>Всё</b></div>
+              <div class="note red"><b>Глубина мала для одежды.</b> Плечики требуют ≥ 500 мм (см. вкладку «Назначение»). Сейчас 400 → пальто будет тереться о дверь.</div>
+              <div class="note green" style="margin-top:8px">Штанга стоит на отметке 1040 мм от пола секции — в зоне удобного доступа.</div>
+            </div>
+          </div>
+        </div>
+        <!-- status -->
+        <div class="status">
+          <span class="s">Листы: <b>4.6 ЛДСП</b> · 0.6 ХДФ</span>
+          <span class="s">Цена: <b>5 120 000</b> сум</span>
+          <div class="grow"></div>
+          <span class="s">керф 4.0 · лист 2800×2070</span>
+          <span class="chip amber">▲ 1 замечание</span>
+        </div>
+      </div>
+    </div>
+    <div class="cap">Дерево + видовой куб + проекции + инспектор с <b>глубиной</b> + назначение + статус. Это «полный UI», который ощущался отсутствующим. Опирается на раскладку imos iX, но с нашей тёплой подачей.</div>
+  </div>
+
+  <!-- ===================== BOARD 2 — MULTI-VIEW ===================== -->
+  <div class="board">
+    <div class="bh"><span class="num">02</span><h2>Перспектива + три проекции</h2><span class="ans">3 вида · глубина</span></div>
+    <div class="bsub">Одна модель, четыре синхронных вида. Глубину видно и меняешь в «Бок» и «План» — поэтому проекции обязательны. У полки своя глубина (она утоплена), это видно в боковом виде. Г-форма очевидна в плане.</div>
+    <div class="surface">
+      <div class="grid4">
+        <!-- ISO -->
+        <div class="cell"><div class="tag iso">ПЕРСПЕКТИВА</div>
+          <svg viewBox="0 0 300 250" width="100%" height="210">
+            <ellipse cx="150" cy="220" rx="120" ry="14" fill="#000" opacity=".05"/>
+            <!-- run A -->
+            <polygon points="60,60 200,60 232,40 92,40" fill="#f1e8d4" stroke="#c4ad82" stroke-width="1.3"/>
+            <polygon points="200,60 232,40 232,200 200,220" fill="#e4d7bc" stroke="#c4ad82" stroke-width="1.3"/>
+            <rect x="60" y="60" width="140" height="160" fill="var(--carcass)" stroke="#c4ad82" stroke-width="1.4"/>
+            <line x1="108" y1="60" x2="108" y2="220" stroke="#c4ad82" stroke-width="1.2"/>
+            <line x1="152" y1="60" x2="152" y2="220" stroke="#c4ad82" stroke-width="1.2"/>
+            <!-- run B receding (the return) -->
+            <polygon points="200,60 232,40 290,5 258,25" fill="#ece0c6" stroke="#c4ad82" stroke-width="1.1"/>
+            <polygon points="232,40 290,5 290,150 232,200" fill="#ddd0b3" stroke="#c4ad82" stroke-width="1.1"/>
+            <text x="250" y="120" font-family="var(--mono)" font-size="8" fill="#8a7d5e" transform="rotate(-31 250 120)">ряд B (угол)</text>
+            <circle cx="60" cy="60" r="3.5" fill="var(--j-confirmat)"/><circle cx="200" cy="60" r="3.5" fill="var(--j-confirmat)"/>
+            <circle cx="108" cy="120" r="3" fill="var(--j-cam)"/><circle cx="152" cy="120" r="3" fill="var(--j-cam)"/>
+          </svg>
+        </div>
+        <!-- FRONT -->
+        <div class="cell"><div class="tag">ФРОНТ · елевация</div>
+          <svg viewBox="0 0 300 250" width="100%" height="210">
+            <defs><marker id="da2" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M1,1 L7,4 L1,7" fill="none" stroke="var(--dim)" stroke-width="1"/></marker></defs>
+            <rect x="70" y="36" width="160" height="180" fill="var(--carcass)" stroke="#c4ad82" stroke-width="1.6"/>
+            <line x1="124" y1="36" x2="124" y2="216" stroke="#c4ad82" stroke-width="1.4"/>
+            <line x1="178" y1="36" x2="178" y2="216" stroke="#c4ad82" stroke-width="1.4"/>
+            <!-- clothes -->
+            <line x1="80" y1="52" x2="116" y2="52" stroke="var(--amber)" stroke-width="2.4" stroke-linecap="round"/>
+            <!-- shelves -->
+            <line x1="124" y1="74" x2="178" y2="74" stroke="#c4ad82" stroke-width="1.2"/><line x1="124" y1="110" x2="178" y2="110" stroke="#c4ad82" stroke-width="1.2"/><line x1="124" y1="146" x2="178" y2="146" stroke="#c4ad82" stroke-width="1.2"/><line x1="124" y1="182" x2="178" y2="182" stroke="#c4ad82" stroke-width="1.2"/>
+            <!-- drawers -->
+            <rect x="184" y="42" width="40" height="40" fill="var(--wood)" stroke="#9c7c4f" stroke-width="1"/><rect x="184" y="86" width="40" height="40" fill="var(--wood)" stroke="#9c7c4f" stroke-width="1"/><rect x="184" y="130" width="40" height="40" fill="var(--wood)" stroke="#9c7c4f" stroke-width="1"/><rect x="184" y="174" width="40" height="38" fill="var(--wood)" stroke="#9c7c4f" stroke-width="1"/>
+            <line x1="70" y1="230" x2="230" y2="230" stroke="var(--dim)" stroke-width="1" marker-start="url(#da2)" marker-end="url(#da2)"/>
+            <text x="150" y="245" font-family="var(--mono)" font-size="10" fill="var(--dimtx)" text-anchor="middle">1800</text>
+            <line x1="56" y1="36" x2="56" y2="216" stroke="var(--dim)" stroke-width="1" marker-start="url(#da2)" marker-end="url(#da2)"/>
+            <text x="48" y="130" font-family="var(--mono)" font-size="10" fill="var(--dimtx)" text-anchor="middle" transform="rotate(-90 48 130)">2100</text>
+          </svg>
+        </div>
+        <!-- SIDE -->
+        <div class="cell"><div class="tag">БОК · глубина</div>
+          <svg viewBox="0 0 300 250" width="100%" height="210">
+            <defs><marker id="da3" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M1,1 L7,4 L1,7" fill="none" stroke="var(--dim)" stroke-width="1"/></marker></defs>
+            <rect x="110" y="36" width="92" height="180" fill="var(--carcass)" stroke="#c4ad82" stroke-width="1.6"/>
+            <!-- back panel -->
+            <rect x="110" y="36" width="8" height="180" fill="#ddd0b3" stroke="#c4ad82" stroke-width=".8"/>
+            <!-- full-depth shelves -->
+            <line x1="118" y1="80" x2="202" y2="80" stroke="#c4ad82" stroke-width="1.4"/>
+            <line x1="118" y1="150" x2="202" y2="150" stroke="#c4ad82" stroke-width="1.4"/>
+            <!-- recessed shelf (own depth) -->
+            <line x1="118" y1="115" x2="176" y2="115" stroke="var(--amber)" stroke-width="2"/>
+            <text x="210" y="118" font-family="var(--mono)" font-size="8" fill="var(--amber)">полка 300</text>
+            <!-- depth dim -->
+            <line x1="110" y1="230" x2="202" y2="230" stroke="var(--dim)" stroke-width="1" marker-start="url(#da3)" marker-end="url(#da3)"/>
+            <text x="156" y="245" font-family="var(--mono)" font-size="10" fill="var(--dimtx)" text-anchor="middle">глубина 400</text>
+            <text x="156" y="28" font-family="var(--mono)" font-size="8" fill="var(--ink-3)" text-anchor="middle">← фасад</text>
+          </svg>
+        </div>
+        <!-- PLAN -->
+        <div class="cell"><div class="tag">ПЛАН · Г-форма</div>
+          <svg viewBox="0 0 300 250" width="100%" height="210">
+            <defs><marker id="da4" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M1,1 L7,4 L1,7" fill="none" stroke="var(--dim)" stroke-width="1"/></marker><pattern id="hatch" width="6" height="6" patternTransform="rotate(45)" patternUnits="userSpaceOnUse"><line x1="0" y1="0" x2="0" y2="6" stroke="#c4ad82" stroke-width="1"/></pattern></defs>
+            <!-- L footprint -->
+            <path d="M40,40 H236 V84 H84 V210 H40 Z" fill="var(--paper)" stroke="#9c7c4f" stroke-width="1.8"/>
+            <path d="M40,40 H236 V84 H84 V210 H40 Z" fill="url(#hatch)" opacity=".5"/>
+            <!-- section divisions row A -->
+            <line x1="118" y1="40" x2="118" y2="84" stroke="#c4ad82" stroke-width="1.2"/>
+            <line x1="170" y1="40" x2="170" y2="84" stroke="#c4ad82" stroke-width="1.2"/>
+            <line x1="40" y1="146" x2="84" y2="146" stroke="#c4ad82" stroke-width="1.2"/>
+            <!-- dims -->
+            <line x1="40" y1="28" x2="236" y2="28" stroke="var(--dim)" stroke-width="1" marker-start="url(#da4)" marker-end="url(#da4)"/>
+            <text x="138" y="22" font-family="var(--mono)" font-size="9" fill="var(--dimtx)" text-anchor="middle">1800</text>
+            <line x1="248" y1="40" x2="248" y2="84" stroke="var(--dim)" stroke-width="1" marker-start="url(#da4)" marker-end="url(#da4)"/>
+            <text x="262" y="66" font-family="var(--mono)" font-size="8" fill="var(--dimtx)">400</text>
+            <line x1="28" y1="84" x2="28" y2="210" stroke="var(--dim)" stroke-width="1" marker-start="url(#da4)" marker-end="url(#da4)"/>
+            <text x="20" y="150" font-family="var(--mono)" font-size="9" fill="var(--dimtx)" text-anchor="middle" transform="rotate(-90 20 150)">1200</text>
+            <text x="150" y="68" font-family="var(--mono)" font-size="8" fill="#8a7d5e" text-anchor="middle">ряд A</text>
+            <text x="60" y="155" font-family="var(--mono)" font-size="8" fill="#8a7d5e" text-anchor="middle">ряд B</text>
+          </svg>
+        </div>
+      </div>
+    </div>
+    <div class="cap">Глубина каркаса <b>400</b>, у выделенной полки своя глубина <b>300</b> (утоплена — видно в «Бок»). «План» снимает любую неоднозначность Г-формы. Меняешь размер в любом виде — остальные обновляются.</div>
+  </div>
+
+  <!-- ===================== BOARD 3 — JOINT IN 4 VIEWS ===================== -->
+  <div class="board">
+    <div class="bh"><span class="num">03</span><h2>Узел в перспективе и трёх видах</h2><span class="ans">узлы 3 вида</span></div>
+    <div class="bsub">Точки на сцене — это навигация. Но конструктор должен видеть узел по-настоящему: присадку, классы отверстий, глубины — как чертежи D1/D2 в imos. Тап по фиолетовой точке (минификс) открывает это.</div>
+    <div class="surface">
+      <div class="grid4">
+        <!-- ISO joint -->
+        <div class="cell"><div class="tag iso">ПЕРСПЕКТИВА УЗЛА</div>
+          <svg viewBox="0 0 300 250" width="100%" height="210">
+            <!-- side panel (vertical) -->
+            <polygon points="70,40 70,210 110,186 110,16" fill="var(--carcass)" stroke="#9c7c4f" stroke-width="1.4"/>
+            <polygon points="70,40 110,16 250,16 210,40" fill="#f1e8d4" stroke="#9c7c4f" stroke-width="1.2"/>
+            <!-- shelf (horizontal) butting into side -->
+            <polygon points="110,120 250,120 290,96 150,96" fill="#f1e8d4" stroke="#9c7c4f" stroke-width="1.2"/>
+            <polygon points="110,120 250,120 250,150 110,150" fill="var(--wood)" stroke="#9c7c4f" stroke-width="1.2"/>
+            <!-- cam barrel in shelf face (purple) -->
+            <circle cx="150" cy="135" r="9" fill="none" stroke="var(--j-cam)" stroke-width="2.4"/>
+            <circle cx="150" cy="135" r="3" fill="var(--j-cam)"/>
+            <!-- dowels (teal) -->
+            <circle cx="125" cy="135" r="4" fill="none" stroke="var(--j-dowel)" stroke-width="2"/>
+            <circle cx="200" cy="135" r="4" fill="none" stroke="var(--j-dowel)" stroke-width="2"/>
+            <text x="150" y="180" font-family="var(--mono)" font-size="9" fill="#6a6256" text-anchor="middle">полка ⟂ боковина</text>
+          </svg>
+        </div>
+        <!-- FRONT: face drilling on side panel -->
+        <div class="cell"><div class="tag">ФРОНТ · присадка боковины</div>
+          <svg viewBox="0 0 300 250" width="100%" height="210">
+            <defs><marker id="da5" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M1,1 L7,4 L1,7" fill="none" stroke="var(--dim)" stroke-width="1"/></marker></defs>
+            <rect x="60" y="30" width="180" height="190" fill="var(--paper)" stroke="#9c7c4f" stroke-width="1.4"/>
+            <!-- cam hole Ø15 -->
+            <circle cx="150" cy="110" r="13" fill="#fff" stroke="var(--j-cam)" stroke-width="2.2"/>
+            <line x1="150" y1="97" x2="150" y2="123" stroke="var(--j-cam)" stroke-width=".7"/><line x1="137" y1="110" x2="163" y2="110" stroke="var(--j-cam)" stroke-width=".7"/>
+            <text x="172" y="100" font-family="var(--mono)" font-size="9" fill="var(--j-cam)">Ø15</text>
+            <!-- dowels Ø8 -->
+            <circle cx="100" cy="110" r="7" fill="#fff" stroke="var(--j-dowel)" stroke-width="2"/>
+            <circle cx="200" cy="110" r="7" fill="#fff" stroke="var(--j-dowel)" stroke-width="2"/>
+            <text x="100" y="135" font-family="var(--mono)" font-size="8" fill="var(--j-dowel)" text-anchor="middle">Ø8</text>
+            <!-- system-32 shelf pins -->
+            <circle cx="80" cy="60" r="3" fill="var(--j-pin)"/><circle cx="80" cy="92" r="3" fill="var(--j-pin)"/><circle cx="80" cy="156" r="3" fill="var(--j-pin)"/><circle cx="80" cy="188" r="3" fill="var(--j-pin)"/>
+            <text x="80" y="50" font-family="var(--mono)" font-size="7" fill="var(--j-pin)" text-anchor="middle">Ø5·32</text>
+            <line x1="100" y1="200" x2="200" y2="200" stroke="var(--dim)" stroke-width="1" marker-start="url(#da5)" marker-end="url(#da5)"/>
+            <text x="150" y="214" font-family="var(--mono)" font-size="9" fill="var(--dimtx)" text-anchor="middle">64</text>
+          </svg>
+        </div>
+        <!-- SIDE: section through cam bolt -->
+        <div class="cell"><div class="tag">БОК · разрез по стяжке</div>
+          <svg viewBox="0 0 300 250" width="100%" height="210">
+            <defs><marker id="da6" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto"><path d="M1,1 L7,4 L1,7" fill="none" stroke="var(--dim)" stroke-width="1"/></marker></defs>
+            <!-- side panel cross-section (left, vertical) -->
+            <rect x="70" y="30" width="26" height="190" fill="url(#hatch)" stroke="#9c7c4f" stroke-width="1.4"/>
+            <!-- shelf cross-section (right, horizontal) -->
+            <rect x="96" y="104" width="150" height="26" fill="url(#hatch)" stroke="#9c7c4f" stroke-width="1.4"/>
+            <!-- cam bolt: dowel from shelf edge into cam in side -->
+            <rect x="96" y="113" width="46" height="8" fill="var(--j-cam)" opacity=".85"/>
+            <circle cx="83" cy="117" r="10" fill="#fff" stroke="var(--j-cam)" stroke-width="2.2"/>
+            <circle cx="83" cy="117" r="3.5" fill="var(--j-cam)"/>
+            <text x="150" y="150" font-family="var(--mono)" font-size="8" fill="var(--j-cam)">стяжка-эксцентрик</text>
+            <!-- cam depth dim -->
+            <line x1="83" y1="200" x2="142" y2="200" stroke="var(--dim)" stroke-width="1" marker-start="url(#da6)" marker-end="url(#da6)"/>
+            <text x="112" y="214" font-family="var(--mono)" font-size="9" fill="var(--dimtx)" text-anchor="middle">шток 34</text>
+            <text x="83" y="98" font-family="var(--mono)" font-size="7" fill="#6a6256" text-anchor="middle">Ø15×12.5</text>
+          </svg>
+        </div>
+        <!-- EDGE/TOREC: shelf edge drilling -->
+        <div class="cell"><div class="tag">ТОРЕЦ ПОЛКИ · сверловка</div>
+          <svg viewBox="0 0 300 250" width="100%" height="210">
+            <rect x="40" y="96" width="220" height="50" fill="var(--paper)" stroke="#9c7c4f" stroke-width="1.4"/>
+            <!-- bolt hole center -->
+            <circle cx="90" cy="121" r="6" fill="#fff" stroke="var(--j-cam)" stroke-width="2"/>
+            <text x="90" y="160" font-family="var(--mono)" font-size="8" fill="var(--j-cam)" text-anchor="middle">Ø8 шток</text>
+            <!-- dowel holes in edge -->
+            <circle cx="150" cy="121" r="5" fill="#fff" stroke="var(--j-dowel)" stroke-width="2"/>
+            <circle cx="210" cy="121" r="5" fill="#fff" stroke="var(--j-dowel)" stroke-width="2"/>
+            <text x="180" y="160" font-family="var(--mono)" font-size="8" fill="var(--j-dowel)" text-anchor="middle">Ø8×24 шкант ×2</text>
+            <text x="150" y="84" font-family="var(--mono)" font-size="8" fill="var(--ink-3)" text-anchor="middle">торец полки 18 мм</text>
+          </svg>
+        </div>
+      </div>
+      <div style="display:flex;gap:14px;padding:14px 16px;border-top:1px solid var(--line);background:var(--paper);flex-wrap:wrap;align-items:center">
+        <span style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink)"><span style="width:13px;height:13px;border-radius:3px;background:var(--j-cam)"></span>Минификс — выбран</span>
+        <span style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink-2)"><span style="width:13px;height:13px;border-radius:3px;background:var(--j-dowel)"></span>Шкант</span>
+        <span style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink-2)"><span style="width:13px;height:13px;border-radius:3px;background:var(--j-confirmat)"></span>Конфирмат</span>
+        <span style="display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink-2)"><span style="width:13px;height:13px;border-radius:3px;background:var(--j-pin)"></span>Полкодержатель Система-32</span>
+        <div style="flex:1"></div>
+        <span class="note blue" style="background:var(--blue-soft);color:#2a4a6a;margin:0;font-size:11px"><b style="color:var(--blue)">Почему минификс:</b> съёмная полка → разборное. Цифры берутся из mined-датасета фабрики (Ø15×12.5).</span>
+      </div>
+    </div>
+    <div class="cap">Этот лист — то, чего не хватало: узел читается как чертёж. Совпадает с тем, что мастер видит в раскладке imos, и с реальными классами отверстий из дампов фабрики.</div>
+  </div>
+
+  <!-- ===================== BOARD 4 — PURPOSE → CONSTRAINTS ===================== -->
+  <div class="board">
+    <div class="bh"><span class="num">04</span><h2>Назначение секции → ограничения</h2><span class="ans">последствия</span></div>
+    <div class="bsub">Нет, нельзя менять всё без последствий. У каждой секции есть назначение, и оно задаёт рамки: где висит одежда — минимум высоты и глубины; где ложки — мелкий ящик с лотком. Движок предупреждает, а на выводе — блокирует невозможное.</div>
+    <div class="surface">
+      <div class="purpose-wrap">
+        <div class="plist">
+          <div class="pcard sel"><span class="ic">🧥</span><div><div class="nm">Одежда (штанга)</div><div class="cn">H ≥ 1000 · глуб ≥ 500 · штанга сверху</div></div></div>
+          <div class="pcard"><span class="ic">🥄</span><div><div class="nm">Ложки / приборы</div><div class="cn">ящик ≤ 100 · лоток · делится</div></div></div>
+          <div class="pcard"><span class="ic">🍽️</span><div><div class="nm">Посуда</div><div class="cn">шаг ≥ 320 · нагрузка ↑ → 18мм</div></div></div>
+          <div class="pcard"><span class="ic">📚</span><div><div class="nm">Книги</div><div class="cn">глуб 250–300 · шаг 300–400</div></div></div>
+          <div class="pcard"><span class="ic">👞</span><div><div class="nm">Обувь</div><div class="cn">глуб ≥ 350 · шаг 150–200 · наклон</div></div></div>
+          <div class="pcard"><span class="ic">🔌</span><div><div class="nm">Техника</div><div class="cn">габарит ниши под прибор</div></div></div>
+        </div>
+        <div class="pdetail">
+          <div class="seclabel" style="font-size:15px">Одежда на штанге</div>
+          <div class="secsub" style="font-size:11px">ограничения применяются к секции · нарушение → предупреждение, на выводе — блок</div>
+          <div class="constraint"><span class="k">Высота просвета</span><span class="v">мин 1000 мм</span><span class="st ok">1100 ✓</span></div>
+          <div class="constraint"><span class="k">Глубина секции</span><span class="v">мин 500 мм</span><span class="st bad">400 ✗</span></div>
+          <div class="constraint"><span class="k">Штанга от верха</span><span class="v">40–60 мм</span><span class="st ok">50 ✓</span></div>
+          <div class="constraint"><span class="k">Нагрузка штанги</span><span class="v">≤ 25 кг/м</span><span class="st ok">18 ✓</span></div>
+          <div class="note red" style="margin-top:14px"><b>Глубина 400 нарушает назначение.</b> Варианты: увеличить глубину секции до 500 · сменить назначение на «полки» · поставить выдвижную штангу-пантограф (глуб 400 ок). <b>Без выбора вывод заблокирован.</b></div>
+          <div class="note green" style="margin-top:8px">Сменишь назначение на «книги» — рамки сразу станут другими (глуб 250–300), и секция перестроится под полки.</div>
+        </div>
+      </div>
+    </div>
+    <div class="cap">Это и есть «нельзя менять всё без последствий». Назначение — вход для эргономики и физики (doc 16/§7). Песочница внутри, но ворота на выходе держат смысл.</div>
+  </div>
+
+  <!-- ===================== BOARD 5 — ADAPTIVE CONTENT ===================== -->
+  <div class="board">
+    <div class="bh"><span class="num">05</span><h2>Секция перестраивается под размер</h2><span class="ans">умно + гибко</span></div>
+    <div class="bsub">Секция для ложек — не картинка. При изменении ширины лоток сам перекладывается: добавляет отделения, переходит на два лотка. Правило растяжения (Фиксировано / Тянется / Повторяется / Заблокировано) — из R7 L7.</div>
+    <div class="surface">
+      <div class="adapt">
+        <div class="step"><div class="w">Ширина 300 мм</div><div class="d">1 лоток · 4 отделения</div>
+          <svg viewBox="0 0 180 120" width="100%" height="120">
+            <rect x="20" y="14" width="140" height="92" rx="3" fill="var(--wood)" stroke="#9c7c4f" stroke-width="1.4"/>
+            <rect x="30" y="24" width="120" height="72" rx="3" fill="var(--paper)" stroke="#9c7c4f" stroke-width="1"/>
+            <line x1="60" y1="24" x2="60" y2="96" stroke="#c4ad82" stroke-width="1"/><line x1="90" y1="24" x2="90" y2="96" stroke="#c4ad82" stroke-width="1"/><line x1="120" y1="24" x2="120" y2="96" stroke="#c4ad82" stroke-width="1"/>
+          </svg>
+        </div>
+        <div class="step"><div class="w">Ширина 450 мм</div><div class="d">1 лоток · 6 отделений (повтор)</div>
+          <svg viewBox="0 0 180 120" width="100%" height="120">
+            <rect x="12" y="14" width="156" height="92" rx="3" fill="var(--wood)" stroke="#9c7c4f" stroke-width="1.4"/>
+            <rect x="22" y="24" width="136" height="72" rx="3" fill="var(--paper)" stroke="#9c7c4f" stroke-width="1"/>
+            <line x1="44" y1="24" x2="44" y2="96" stroke="#c4ad82" stroke-width="1"/><line x1="67" y1="24" x2="67" y2="96" stroke="#c4ad82" stroke-width="1"/><line x1="90" y1="24" x2="90" y2="96" stroke="#c4ad82" stroke-width="1"/><line x1="113" y1="24" x2="113" y2="96" stroke="#c4ad82" stroke-width="1"/><line x1="136" y1="24" x2="136" y2="96" stroke="#c4ad82" stroke-width="1"/>
+          </svg>
+        </div>
+        <div class="step"><div class="w">Ширина 600 мм</div><div class="d">2 лотка · приборы + утварь</div>
+          <svg viewBox="0 0 180 120" width="100%" height="120">
+            <rect x="8" y="14" width="164" height="92" rx="3" fill="var(--wood)" stroke="#9c7c4f" stroke-width="1.4"/>
+            <rect x="18" y="24" width="68" height="72" rx="3" fill="var(--paper)" stroke="#9c7c4f" stroke-width="1"/>
+            <line x1="35" y1="24" x2="35" y2="96" stroke="#c4ad82" stroke-width="1"/><line x1="52" y1="24" x2="52" y2="96" stroke="#c4ad82" stroke-width="1"/><line x1="69" y1="24" x2="69" y2="96" stroke="#c4ad82" stroke-width="1"/>
+            <rect x="94" y="24" width="60" height="72" rx="3" fill="var(--paper)" stroke="#9c7c4f" stroke-width="1"/>
+            <line x1="94" y1="60" x2="154" y2="60" stroke="#c4ad82" stroke-width="1"/>
+          </svg>
+        </div>
+      </div>
+      <div style="display:flex;gap:8px;padding:13px 16px;border-top:1px solid var(--line);background:var(--paper);flex-wrap:wrap">
+        <span class="pm" style="font-family:var(--mono);font-size:10px;border:1px solid var(--line);border-radius:6px;padding:4px 9px;color:var(--ink-2)">Стенки лотка: <b style="color:var(--ink)">Фиксировано</b></span>
+        <span class="pm" style="font-family:var(--mono);font-size:10px;border:1px solid var(--line);border-radius:6px;padding:4px 9px;color:var(--ink-2)">Отделения: <b style="color:var(--ink)">Повторяется ⤬</b></span>
+        <span class="pm" style="font-family:var(--mono);font-size:10px;border:1px solid var(--line);border-radius:6px;padding:4px 9px;color:var(--ink-2)">Ширина отделения: <b style="color:var(--ink)">Тянется 40–60</b></span>
+        <span class="pm" style="font-family:var(--mono);font-size:10px;border:1px solid var(--line);border-radius:6px;padding:4px 9px;color:var(--ink-2)">Лоток №2: <b style="color:var(--ink)">появляется &gt; 520</b></span>
+      </div>
+    </div>
+    <div class="cap">Тянешь ширину — лоток не растягивается уродливо, а <b>пересобирается</b> по правилам. Re-evaluate rules, never scale the mesh — закон движка.</div>
+  </div>
+
+  <!-- ===================== BOARD 6 — STRENGTHENING ===================== -->
+  <div class="board">
+    <div class="bh"><span class="num">06</span><h2>Усиление — конкретное, не одна кнопка</h2><span class="ans">specific</span></div>
+    <div class="bsub">«Усилить» одной кнопкой — дёшево. Конструктор ставит конкретные элементы: задняя царга, ребро под столешницу, поперечина, доп. перегородка, металлоуголок — каждый со своим положением, сечением и материалом. Вот редактор.</div>
+    <div class="surface">
+      <div class="str-wrap">
+        <!-- iso showing added reinforcements -->
+        <div style="padding:18px;position:relative">
+          <svg viewBox="0 0 360 320" width="100%" height="300">
+            <ellipse cx="190" cy="296" rx="150" ry="16" fill="#000" opacity=".05"/>
+            <!-- carcass oblique -->
+            <polygon points="70,70 290,70 326,46 106,46" fill="#f1e8d4" stroke="#c4ad82" stroke-width="1.4"/>
+            <polygon points="290,70 326,46 326,266 290,290" fill="#e4d7bc" stroke="#c4ad82" stroke-width="1.4"/>
+            <rect x="70" y="70" width="220" height="220" fill="var(--carcass)" stroke="#c4ad82" stroke-width="1.6"/>
+            <line x1="180" y1="70" x2="180" y2="290" stroke="#c4ad82" stroke-width="1.2"/>
+            <!-- back rail (top) — highlighted -->
+            <polygon points="70,82 290,82 326,58 106,58" fill="var(--j-cam)" opacity=".55" stroke="var(--j-cam)" stroke-width="1.4"/>
+            <text x="300" y="64" font-family="var(--mono)" font-size="8" fill="var(--j-cam)">①</text>
+            <!-- cross brace under top -->
+            <line x1="106" y1="58" x2="290" y2="70" stroke="var(--j-confirmat)" stroke-width="3"/>
+            <text x="200" y="56" font-family="var(--mono)" font-size="8" fill="var(--j-confirmat)">②</text>
+            <!-- vertical extra divider (already there, marked) -->
+            <rect x="176" y="70" width="8" height="220" fill="var(--j-dowel)" opacity=".4"/>
+            <text x="186" y="200" font-family="var(--mono)" font-size="8" fill="var(--j-dowel)">③</text>
+            <!-- corner brackets -->
+            <path d="M70,266 L86,266 L86,250" fill="none" stroke="var(--j-screw)" stroke-width="2.4"/>
+            <text x="92" y="262" font-family="var(--mono)" font-size="8" fill="var(--j-screw)">④</text>
+          </svg>
+        </div>
+        <!-- specific list -->
+        <div class="str-list">
+          <div class="str-head"><span class="h">Усиления секции</span><span class="add">＋ добавить</span></div>
+          <div class="strcat">① Задняя царга</div>
+          <div class="sitem"><div class="top"><span class="sw" style="background:var(--j-cam)"></span><span class="nm">Царга задняя верхняя</span><span class="tp">горизонт.</span></div>
+            <div class="params"><span class="pm">сечение <b>100×18</b></span><span class="pm">верх, под топ</span><span class="pm">конфирмат ×4</span></div></div>
+          <div class="strcat">② Поперечина под столешницу</div>
+          <div class="sitem"><div class="top"><span class="sw" style="background:var(--j-confirmat)"></span><span class="nm">Ребро жёсткости</span><span class="tp">диагон.</span></div>
+            <div class="params"><span class="pm">брусок <b>30×40</b></span><span class="pm">пролёт 900</span><span class="pm">саморез</span></div></div>
+          <div class="strcat">③ Доп. перегородка</div>
+          <div class="sitem"><div class="top"><span class="sw" style="background:var(--j-dowel)"></span><span class="nm">Перегородка вертик.</span><span class="tp">несущая</span></div>
+            <div class="params"><span class="pm">ЛДСП <b>18</b></span><span class="pm">центр пролёта</span><span class="pm">делит на 2</span></div></div>
+          <div class="strcat">④ Металлоуголок</div>
+          <div class="sitem"><div class="top"><span class="sw" style="background:var(--j-screw)"></span><span class="nm">Уголок монтажный</span><span class="tp">×4 угла</span></div>
+            <div class="params"><span class="pm">сталь <b>40×40</b></span><span class="pm">к стене</span></div></div>
+          <div class="note amber" style="margin-top:4px"><b>Подсказка физики:</b> пролёт 900 при посуде → прогиб 4.1 мм. Достаточно одного из ②/③ — движок предлагает, ставит мастер.</div>
+        </div>
+      </div>
+    </div>
+    <div class="cap">Каждое усиление — реальный элемент с сечением, положением и крепежом, попадает в раскрой, паспорт и закупку. Это язык конструктора, а не «сделай крепче».</div>
+  </div>
+
+  <!-- ===================== BOARD 7 — PHONE COLLAPSE ===================== -->
+  <div class="board">
+    <div class="bh"><span class="num">07</span><h2>Тот же инструмент на телефоне</h2><span class="ans">оба вместе</span></div>
+    <div class="bsub">Планшет — источник истины. На телефоне на стройплощадке: видовой переключатель сверху, инспектор и проекции как нижние листы, дерево — выезжающая панель. Ничего не теряем, только сворачиваем.</div>
+    <div class="surface">
+      <div class="phones">
+        <!-- phone 1: viewport + view switch -->
+        <div class="ph">
+          <div class="frame"><div class="scr">
+            <div style="position:absolute;top:12px;left:10px;right:10px;display:flex;justify-content:space-between;align-items:center;z-index:5">
+              <div style="background:var(--paper);border:1px solid var(--line);border-radius:8px;padding:5px 9px;font-family:var(--mono);font-size:10px;color:var(--ink)">4.6 листа · 5.1М</div>
+              <div style="background:var(--amber-soft);color:var(--amber);border-radius:99px;padding:4px 9px;font-family:var(--mono);font-size:9px;font-weight:600">▲ 1</div>
+            </div>
+            <svg viewBox="0 0 236 300" width="100%" height="100%" preserveAspectRatio="xMidYMid slice">
+              <rect width="236" height="300" fill="var(--cream)"/>
+              <polygon points="60,90 160,90 184,72 84,72" fill="#f1e8d4" stroke="#c4ad82" stroke-width="1.2"/>
+              <polygon points="160,90 184,72 184,230 160,248" fill="#e4d7bc" stroke="#c4ad82" stroke-width="1.2"/>
+              <rect x="60" y="90" width="100" height="158" fill="var(--carcass)" stroke="#c4ad82" stroke-width="1.4"/>
+              <line x1="94" y1="90" x2="94" y2="248" stroke="#c4ad82" stroke-width="1.1"/><line x1="127" y1="90" x2="127" y2="248" stroke="#c4ad82" stroke-width="1.1"/>
+              <rect x="60" y="90" width="34" height="158" fill="var(--amber-soft)" stroke="var(--amber)" stroke-width="1.8"/>
+            </svg>
+            <div style="position:absolute;bottom:14px;left:10px;right:10px;display:flex;gap:4px;background:var(--paper);border:1px solid var(--line);border-radius:12px;padding:4px;z-index:5">
+              <div style="flex:1;text-align:center;font-size:9px;padding:6px 0;border-radius:8px;background:var(--ink);color:#fff;font-weight:600">Перспект</div>
+              <div style="flex:1;text-align:center;font-size:9px;padding:6px 0;color:var(--ink-2)">Фронт</div>
+              <div style="flex:1;text-align:center;font-size:9px;padding:6px 0;color:var(--ink-2)">Бок</div>
+              <div style="flex:1;text-align:center;font-size:9px;padding:6px 0;color:var(--ink-2)">План</div>
+            </div>
+          </div></div>
+          <div class="cp">видовой переключатель сверху проекций</div>
+        </div>
+        <!-- phone 2: inspector sheet with depth -->
+        <div class="ph">
+          <div class="frame"><div class="scr">
+            <svg viewBox="0 0 236 130" width="100%" height="130" style="position:absolute;top:0"><rect width="236" height="130" fill="var(--cream)"/><rect x="80" y="20" width="76" height="96" fill="var(--carcass)" stroke="#c4ad82" stroke-width="1.4"/></svg>
+            <div style="position:absolute;bottom:0;left:0;right:0;background:var(--paper);border-radius:18px 18px 0 0;padding:14px;box-shadow:0 -8px 24px rgba(0,0,0,.1)">
+              <div style="width:34px;height:4px;background:var(--ink-3);border-radius:9px;margin:0 auto 12px"></div>
+              <div style="display:flex;gap:4px;margin-bottom:12px;font-size:9px">
+                <span style="background:var(--ink);color:#fff;border-radius:6px;padding:4px 7px;font-weight:600">Размеры</span>
+                <span style="color:var(--ink-2);padding:4px 6px">Назнач.</span>
+                <span style="color:var(--ink-2);padding:4px 6px">Узлы</span>
+                <span style="color:var(--ink-2);padding:4px 6px">Усил.</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><span style="font-size:11px;color:var(--ink-2);width:54px">Ширина</span><div style="flex:1;background:var(--cream);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-family:var(--mono);font-size:13px;font-weight:600;color:var(--ink)">850</div></div>
+              <div style="display:flex;align-items:center;gap:8px;margin-bottom:7px"><span style="font-size:11px;color:var(--ink-2);width:54px">Высота</span><div style="flex:1;background:var(--cream);border:1px solid var(--line);border-radius:8px;padding:8px 10px;font-family:var(--mono);font-size:13px;font-weight:600;color:var(--ink)">1100</div></div>
+              <div style="display:flex;align-items:center;gap:8px"><span style="font-size:11px;color:var(--ink-2);width:54px">Глубина</span><div style="flex:1;background:var(--amber-soft);border:1px solid var(--amber);border-radius:8px;padding:8px 10px;font-family:var(--mono);font-size:13px;font-weight:600;color:var(--ink)">400</div></div>
+              <div style="margin-top:10px;background:var(--red-soft);color:#7a2a1c;border-radius:8px;padding:8px;font-size:10px;line-height:1.4"><b style="color:var(--red)">Глубина мала</b> для одежды (нужно ≥ 500).</div>
+            </div>
+          </div></div>
+          <div class="cp">инспектор = нижний лист · глубина тут же</div>
+        </div>
+        <!-- phone 3: joint sheet -->
+        <div class="ph">
+          <div class="frame"><div class="scr" style="background:#16181c">
+            <div style="position:absolute;top:0;left:0;right:0;height:150px;display:flex;align-items:center;justify-content:center">
+              <svg viewBox="0 0 180 130" width="160" height="116">
+                <polygon points="40,30 40,110 66,98 66,18" fill="#23262c" stroke="#5b6168" stroke-width="1.2"/>
+                <polygon points="66,60 150,60 168,50 84,50" fill="#23262c" stroke="#5b6168" stroke-width="1"/>
+                <circle cx="100" cy="70" r="8" fill="none" stroke="var(--j-cam)" stroke-width="2.2"/><circle cx="100" cy="70" r="3" fill="var(--j-cam)"/>
+                <circle cx="78" cy="70" r="4" fill="none" stroke="var(--j-dowel)" stroke-width="1.8"/><circle cx="128" cy="70" r="4" fill="none" stroke="var(--j-dowel)" stroke-width="1.8"/>
+              </svg>
+            </div>
+            <div style="position:absolute;bottom:0;left:0;right:0;background:#1f2329;border-radius:18px 18px 0 0;padding:14px;color:#e8e3d6">
+              <div style="width:34px;height:4px;background:#4a4f57;border-radius:9px;margin:0 auto 12px"></div>
+              <div style="display:flex;gap:5px;margin-bottom:11px">
+                <span style="background:#272c33;border-radius:6px;padding:5px 8px;font-size:9px;color:#9aa0a8">персп</span>
+                <span style="background:#272c33;border-radius:6px;padding:5px 8px;font-size:9px;color:#9aa0a8">фронт</span>
+                <span style="background:#272c33;border-radius:6px;padding:5px 8px;font-size:9px;color:#9aa0a8">бок</span>
+                <span style="background:#272c33;border-radius:6px;padding:5px 8px;font-size:9px;color:#9aa0a8">торец</span>
+              </div>
+              <div style="display:flex;align-items:center;gap:9px;background:#272c33;border-radius:11px;padding:10px"><span style="width:12px;height:12px;border-radius:3px;background:var(--j-cam)"></span><div style="flex:1"><div style="font-size:12px;font-weight:600">Минификс Ø15×12.5</div><div style="font-size:9px;color:#9aa0a8;font-family:var(--mono)">съёмная полка · разборное</div></div><span style="color:var(--green)">✓</span></div>
+            </div>
+          </div></div>
+          <div class="cp">узел в 4 видах свайпом · X-ray</div>
+        </div>
+      </div>
+    </div>
+    <div class="cap">Планшет и телефон — одна модель и один движок. Глубина, узлы-в-проекциях, назначение — есть и там, и там; меняется только форма подачи.</div>
+  </div>
+
+  <div class="foot">
+    Перестроено по замечаниям 2026-06-13: <b>перспектива + 3 проекции</b> · редактирование <b>глубины</b> · узлы в <b>3 видах</b> + перспективе (классы отверстий из дампов фабрики) · <b>Г-форма</b> · <b>назначение → ограничения</b> с последствиями · <b>адаптивные</b> секции · <b>конкретные усиления</b> вместо одной кнопки.<br>
+    Идентичность (тёплая бумага, IBM Plex, цвета узлов) и интеллект движка сохранены из понравившихся экранов. Источники: DB/19 · R7 verdict · imos walkthrough · joint_decisions датасет · -r6 accessories. /UI Exploration · 2026-06-13.
+  </div>
+</div>
+</body>
+</html>
