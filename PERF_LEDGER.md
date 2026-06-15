@@ -39,3 +39,39 @@ of this table is the **delta** the next rows show, not the absolute numbers.
 
 Use `BENCH_FILTER='^(POLKA|POL_|YON|ORTA_BAK)' npm run bench` to reproduce the
 original-4-file suite for apples-to-apples deltas after the suite grows.
+
+---
+
+## Render spike (floor device) — R-M7 go/no-go
+
+Standalone Three.js spike in `packages/render-spike/` (G-kitchen: 13 cabinets,
+99 panels, 246 hole markers; real ops from the verified Layer-1 primitives).
+Architecture under test: shared box geometry transformed never rebuilt, no CSG,
+holes as InstancedMesh markers, draw-call discipline.
+
+**Device-independent (fixed by construction — verified in a headless browser):**
+
+| Metric | Measured | Pass bar | Verdict |
+|---|---|---|---|
+| Draw calls, X-ray OFF | 2 | low dozens | PASS |
+| Draw calls, X-ray ON | 6 (+4 for 246 markers) | instancing holds | PASS |
+| Triangles | 1,190 off / 4,142 on | a few thousand | PASS |
+| Per parametric update (rebuild+solvePreview+matrices) | 0.12 ms median / 0.60 ms max | ≤ 4 ms | PASS |
+| Geometries created during 15s width-drag | 0 (geom count constant at 18) | transform-not-rebuild | PASS |
+| Cold load → first interactive frame (dev/LAN) | 0.07 s; bundle 510 KB / 131 KB gzip | ≤ 3 s | PASS (confirm on phone) |
+
+**Device-dependent — MUST be read on the Redmi (PENDING on-device run):**
+
+| Metric | Pass bar | Floor device | FPS | 1% low | Notes |
+|---|---|---|---|---|---|
+| Sustained FPS during orbit | ≥ 30 | _Redmi ____ (model)_ | ___ | ___ | from on-screen Orbit-30s |
+| FPS during width-drag | ≥ 30 | _same_ | ___ | — | from Width-drag-15s |
+| FPS with X-ray ON | ≥ 30 | _same_ | ___ | — | from X-ray toggle |
+
+FPS cannot be measured in this repo: a headless/CI browser uses software
+rasterization (~7 fps observed — the rasterizer, not a GPU). Fill the three FPS
+rows from the spike's on-screen overlay on the actual floor device; the device
+model goes in the blanks (doc 18 §2: buy two of that exact phone). All
+non-FPS rows already pass and are device-independent, so the only open risk is
+raw fill-rate/shader cost on Mali — which the low draw-call + low triangle counts
+make very unlikely.
