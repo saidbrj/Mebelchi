@@ -60,18 +60,29 @@ holes as InstancedMesh markers, draw-call discipline.
 | Geometries created during 15s width-drag | 0 (geom count constant at 18) | transform-not-rebuild | PASS |
 | Cold load → first interactive frame (dev/LAN) | 0.07 s; bundle 510 KB / 131 KB gzip | ≤ 3 s | PASS (confirm on phone) |
 
-**Device-dependent — MUST be read on the Redmi (PENDING on-device run):**
+**Device-dependent — measured ON the floor device (Redmi-class ~$150 Android; exact
+model TBD, 2026-06-13):** production bundle served over LAN, Chrome.
 
-| Metric | Pass bar | Floor device | FPS | 1% low | Notes |
-|---|---|---|---|---|---|
-| Sustained FPS during orbit | ≥ 30 | _Redmi ____ (model)_ | ___ | ___ | from on-screen Orbit-30s |
-| FPS during width-drag | ≥ 30 | _same_ | ___ | — | from Width-drag-15s |
-| FPS with X-ray ON | ≥ 30 | _same_ | ___ | — | from X-ray toggle |
+| Metric | Pass bar | FPS | 1% low | Verdict |
+|---|---|---|---|---|
+| Sustained FPS during orbit (30s) | ≥ 30 | 44 | 19 | PASS |
+| FPS during width-drag (15s) | ≥ 30 | 45–55 (two runs) | — | PASS |
+| Per parametric update | ≤ 4 ms | 0.45–0.57 ms median (max 1.30–2.90) | — | PASS |
+| FPS with X-ray ON (all markers) | ≥ 30 | 47–58 @ 6 draws | — | PASS |
+| Cold load → interactive | ≤ 3 s | 0.41 s warm / 1.05 s first | — | PASS |
+| Draw calls X-ray off / on | dozens | 2 / 6 (confirmed on device) | — | PASS |
 
-FPS cannot be measured in this repo: a headless/CI browser uses software
-rasterization (~7 fps observed — the rasterizer, not a GPU). Fill the three FPS
-rows from the spike's on-screen overlay on the actual floor device; the device
-model goes in the blanks (doc 18 §2: buy two of that exact phone). All
-non-FPS rows already pass and are device-independent, so the only open risk is
-raw fill-rate/shader cost on Mali — which the low draw-call + low triangle counts
-make very unlikely.
+**VERDICT: GO. 6/6 measured rows pass on the floor device.** The 3D-first bet is
+validated; UI build may proceed on this render architecture (instanced panels,
+no-CSG marker instancing, transform-not-rebuild editing).
+
+Notes:
+- The on-device per-update cost (0.45–0.57 ms) includes `rebuildCabinet` +
+  `solvePreview` + matrix writes and never rebuilds geometry (geom count constant) —
+  the live mobile-CAD parametric edit the red-team called impossible, with ~7× margin
+  on the 4 ms budget.
+- Orbit 1% low = 19 fps: occasional single-frame dips (likely GC / first-orbit warmup),
+  not a sustained stall. Worth a glance once the real UI + Zustand land, but inside
+  the gate (the bar is sustained ≥30; 1% low is reported, not gated).
+- TODO: record the exact Redmi model and buy two of that unit as the standing floor
+  device (doc 18 §2).
