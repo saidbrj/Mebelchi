@@ -1,0 +1,715 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Mebelchi · V7 — Путь (6 фаз)</title>
+<style>
+  :root{
+    --paper:#f4f1ec; --card:#ffffff; --ink:#1b1a17; --ink2:#5c574e; --ink3:#8f897d;
+    --line:#e6e1d8; --line2:#d8d2c6; --gold:#c0883a; --gold-soft:#f2e6cf;
+    --pill:#1c1b18; --good:#2f7d52; --good-soft:#e3f1e8; --warn:#c4451f; --warn-soft:#fbe7df;
+    --blue:#2a6df0; --shadow:0 1px 3px rgba(30,25,15,.08),0 8px 24px rgba(30,25,15,.06);
+    --mono:ui-monospace,"SF Mono",Menlo,monospace;
+    --sans:-apple-system,system-ui,"Segoe UI",Roboto,sans-serif;
+  }
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%}
+  body{background:#26241f;font-family:var(--sans);color:var(--ink);
+    display:flex;align-items:center;justify-content:center;min-height:100vh;padding:20px;gap:28px}
+  .desk-note{position:fixed;top:16px;left:16px;color:#8d877a;font:11px/1.5 var(--mono);max-width:210px;letter-spacing:.04em}
+  .desk-note b{color:#d9b878}
+
+  .phone{width:393px;height:840px;background:var(--paper);border-radius:42px;overflow:hidden;
+    position:relative;box-shadow:0 0 0 11px #111014,0 0 0 13px #2c2a26,0 30px 70px rgba(0,0,0,.55);
+    display:flex;flex-direction:column}
+  .notch{position:absolute;top:10px;left:50%;transform:translateX(-50%);width:120px;height:26px;background:#111014;border-radius:16px;z-index:50}
+
+  .top{flex:0 0 auto;padding:30px 18px 10px;background:var(--paper);position:relative;z-index:20;border-bottom:1px solid var(--line)}
+  .brandrow{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
+  .brand{font:700 17px/1 var(--sans);letter-spacing:-.02em;display:flex;align-items:center;gap:7px}
+  .brand .dot{width:9px;height:9px;border-radius:50%;background:var(--gold)}
+  .price{text-align:right}
+  .price .lbl{font:10px/1 var(--mono);color:var(--ink3);letter-spacing:.1em;text-transform:uppercase}
+  .price .val{font:700 16px/1.1 var(--sans);margin-top:3px}
+  .price .val.up{animation:flash .5s}
+  @keyframes flash{0%{color:var(--gold)}100%{color:var(--ink)}}
+  .phases{display:flex;gap:4px}
+  .ph{flex:1;text-align:center}
+  .ph .bar{height:3px;border-radius:3px;background:var(--line2)}
+  .ph.done .bar{background:var(--gold)}
+  .ph.active .bar{background:var(--pill)}
+  .ph .nm{font:9px/1.3 var(--mono);color:var(--ink3);margin-top:5px;letter-spacing:.02em}
+  .ph.active .nm{color:var(--pill);font-weight:600}
+
+  .body{flex:1 1 auto;overflow-y:auto;-webkit-overflow-scrolling:touch}
+  .screen{display:none;padding:18px 18px 26px;animation:fade .35s}
+  .screen.on{display:block}
+  @keyframes fade{from{opacity:0;transform:translateY(8px)}to{opacity:1;transform:none}}
+  .qnum{font:10px/1 var(--mono);color:var(--ink3);letter-spacing:.14em;text-transform:uppercase}
+  h1{font:700 24px/1.12 var(--sans);letter-spacing:-.02em;margin:8px 0 4px}
+  .sub{font:14px/1.45 var(--sans);color:var(--ink2);margin:0 0 16px}
+
+  .cards{display:grid;gap:12px}
+  .cards.two{grid-template-columns:1fr 1fr}
+  .opt{background:var(--card);border:1.5px solid var(--line);border-radius:16px;overflow:hidden;cursor:pointer;transition:.16s;text-align:left;padding:0;font-family:inherit;position:relative}
+  .opt:active{transform:scale(.98)}
+  .opt.sel{border-color:var(--pill);box-shadow:0 0 0 3px rgba(28,27,24,.08)}
+  .opt .pic{height:96px;background:linear-gradient(160deg,#efeae1,#e3ddd1);display:flex;align-items:center;justify-content:center}
+  .opt .pic svg{width:100%;height:100%}
+  .opt .meta{padding:10px 12px 12px}
+  .opt .t{font:600 14px/1.2 var(--sans)}
+  .opt .d{font:12px/1.4 var(--sans);color:var(--ink2);margin-top:3px}
+  .opt .chk{position:absolute;top:8px;right:8px;width:22px;height:22px;border-radius:50%;background:var(--pill);color:#fff;display:none;align-items:center;justify-content:center;font-size:13px}
+  .opt.sel .chk{display:flex}
+  .nopref{margin:12px 0 0;font:12px/1 var(--mono);color:var(--ink3);text-align:center}
+  .nopref button{font:inherit;color:var(--gold);background:none;border:none;text-decoration:underline;cursor:pointer}
+
+  .pillrow{display:flex;gap:8px;flex-wrap:wrap;margin:4px 0 16px}
+  .chip{border:1.5px solid var(--line2);background:var(--card);border-radius:30px;padding:8px 14px;font:600 13px/1 var(--sans);cursor:pointer;transition:.14s;display:flex;align-items:center;gap:6px}
+  .chip.sel{background:var(--pill);color:#fff;border-color:var(--pill)}
+  .chip.sel .x{opacity:.6}
+  .stepper{display:flex;align-items:center;border:1.5px solid var(--line2);border-radius:14px;overflow:hidden;width:max-content;background:var(--card);margin:2px 0 18px}
+  .stepper button{width:48px;height:46px;border:none;background:var(--card);font-size:22px;cursor:pointer;color:var(--ink)}
+  .stepper button:active{background:var(--paper)}
+  .stepper .num{min-width:108px;text-align:center;font:700 17px/1 var(--sans)}
+  .stepper .num small{display:block;font:10px/1 var(--mono);color:var(--ink3);margin-top:4px;letter-spacing:.08em}
+  .field-lbl{font:600 13px/1 var(--sans);margin:14px 0 6px;display:flex;align-items:center;gap:7px}
+  .field-lbl .i{width:16px;height:16px;border-radius:50%;background:var(--gold-soft);color:var(--gold);font:700 10px/16px var(--mono);text-align:center}
+
+  .planbox{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:12px;margin:4px 0 14px}
+  .planbox svg{display:block;width:100%;height:auto}
+
+  .vwrap{position:relative}
+  .vcard{background:var(--card);border:1.5px solid var(--line);border-radius:18px;overflow:hidden;box-shadow:var(--shadow)}
+  .vcard .vtop{padding:12px 14px;display:flex;align-items:center;justify-content:space-between;border-bottom:1px solid var(--line)}
+  .vtag{font:700 15px/1 var(--sans)}
+  .vtag small{display:block;font:11px/1.3 var(--mono);color:var(--ink3);margin-top:4px;font-weight:400}
+  .vprice{font:700 16px/1 var(--sans);text-align:right}
+  .vprice small{display:block;font:10px/1 var(--mono);color:var(--ink3);margin-top:3px;font-weight:400}
+  .vcanvas{height:188px;background:linear-gradient(160deg,#f0ebe2,#e6e0d4);display:flex;align-items:center;justify-content:center}
+  .vmeta{padding:10px 14px;display:flex;gap:14px;font:12px/1.3 var(--sans);color:var(--ink2)}
+  .vmeta b{color:var(--ink);font-weight:600}
+  .dots{display:flex;justify-content:center;gap:7px;margin:14px 0 4px}
+  .dots span{width:8px;height:8px;border-radius:50%;background:var(--line2);transition:.2s}
+  .dots span.on{background:var(--pill);width:22px;border-radius:5px}
+  .vnav{display:flex;justify-content:space-between;margin-top:10px}
+  .vnav button{border:1.5px solid var(--line2);background:var(--card);border-radius:12px;width:46px;height:42px;font-size:18px;cursor:pointer}
+  .vnav button:disabled{opacity:.35}
+
+  .stage{background:linear-gradient(165deg,#f1ece3,#e7e1d5);border:1px solid var(--line);border-radius:18px;position:relative;overflow:hidden;margin-bottom:6px}
+  .stage svg{display:block;width:100%;height:auto;cursor:pointer}
+  .viewtabs{display:flex;gap:6px;justify-content:center;margin:10px 0 12px;flex-wrap:wrap}
+  .viewtabs button{border:1.5px solid var(--line2);background:var(--card);border-radius:11px;padding:7px 12px;font:600 12px/1 var(--sans);cursor:pointer;color:var(--ink2)}
+  .viewtabs button.on{background:var(--pill);color:#fff;border-color:var(--pill)}
+  .hint{font:12px/1.45 var(--sans);color:var(--ink3);text-align:center;margin:0 0 12px}
+  .addmod{width:100%;border:1.5px dashed var(--line2);background:var(--paper);border-radius:12px;padding:11px;font:600 13px/1 var(--sans);cursor:pointer;color:var(--ink2);margin-bottom:12px}
+
+  /* CONSTRUCTOR EDITOR */
+  .editor{background:var(--card);border:1px solid var(--line);border-radius:16px;padding:14px;margin-bottom:12px;display:none;box-shadow:var(--shadow)}
+  .editor.on{display:block;animation:fade .25s}
+  .ehead{display:flex;justify-content:space-between;align-items:center}
+  .ehead .nm{font:700 15px/1.1 var(--sans)}
+  .ehead .nm small{display:block;font:11px/1 var(--mono);color:var(--ink3);margin-top:4px;font-weight:400}
+  .ehead .close{border:none;background:var(--paper);width:30px;height:30px;border-radius:50%;font-size:15px;cursor:pointer;color:var(--ink2)}
+  .esec{font:10px/1 var(--mono);color:var(--ink3);letter-spacing:.12em;text-transform:uppercase;margin:14px 0 8px;border-top:1px solid var(--line);padding-top:12px}
+  .esec:first-of-type{border-top:none;padding-top:8px}
+  .erow{display:flex;align-items:center;justify-content:space-between;margin:8px 0}
+  .erow .lbl{font:13px/1.2 var(--sans)}
+  .mstep{display:flex;align-items:center;border:1.5px solid var(--line2);border-radius:11px;overflow:hidden;background:var(--card)}
+  .mstep button{width:40px;height:38px;border:none;background:var(--card);font-size:19px;cursor:pointer;color:var(--ink)}
+  .mstep button:active{background:var(--paper)}
+  .mstep button:disabled{opacity:.3}
+  .mstep .v{min-width:78px;text-align:center;font:700 14px/1 var(--sans)}
+  .mstep .v small{font:9px/1 var(--mono);color:var(--ink3);font-weight:400}
+  .seg{display:flex;gap:6px;flex-wrap:wrap}
+  .sgb{flex:1;min-width:62px;border:1.5px solid var(--line2);background:var(--card);border-radius:10px;padding:9px 4px;font:600 12px/1 var(--sans);cursor:pointer;color:var(--ink)}
+  .sgb.on{background:var(--pill);color:#fff;border-color:var(--pill)}
+  .ebtns{display:flex;gap:8px;margin-top:14px}
+  .ebtn{flex:1;border:1.5px solid var(--line2);background:var(--card);border-radius:11px;padding:11px;font:600 13px/1 var(--sans);cursor:pointer;color:var(--ink)}
+  .ebtn.del{color:var(--warn);border-color:#f0c4b4}
+  .swatches{display:flex;gap:8px;margin:6px 0 4px;flex-wrap:wrap}
+  .sw{width:38px;height:38px;border-radius:10px;border:2px solid var(--line2);cursor:pointer}
+  .sw.on{border-color:var(--pill);box-shadow:0 0 0 2px rgba(28,27,24,.12)}
+
+  .rec{border-radius:14px;padding:12px 14px;margin:6px 0 14px;display:flex;gap:11px;align-items:flex-start}
+  .rec.warnc{background:var(--warn-soft);border:1px solid #f0c4b4}
+  .rec.okc{background:var(--good-soft);border:1px solid #bfe0cc}
+  .rec .ic{flex:0 0 auto;width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-weight:700;font-size:13px}
+  .rec.warnc .ic{background:var(--warn);color:#fff}
+  .rec.okc .ic{background:var(--good);color:#fff}
+  .rec .tx{font:13px/1.4 var(--sans)}
+  .rec .tx b{display:block;margin-bottom:2px}
+  .rec .tx button{margin-top:8px;background:var(--pill);color:#fff;border:none;border-radius:9px;padding:7px 12px;font:600 12px/1 var(--sans);cursor:pointer}
+
+  .panel-card{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:14px;margin-bottom:12px}
+  .panel-card h3{font:700 14px/1 var(--sans);margin:0 0 4px}
+  .panel-card p{font:13px/1.45 var(--sans);color:var(--ink2);margin:0}
+  .addbtn{width:100%;margin-top:11px;border:1.5px dashed var(--line2);background:var(--paper);border-radius:11px;padding:11px;font:600 13px/1 var(--sans);cursor:pointer;color:var(--ink2)}
+  .addbtn.added{border-style:solid;border-color:var(--gold);background:var(--gold-soft);color:var(--gold)}
+  .sacred{font:10px/1 var(--mono);color:var(--gold);letter-spacing:.1em;text-transform:uppercase;margin-bottom:8px}
+
+  .total-card{background:var(--pill);color:#fff;border-radius:18px;padding:18px;margin-bottom:14px}
+  .total-card .lbl{font:11px/1 var(--mono);opacity:.6;letter-spacing:.1em;text-transform:uppercase}
+  .total-card .big{font:700 30px/1 var(--sans);margin:8px 0 2px}
+  .total-card .items{font:12px/1 var(--mono);opacity:.7}
+  .ledger{background:var(--card);border:1px solid var(--line);border-radius:14px;overflow:hidden;margin-bottom:14px}
+  .ledger .row{display:flex;justify-content:space-between;padding:13px 14px;font:14px/1.2 var(--sans);border-bottom:1px solid var(--line)}
+  .ledger .row:last-child{border-bottom:none}
+  .ledger .row .c{color:var(--ink2)}
+  .advisor{background:linear-gradient(135deg,#fff7ea,#fdeccf);border:1px solid #ecd5a6;border-radius:16px;padding:14px;margin-bottom:14px}
+  .advisor .h{font:700 14px/1.2 var(--sans);display:flex;align-items:center;gap:8px;margin-bottom:6px}
+  .advisor .h .spark{width:22px;height:22px;border-radius:50%;background:var(--gold);color:#fff;display:flex;align-items:center;justify-content:center;font-size:13px}
+  .advisor p{font:13px/1.45 var(--sans);color:#7a5e25;margin:0 0 10px}
+  .advisor .save{font-weight:700;color:var(--gold)}
+  .advisor button{background:var(--gold);color:#fff;border:none;border-radius:10px;padding:9px 14px;font:600 13px/1 var(--sans);cursor:pointer}
+  .advisor.applied{filter:grayscale(.2);opacity:.85}
+  .advisor.applied button{background:var(--good)}
+
+  .deliv{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+  .dcard{background:var(--card);border:1px solid var(--line);border-radius:13px;overflow:hidden}
+  .dcard .dv{height:84px;background:linear-gradient(160deg,#f0ebe2,#e6e0d4);display:flex;align-items:center;justify-content:center}
+  .dcard .dl{padding:8px 10px;font:600 11px/1.2 var(--sans)}
+  .dcard .dl small{display:block;color:var(--ink3);font:10px/1.3 var(--mono);margin-top:3px;font-weight:400}
+  .check{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:6px 4px;margin-bottom:14px}
+  .check .ci{display:flex;align-items:center;gap:11px;padding:10px 12px;font:13px/1.3 var(--sans);border-bottom:1px solid var(--line)}
+  .check .ci:last-child{border-bottom:none}
+  .check .ci .b{flex:0 0 auto;width:22px;height:22px;border-radius:50%;background:var(--good);color:#fff;display:flex;align-items:center;justify-content:center;font-size:12px}
+  .check .ci .b.pend{background:var(--line2);color:var(--ink3)}
+  .check .ci small{color:var(--ink3);font:11px/1 var(--mono)}
+  .export-done{background:var(--good-soft);border:1px solid #bfe0cc;border-radius:16px;padding:18px;text-align:center;margin-bottom:14px;display:none}
+  .export-done.on{display:block;animation:fade .4s}
+  .export-done .big{font:700 17px/1.2 var(--sans);color:var(--good);margin-bottom:6px}
+  .export-done .files{font:11px/1.7 var(--mono);color:var(--ink2);margin-top:8px;text-align:left;background:var(--card);border-radius:10px;padding:10px 12px}
+  .tg{display:flex;align-items:center;justify-content:center;gap:8px;width:100%;margin-top:10px;background:#229ed9;color:#fff;border:none;border-radius:11px;padding:12px;font:600 14px/1 var(--sans);cursor:pointer}
+  .prov{font:10px/1.6 var(--mono);color:var(--ink3);text-align:center;margin-top:14px;border-top:1px solid var(--line);padding-top:12px}
+  .prov b{color:var(--ink2)}
+
+  .foot{flex:0 0 auto;padding:12px 16px 22px;background:linear-gradient(transparent,var(--paper) 22%);position:relative;z-index:20}
+  .cta{width:100%;border:none;border-radius:15px;padding:16px;background:var(--pill);color:#fff;font:700 15px/1 var(--sans);cursor:pointer;display:flex;align-items:center;justify-content:center;gap:8px;box-shadow:var(--shadow)}
+  .cta:active{transform:translateY(1px)}
+  .cta.gold{background:var(--gold)}
+  .cta.green{background:var(--good)}
+  .cta:disabled{opacity:.4;cursor:default}
+  .footrow{display:flex;gap:10px}
+  .footrow .back{flex:0 0 56px;border:1.5px solid var(--line2);background:var(--card);border-radius:15px;font-size:20px;cursor:pointer}
+
+  .phone.warm{--paper:#f3ead9;--card:#fffdf8}
+</style>
+</head>
+<body>
+<div class="desk-note">MEBELCHI · V7 «Путь»<br>полный поток из 6 фаз<br><b>Фаза В</b> — конструктор:<br>тапни модуль → меняй размер,<br>полки, перегородки, ящики, фасад</div>
+
+<div class="phone" id="phone">
+  <div class="notch"></div>
+
+  <div class="top">
+    <div class="brandrow">
+      <div class="brand"><span class="dot"></span>Mebelchi</div>
+      <div class="price"><div class="lbl">Смета</div><div class="val" id="price">0 сум</div></div>
+    </div>
+    <div class="phases" id="phaseBar"></div>
+  </div>
+
+  <div class="body" id="body">
+
+    <!-- PHASE A.1 QUIZ -->
+    <div class="screen on" data-screen="quiz">
+      <div class="qnum">Фаза А · Замер · Вопрос <span id="qIdx">1</span> из 4</div>
+      <h1 id="qTitle"></h1>
+      <p class="sub" id="qSub"></p>
+      <div class="cards two" id="qCards"></div>
+      <div class="nopref">или <button onclick="noPref()">без разницы</button> — решим за вас</div>
+    </div>
+
+    <!-- PHASE A.2 SPACE -->
+    <div class="screen" data-screen="space">
+      <div class="qnum">Фаза А · Замер · Помещение</div>
+      <h1>Опишите комнату</h1>
+      <p class="sub">Сначала ограничения — потом раскладка. Так не появятся невозможные варианты.</p>
+      <div class="field-lbl">Форма помещения</div>
+      <div class="cards two" id="shapeCards"></div>
+      <div class="field-lbl"><span class="i">1</span>Длина рабочей стены</div>
+      <div class="stepper">
+        <button onclick="wall(-100)">−</button>
+        <div class="num"><span id="wallVal">2400</span><small>ММ · ШАГ 100</small></div>
+        <button onclick="wall(100)">+</button>
+      </div>
+      <div class="field-lbl">Стена с водой <span style="font:400 11px var(--mono);color:var(--ink3)">— определит мойку</span></div>
+      <div class="pillrow" id="waterPills"></div>
+      <div class="field-lbl">Что на стене? <span style="font:400 11px var(--mono);color:var(--ink3)">— множественный выбор</span></div>
+      <div class="pillrow" id="constraintPills"></div>
+      <div class="planbox" id="planBox"></div>
+    </div>
+
+    <!-- PHASE B VARIANTS -->
+    <div class="screen" data-screen="variants">
+      <div class="qnum">Фаза Б · Раскладка</div>
+      <h1>Выберите вариант</h1>
+      <p class="sub">4 раскладки на ваших ответах и размере стены. Дальше каждый модуль настраивается под себя.</p>
+      <div class="vwrap">
+        <div class="vcard" id="vCard"></div>
+        <div class="dots" id="vDots"></div>
+        <div class="vnav"><button id="vPrev" onclick="vMove(-1)">‹</button><button id="vNext" onclick="vMove(1)">›</button></div>
+      </div>
+    </div>
+
+    <!-- PHASE C CONFIGURE (constructor) -->
+    <div class="screen" data-screen="configure">
+      <div class="qnum">Фаза В · Конфигурация · Конструктор</div>
+      <h1>Настройте каждый модуль</h1>
+      <p class="hint" id="cfgHint">Тапните модуль в сцене → меняйте размер, полки, перегородки, ящики</p>
+      <div class="stage" id="cfgStage"></div>
+      <div class="viewtabs">
+        <button class="on" data-v="front" onclick="setView('front',this)">Фасад</button>
+        <button data-v="open" onclick="setView('open',this)">Без фасадов</button>
+        <button data-v="top" onclick="setView('top',this)">План</button>
+      </div>
+      <button class="addmod" onclick="addCab()">+ Добавить модуль</button>
+
+      <div class="editor" id="editor">
+        <div class="ehead">
+          <div class="nm"><span id="edName">Модуль</span><small id="edSize">600 × 720 мм</small></div>
+          <button class="close" onclick="closeSel()">✕</button>
+        </div>
+
+        <div class="esec">Размер</div>
+        <div class="erow"><span class="lbl">Ширина</span>
+          <div class="mstep"><button onclick="editW(-50)" id="wMinus">−</button><div class="v"><span id="edW">600</span> <small>мм</small></div><button onclick="editW(50)" id="wPlus">+</button></div></div>
+        <div class="erow"><span class="lbl">Высота</span>
+          <div class="mstep"><button onclick="editH(-60)" id="hMinus">−</button><div class="v"><span id="edH">720</span> <small>мм</small></div><button onclick="editH(60)" id="hPlus">+</button></div></div>
+
+        <div class="esec">Наполнение</div>
+        <div class="seg" id="fillSeg"></div>
+        <div class="erow" id="countRow"><span class="lbl" id="countLbl">Полок</span>
+          <div class="mstep"><button onclick="editCount(-1)" id="cMinus">−</button><div class="v"><span id="edCount">2</span></div><button onclick="editCount(1)" id="cPlus">+</button></div></div>
+        <div class="seg" style="margin-top:8px"><button class="sgb" id="divBtn" onclick="toggleDiv()">+ Вертикальная перегородка</button></div>
+
+        <div class="esec">Фасад</div>
+        <div class="seg" id="doorSeg"></div>
+        <div class="esec">Ручка</div>
+        <div class="seg" id="handleSeg"></div>
+
+        <div class="ebtns">
+          <button class="ebtn" onclick="dupCab()">⧉ Дублировать</button>
+          <button class="ebtn del" onclick="delCab()">🗑 Удалить</button>
+        </div>
+      </div>
+
+      <div class="field-lbl">Материал корпуса</div>
+      <div class="swatches" id="matSwatches"></div>
+    </div>
+
+    <!-- PHASE D ENGINEERING -->
+    <div class="screen" data-screen="engineering">
+      <div class="qnum">Фаза Г · Инженерия</div>
+      <h1>Узлы и усиления</h1>
+      <p class="hint">Рентген показывает крепёж, отверстия и классы сверловки по вашим модулям</p>
+      <div class="stage" id="engStage"></div>
+      <div class="viewtabs"><button class="on" id="xrayBtn" onclick="toggleXray()">Рентген ВКЛ</button></div>
+      <div class="rec warnc" id="recPanel">
+        <div class="ic">!</div>
+        <div class="tx"><b>Проверка назначения</b>Открытая полка глубиной 400 мм под нагрузкой — риск прогиба. Добавьте усиление.<button onclick="showRec()">Показать в 3D</button></div>
+      </div>
+      <div class="panel-card">
+        <div class="sacred">★ Killer-фича · персональные слоты</div>
+        <h3>Панель усиления</h3>
+        <p>Ваш фирменный набор крепежа из пресетов. То, ради чего мастера уходят от Bazis.</p>
+        <button class="addbtn" id="hardenBtn" onclick="addHarden()">+ Добавить усиление «Стандарт цеха»</button>
+      </div>
+      <div class="panel-card"><h3>3 ворота безопасности</h3><p>Перед экспортом — проверка коллизий, песочница SWJ008 и симуляция холостого хода. Ничего не уходит «грязным».</p></div>
+    </div>
+
+    <!-- PHASE E COST -->
+    <div class="screen" data-screen="cost">
+      <div class="qnum">Фаза Д · Смета</div>
+      <h1>Смета и оптимизация</h1>
+      <p class="sub">Не просто число — а советы, как сэкономить. Этого у IKEA нет.</p>
+      <div class="total-card"><div class="lbl">Итого</div><div class="big" id="costBig">0 сум</div><div class="items" id="costItems">0 позиций</div></div>
+      <div class="advisor" id="advisor">
+        <div class="h"><span class="spark">✦</span>Умный советник по материалам</div>
+        <p>Разделите материал фасада и корпуса — корпус из ЛДСП дешевле без потери вида снаружи. Экономия <span class="save">≈ 340 000 сум</span>.</p>
+        <button onclick="applyAdvice()">Применить и сэкономить</button>
+      </div>
+      <div class="ledger" id="ledger"></div>
+    </div>
+
+    <!-- PHASE F HANDOFF -->
+    <div class="screen" data-screen="handoff">
+      <div class="qnum">Фаза Е · Передача на производство</div>
+      <h1>Готово к станку</h1>
+      <p class="sub">От «клиент позвонил» до «DXF на ЧПУ» — не выходя из телефона.</p>
+      <div class="field-lbl">Комплект чертежей</div>
+      <div class="deliv" id="deliv"></div>
+      <div class="field-lbl">Pre-flight · проверка перед экспортом</div>
+      <div class="check" id="checklist"></div>
+      <div class="export-done" id="exportDone">
+        <div class="big">✓ Файлы сгенерированы</div><div>Прошли 3 ворота безопасности</div>
+        <div class="files" id="exportFiles"></div>
+        <button class="tg" onclick="flash('Откроется выбор чата Telegram')">✈ Отправить в Telegram</button>
+      </div>
+      <div class="prov" id="prov"></div>
+    </div>
+
+  </div>
+
+  <div class="foot">
+    <div class="footrow">
+      <button class="back" id="backBtn" onclick="goBack()" style="display:none">‹</button>
+      <button class="cta" id="cta" onclick="next()">Дальше →</button>
+    </div>
+  </div>
+</div>
+
+<script>
+/* ===== state ===== */
+const S = {
+  screen:'quiz', qi:0, quiz:{}, shape:'i', wallLen:2400, water:'left', constraints:[],
+  variant:0, cabs:[], cabsFrom:-1, selIdx:-1,
+  view:'front', mat:0, xray:true, hardened:false, recFixed:false,
+  adviceApplied:false, exported:false
+};
+const FLOW=['quiz','space','variants','configure','engineering','cost','handoff'];
+const PHASES=[
+  {k:'А',n:'Замер',screens:['quiz','space']},{k:'Б',n:'Раскл.',screens:['variants']},
+  {k:'В',n:'Конф.',screens:['configure']},{k:'Г',n:'Инжен.',screens:['engineering']},
+  {k:'Д',n:'Смета',screens:['cost']},{k:'Е',n:'Сдача',screens:['handoff']},
+];
+
+/* ===== quiz ===== */
+const QUIZ=[
+  {id:'oven',t:'Где разместить духовку?',s:'Можно не выбирать — решим по эргономике',
+   opts:[{v:'under',t:'Под столешницей',d:'Классика, удобно в малой кухне',pic:'oven_under'},{v:'tall',t:'В пенале',d:'На уровне глаз',pic:'oven_tall'}]},
+  {id:'hood',t:'Какая вытяжка?',s:'',opts:[{v:'integ',t:'Встроенная',d:'Скрыта в шкафу',pic:'hood_integ'},{v:'dome',t:'Купольная',d:'Без верхних шкафов',pic:'hood_dome'}]},
+  {id:'fridge',t:'Холодильник?',s:'',opts:[{v:'integ',t:'Встроенный',d:'Сливается с фасадами',pic:'fridge_integ'},{v:'free',t:'Отдельный',d:'Проще двигать',pic:'fridge_free'}]},
+  {id:'layout',t:'Форма раскладки?',s:'Хватит места — предложим остров',opts:[{v:'i',t:'Прямая (I)',d:'Один ряд',pic:'lay_i'},{v:'l',t:'Угловая (Г)',d:'Две стены углом',pic:'lay_l'}]},
+];
+function ill(kind){
+  const w='#cfc7b7',d='#9a917e',g='#b8b0a0',acc='#c0883a';
+  const F={
+   oven_under:`<rect x="60" y="30" width="80" height="20" rx="3" fill="${g}"/><rect x="60" y="52" width="80" height="58" rx="3" fill="${w}" stroke="${d}"/><rect x="70" y="62" width="60" height="38" rx="3" fill="#3a362f"/>`,
+   oven_tall:`<rect x="62" y="14" width="76" height="118" rx="4" fill="${w}" stroke="${d}"/><rect x="72" y="46" width="56" height="40" rx="3" fill="#3a362f"/>`,
+   hood_integ:`<rect x="50" y="20" width="100" height="26" rx="3" fill="${w}" stroke="${d}"/><rect x="74" y="46" width="52" height="10" rx="2" fill="${g}"/><rect x="60" y="92" width="80" height="14" rx="2" fill="#3a362f"/>`,
+   hood_dome:`<path d="M70 24 L130 24 L116 56 L84 56 Z" fill="${g}" stroke="${d}"/><rect x="92" y="14" width="16" height="14" fill="${g}"/><rect x="60" y="92" width="80" height="14" rx="2" fill="#3a362f"/>`,
+   fridge_integ:`<rect x="74" y="14" width="52" height="118" rx="4" fill="${w}" stroke="${d}"/><line x1="100" y1="60" x2="100" y2="64" stroke="${d}"/>`,
+   fridge_free:`<rect x="76" y="20" width="48" height="112" rx="5" fill="${g}" stroke="${d}"/><line x1="76" y1="70" x2="124" y2="70" stroke="${d}"/><rect x="115" y="36" width="4" height="14" fill="${d}"/>`,
+   lay_i:`<rect x="46" y="58" width="108" height="14" fill="${d}"/><rect x="46" y="44" width="108" height="14" fill="${w}" stroke="${d}"/>`,
+   lay_l:`<rect x="46" y="58" width="80" height="14" fill="${d}"/><rect x="126" y="40" width="14" height="60" fill="${d}"/><rect x="46" y="44" width="80" height="14" fill="${w}" stroke="${d}"/>`,
+   shape_i:`<rect x="30" y="40" width="140" height="60" fill="none" stroke="${d}" stroke-width="3"/><rect x="34" y="44" width="132" height="10" fill="${acc}" opacity=".5"/>`,
+   shape_l:`<path d="M30 40 H170 V100 H100 V72 H30 Z" fill="none" stroke="${d}" stroke-width="3"/>`,
+  };
+  return `<svg viewBox="0 0 200 140">${F[kind]||''}</svg>`;
+}
+
+/* ===== cabinet model ===== */
+const MATS=[{n:'Белый',c:'#f3f0ea',e:'#dcd6ca'},{n:'Дуб',c:'#d8b483',e:'#b9905c'},{n:'Графит',c:'#5d5b57',e:'#43413d'},{n:'Песок',c:'#cdbfa3',e:'#ab9b7c'},{n:'Олива',c:'#8c8d6f',e:'#6e6f54'},{n:'Бордо',c:'#7c4a4a',e:'#5e3636'}];
+const DOORS=['Гладкий','Фрезер','Стекло','Без'];   // 0..3
+const HANDLES=['Скоба','Профиль','Кнопка','Без'];  // 0..3
+const FILLS=[['shelves','Полки'],['drawers','Ящики'],['open','Открытый']];
+function mk(o){return Object.assign({kind:'base',w:600,h:720,fill:'shelves',count:2,div:0,door:0,handle:0},o);}
+function arch(v){
+  if(v===0) return [mk({fill:'open',count:2}),mk({count:1}),mk({fill:'drawers',count:3}),mk({count:1}),mk({kind:'tall',h:2100,fill:'shelves',count:5})];
+  if(v===1) return [mk({fill:'open',count:2}),mk({fill:'drawers',count:3}),mk({kind:'tall',h:2100,fill:'shelves',count:5}),mk({count:1}),mk({kind:'tall',h:2100,fill:'shelves',count:6})];
+  if(v===2) return [mk({fill:'drawers',count:3}),mk({fill:'drawers',count:4}),mk({fill:'drawers',count:2}),mk({count:1}),mk({kind:'tall',h:2100,fill:'drawers',count:4})];
+  return [mk({fill:'open',count:2}),mk({fill:'drawers',count:3}),mk({kind:'tall',h:2100,fill:'shelves',count:5})];
+}
+function cabCost(c){
+  let p = c.kind==='tall'?1200000:700000;
+  p += Math.max(0,(c.w-600))/100*40000;
+  p += Math.max(0,(c.h-720))/100*30000;
+  if(c.fill==='drawers') p += c.count*150000;
+  else p += c.count*22000;
+  if(c.div) p += 60000;
+  if(c.door<3) p += c.door*90000 + 70000;
+  return p;
+}
+function calcPrice(){
+  if(!S.cabs.length || S.screen==='quiz' || S.screen==='space') return 0;
+  let p=S.cabs.reduce((s,c)=>s+cabCost(c),0);
+  p += S.mat*180000;
+  p += S.hardened?260000:0;
+  if(S.adviceApplied) p-=340000;
+  return Math.max(0,Math.round(p));
+}
+const fmt=n=>n.toLocaleString('ru-RU').replace(/,/g,' ')+' сум';
+function refreshPrice(animate){const el=document.getElementById('price');el.textContent=fmt(calcPrice());if(animate){el.classList.remove('up');void el.offsetWidth;el.classList.add('up');}}
+
+/* ===== kitchen renderer (model-driven) ===== */
+function kitchenSVG(opt,cabsArg){
+  opt=opt||{}; const cabs=cabsArg||S.cabs;
+  const m=MATS[S.mat];
+  if(opt.top){
+    const n=cabs.length||5;
+    return `<svg viewBox="0 0 360 200"><rect x="20" y="20" width="320" height="160" fill="#efe9dd" stroke="#c9c1b2"/>
+      <rect x="30" y="30" width="300" height="34" fill="${m.c}" stroke="${m.e}"/>
+      <text x="180" y="52" font-family="${'var(--mono)'}" font-size="11" fill="#8f897d" text-anchor="middle">${S.wallLen} мм · рабочая стена</text>
+      ${S.water!=='none'?`<circle cx="${S.water==='left'?60:S.water==='right'?300:180}" cy="47" r="7" fill="#2a6df0"/>`:''}
+      <g font-family="${'var(--mono)'}" font-size="10" fill="#b6ad9b">${Array.from({length:n}).map((_,i)=>`<rect x="${40+i*(280/n)}" y="36" width="${260/n}" height="22" fill="none" stroke="#c9c1b2"/><text x="${40+i*(280/n)+(260/n)/2}" y="51" text-anchor="middle">${i+1}</text>`).join('')}</g>
+      <text x="180" y="150" font-family="${'var(--mono)'}" font-size="11" fill="#8f897d" text-anchor="middle">${n} модулей · ${S.shape==='i'?'прямая':'угловая'}</text></svg>`;
+  }
+  if(!cabs.length) return `<svg viewBox="0 0 360 232"></svg>`;
+  const X0=22, usable=316, Yb=212;
+  const totalW=cabs.reduce((s,c)=>s+c.w,0);
+  const scale=usable/totalW;
+  let x=X0, parts='', overlay='', bx=[];
+  cabs.forEach((c,idx)=>{
+    const cw=c.w*scale;
+    const vH = c.kind==='tall' ? (Yb-20) : Math.min(120,Math.max(54,c.h*0.10));
+    const top=Yb-vH;
+    const sel = opt.selectable && idx===S.selIdx;
+    bx.push({x0:x,x1:x+cw,idx});
+    // worktop on base modules
+    if(c.kind==='base') parts+=`<rect x="${x-1}" y="${top-7}" width="${cw+2}" height="7" rx="1.5" fill="#b9b1a1"/>`;
+    // carcass
+    parts+=`<rect x="${x}" y="${top}" width="${cw}" height="${vH}" rx="2" fill="${m.c}" stroke="${sel?'#1c1b18':m.e}" stroke-width="${sel?3:1}"/>`;
+    const ix=x+3, iy=top+3, iw=cw-6, ih=vH-6;
+    parts+=`<rect x="${ix}" y="${iy}" width="${iw}" height="${ih}" fill="#efe9df"/>`;
+    // divider
+    const bays = c.div? 2:1;
+    for(let b=0;b<bays;b++){
+      const bw=iw/bays, bxs=ix+b*bw;
+      if(c.fill==='drawers'){
+        for(let k=0;k<c.count;k++){const dh=ih/c.count, dy=iy+k*dh;
+          parts+=`<rect x="${bxs+1}" y="${dy+1}" width="${bw-2}" height="${dh-2}" rx="1.5" fill="${m.c}" stroke="${m.e}"/>`;
+          parts+=`<rect x="${bxs+bw/2-7}" y="${dy+dh/2-1.5}" width="14" height="3" rx="1.5" fill="#8f897d"/>`;}
+      } else { // shelves / open
+        for(let k=1;k<=c.count;k++){const sy=iy+ih/(c.count+1)*k; parts+=`<line x1="${bxs+2}" y1="${sy}" x2="${bxs+bw-2}" y2="${sy}" stroke="${m.e}" stroke-width="2"/>`;}
+      }
+    }
+    if(c.div) parts+=`<line x1="${ix+iw/2}" y1="${iy}" x2="${ix+iw/2}" y2="${iy+ih}" stroke="${m.e}" stroke-width="2.5"/>`;
+    // door indication (frame + handle) unless 'open' fill / 'Без' door / drawers (fronts are doors)
+    if(c.fill!=='open' && c.fill!=='drawers' && c.door<3){
+      if(c.door===2) parts+=`<rect x="${ix}" y="${iy}" width="${iw}" height="${ih}" fill="#bcd3dd" opacity=".35"/>`; // glass
+      parts+=`<rect x="${ix}" y="${iy}" width="${iw}" height="${ih}" fill="none" stroke="${m.e}" stroke-width="1.5"/>`;
+      if(c.door===1) parts+=`<rect x="${ix+5}" y="${iy+5}" width="${iw-10}" height="${ih-10}" fill="none" stroke="${m.e}" opacity=".5"/>`;
+    }
+    // handle on door modules
+    if(c.fill!=='drawers' && c.handle<3){
+      if(c.handle===0) parts+=`<rect x="${x+cw-9}" y="${top+10}" width="3" height="20" rx="1.5" fill="#8f897d"/>`;
+      else if(c.handle===1) parts+=`<rect x="${ix}" y="${top+4}" width="${iw}" height="3" rx="1.5" fill="#8f897d"/>`;
+      else parts+=`<circle cx="${x+cw-9}" cy="${top+16}" r="3" fill="#8f897d"/>`;
+    }
+    // xray holes
+    if(opt.xray){
+      overlay+=`<g opacity=".9">`;
+      if(c.fill==='drawers'){ for(let k=0;k<c.count;k++){const dy=iy+ih/c.count*(k+0.5); overlay+=`<circle cx="${ix+4}" cy="${dy}" r="2" fill="#2a6df0"/><circle cx="${ix+iw-4}" cy="${dy}" r="2" fill="#2a6df0"/>`;}}
+      else { for(let k=1;k<=c.count;k++){const sy=iy+ih/(c.count+1)*k; overlay+=`<circle cx="${ix+4}" cy="${sy}" r="2" fill="#2a6df0"/><circle cx="${ix+iw-4}" cy="${sy}" r="2" fill="#2a6df0"/>`;}}
+      if(c.fill!=='open'&&c.fill!=='drawers'&&c.door<3) overlay+=`<circle cx="${ix+8}" cy="${iy+10}" r="4" fill="none" stroke="#c0883a" stroke-width="1.5"/>`;
+      overlay+=`<circle cx="${x+cw/2}" cy="${Yb-12}" r="3" fill="#c4451f"/></g>`;
+    }
+    // hardening highlight on the flagged module
+    if(opt.eng && idx===recIdx() && S.hardened) overlay+=`<rect x="${x-1}" y="${top-1}" width="${cw+2}" height="${vH+2}" rx="3" fill="none" stroke="#c0883a" stroke-width="2.5"/>`;
+    // recommendation highlight (until fixed)
+    if(opt.eng && idx===recIdx() && !S.recFixed){
+      overlay+=`<rect x="${x}" y="${top}" width="${cw}" height="${vH}" rx="2" fill="#c4451f" opacity=".26"/>`;
+    } else if(opt.eng && idx===recIdx() && S.recFixed){
+      overlay+=`<rect x="${x}" y="${top}" width="${cw}" height="${vH}" rx="2" fill="#2f7d52" opacity=".18"/>`;
+    }
+    // module number
+    if(opt.num) overlay+=`<text x="${x+cw/2}" y="${Yb-6}" font-family="${'var(--mono)'}" font-size="9" fill="#8f897d" text-anchor="middle">${idx+1}</text>`;
+    x+=cw;
+  });
+  if(opt.selectable) S._bx=bx;
+  if(opt.xray) overlay+=`<text x="180" y="12" font-family="${'var(--mono)'}" font-size="9" fill="#8f897d" text-anchor="middle">● шкант  ○ петля 35мм  ● эксцентрик 15мм</text>`;
+  return `<svg viewBox="0 0 360 232">${parts}${overlay}</svg>`;
+}
+function recIdx(){ const i=S.cabs.findIndex(c=>c.fill==='open'); return i<0?0:i; }
+
+/* ===== screen renderers ===== */
+function renderPhaseBar(){
+  document.getElementById('phaseBar').innerHTML=PHASES.map(ph=>{
+    const idxs=ph.screens.map(s=>FLOW.indexOf(s));
+    const active=ph.screens.includes(S.screen);
+    const done=Math.max(...idxs)<FLOW.indexOf(S.screen);
+    return `<div class="ph ${active?'active':''} ${done?'done':''}"><div class="bar"></div><div class="nm">${ph.k} ${ph.n}</div></div>`;
+  }).join('');
+}
+function renderQuiz(){
+  const q=QUIZ[S.qi];
+  document.getElementById('qIdx').textContent=S.qi+1;
+  document.getElementById('qTitle').textContent=q.t;
+  const sub=document.getElementById('qSub');sub.textContent=q.s||'';sub.style.display=q.s?'block':'none';
+  document.getElementById('qCards').innerHTML=q.opts.map(o=>{
+    const sel=S.quiz[q.id]===o.v;
+    return `<button class="opt ${sel?'sel':''}" onclick="pickQuiz('${q.id}','${o.v}')"><div class="chk">✓</div><div class="pic">${ill(o.pic)}</div><div class="meta"><div class="t">${o.t}</div><div class="d">${o.d}</div></div></button>`;
+  }).join('');
+  updateCTA();
+}
+window.pickQuiz=(id,v)=>{S.quiz[id]=v;if(id==='layout')S.shape=v;renderQuiz();};
+window.noPref=()=>{S.quiz[QUIZ[S.qi].id]='any';advanceQuiz();};
+function advanceQuiz(){if(S.qi<QUIZ.length-1){S.qi++;renderQuiz();}else show('space');}
+function renderSpace(){
+  document.getElementById('shapeCards').innerHTML=[['i','Прямая','shape_i'],['l','Угловая','shape_l']].map(s=>
+    `<button class="opt ${S.shape===s[0]?'sel':''}" onclick="setShape('${s[0]}')"><div class="chk">✓</div><div class="pic">${ill(s[2])}</div><div class="meta"><div class="t">${s[1]}</div></div></button>`).join('');
+  document.getElementById('waterPills').innerHTML=[['left','Слева'],['center','По центру'],['right','Справа']].map(w=>`<div class="chip ${S.water===w[0]?'sel':''}" onclick="setWater('${w[0]}')">${w[1]}</div>`).join('');
+  document.getElementById('constraintPills').innerHTML=['Газовая труба','Стояк','Розетки','Окно','Радиатор'].map(c=>`<div class="chip ${S.constraints.includes(c)?'sel':''}" onclick="toggleCon('${c}')">${c}${S.constraints.includes(c)?' <span class="x">✕</span>':''}</div>`).join('');
+  document.getElementById('planBox').innerHTML=kitchenSVG({top:true});
+}
+window.setShape=v=>{S.shape=v;renderSpace();};
+window.setWater=v=>{S.water=v;renderSpace();};
+window.toggleCon=c=>{const i=S.constraints.indexOf(c);i<0?S.constraints.push(c):S.constraints.splice(i,1);renderSpace();};
+window.wall=d=>{S.wallLen=Math.min(4000,Math.max(1200,S.wallLen+d));document.getElementById('wallVal').textContent=S.wallLen;document.getElementById('planBox').innerHTML=kitchenSVG({top:true});};
+
+function renderVariants(){
+  const labels=['Стандартная','С пеналом','Ящики','Компактная'];
+  const subs=['базовый набор','+ высокий пенал','максимум выдвижных','для короткой стены'];
+  const c=arch(S.variant); const price=c.reduce((s,x)=>s+cabCost(x),0);
+  const drawers=c.reduce((s,x)=>s+(x.fill==='drawers'?x.count:0),0);
+  document.getElementById('vCard').innerHTML=`
+    <div class="vtop"><div class="vtag">${labels[S.variant]}<small>${subs[S.variant]}</small></div><div class="vprice">${fmt(price)}<small>под ключ</small></div></div>
+    <div class="vcanvas">${kitchenSVG({},c)}</div>
+    <div class="vmeta"><span><b>${c.length} модулей</b></span><span><b>${drawers} ящиков</b></span><span>стена <b>${S.wallLen} мм</b></span></div>`;
+  document.getElementById('vDots').innerHTML=[0,1,2,3].map(i=>`<span class="${i===S.variant?'on':''}"></span>`).join('');
+  document.getElementById('vPrev').disabled=S.variant===0;
+  document.getElementById('vNext').disabled=S.variant===3;
+}
+window.vMove=d=>{S.variant=Math.min(3,Math.max(0,S.variant+d));renderVariants();};
+
+/* ===== CONSTRUCTOR (Phase C) ===== */
+function renderConfigure(){
+  document.getElementById('cfgStage').innerHTML=kitchenSVG({selectable:true,top:S.view==='top',xray:false},S.view==='open'?S.cabs:S.cabs);
+  bindStage();
+  document.getElementById('matSwatches').innerHTML=MATS.map((m,i)=>`<div class="sw ${i===S.mat?'on':''}" style="background:${m.c}" onclick="setMat(${i})" title="${m.n}"></div>`).join('');
+  renderEditor();
+  refreshPrice();
+}
+function bindStage(){
+  const svg=document.querySelector('#cfgStage svg'); if(!svg)return;
+  svg.onclick=e=>{
+    if(S.view==='top')return;
+    const r=svg.getBoundingClientRect();
+    const px=(e.clientX-r.left)/r.width*360;
+    const hit=(S._bx||[]).find(b=>px>=b.x0&&px<=b.x1);
+    if(hit){selectCab(hit.idx);}
+  };
+}
+function selectCab(idx){S.selIdx=idx;document.getElementById('editor').classList.add('on');renderConfigure();
+  const ed=document.getElementById('editor');if(ed.scrollIntoView)ed.scrollIntoView({behavior:'smooth',block:'nearest'});}
+window.closeSel=()=>{S.selIdx=-1;document.getElementById('editor').classList.remove('on');renderConfigure();};
+function renderEditor(){
+  if(S.selIdx<0)return; const c=S.cabs[S.selIdx]; if(!c){S.selIdx=-1;return;}
+  document.getElementById('edName').textContent=c.kind==='tall'?'Пенал':'Модуль '+(S.selIdx+1);
+  document.getElementById('edSize').textContent=`${c.w} × ${c.h} мм`;
+  document.getElementById('edW').textContent=c.w;
+  document.getElementById('edH').textContent=c.h;
+  document.getElementById('wMinus').disabled=c.w<=300; document.getElementById('wPlus').disabled=c.w>=1200;
+  document.getElementById('hMinus').disabled=c.h<=420; document.getElementById('hPlus').disabled=c.h>=2400;
+  document.getElementById('fillSeg').innerHTML=FILLS.map(f=>`<button class="sgb ${c.fill===f[0]?'on':''}" onclick="setFill('${f[0]}')">${f[1]}</button>`).join('');
+  const cr=document.getElementById('countRow');
+  if(c.fill==='drawers'||c.fill==='shelves'||c.fill==='open'){cr.style.display='flex';
+    document.getElementById('countLbl').textContent=c.fill==='drawers'?'Ящиков':'Полок';
+    document.getElementById('edCount').textContent=c.count;
+    document.getElementById('cMinus').disabled=c.count<=(c.fill==='drawers'?1:0);
+    document.getElementById('cPlus').disabled=c.count>=8;
+  } else cr.style.display='none';
+  document.getElementById('divBtn').classList.toggle('on',!!c.div);
+  document.getElementById('doorSeg').innerHTML=DOORS.map((dn,i)=>`<button class="sgb ${c.door===i?'on':''}" onclick="setDoor(${i})">${dn}</button>`).join('');
+  document.getElementById('handleSeg').innerHTML=HANDLES.map((hn,i)=>`<button class="sgb ${c.handle===i?'on':''}" onclick="setHandle(${i})">${hn}</button>`).join('');
+}
+function edit(fn){fn();renderConfigure();refreshPrice(true);}
+window.editW=d=>edit(()=>{const c=S.cabs[S.selIdx];c.w=Math.min(1200,Math.max(300,c.w+d));});
+window.editH=d=>edit(()=>{const c=S.cabs[S.selIdx];c.h=Math.min(2400,Math.max(420,c.h+d));});
+window.setFill=f=>edit(()=>{const c=S.cabs[S.selIdx];c.fill=f;if(f==='drawers'&&c.count<1)c.count=3;});
+window.editCount=d=>edit(()=>{const c=S.cabs[S.selIdx];c.count=Math.min(8,Math.max(c.fill==='drawers'?1:0,c.count+d));});
+window.toggleDiv=()=>edit(()=>{const c=S.cabs[S.selIdx];c.div=c.div?0:1;});
+window.setDoor=i=>edit(()=>{S.cabs[S.selIdx].door=i;});
+window.setHandle=i=>edit(()=>{S.cabs[S.selIdx].handle=i;});
+window.dupCab=()=>edit(()=>{const c=Object.assign({},S.cabs[S.selIdx]);S.cabs.splice(S.selIdx+1,0,c);S.selIdx++;flash('Модуль продублирован');});
+window.delCab=()=>{if(S.cabs.length<=1){flash('Нельзя удалить последний');return;}edit(()=>{S.cabs.splice(S.selIdx,1);S.selIdx=-1;document.getElementById('editor').classList.remove('on');flash('Модуль удалён');});};
+window.addCab=()=>{S.cabs.push(mk({fill:'drawers',count:3}));S.selIdx=S.cabs.length-1;document.getElementById('editor').classList.add('on');renderConfigure();refreshPrice(true);flash('Модуль добавлен');};
+window.setMat=i=>{S.mat=i;renderConfigure();refreshPrice(true);};
+window.setView=(v,btn)=>{S.view=v;document.querySelectorAll('.screen[data-screen=configure] .viewtabs button').forEach(b=>b.classList.remove('on'));btn.classList.add('on');renderConfigure();};
+
+/* ===== engineering ===== */
+function renderEngineering(){
+  document.getElementById('engStage').innerHTML=kitchenSVG({xray:S.xray,eng:true,num:true});
+  document.getElementById('xrayBtn').textContent='Рентген '+(S.xray?'ВКЛ':'ВЫКЛ');
+  document.getElementById('xrayBtn').classList.toggle('on',S.xray);
+  const rec=document.getElementById('recPanel');
+  if(S.recFixed){rec.className='rec okc';rec.innerHTML='<div class="ic">✓</div><div class="tx"><b>Назначение в норме</b>Усиление добавлено, прогиб в допуске. Ворота безопасности пройдут.</div>';}
+  const hb=document.getElementById('hardenBtn');hb.classList.toggle('added',S.hardened);
+  if(S.hardened)hb.textContent='✓ Усиление «Стандарт цеха» добавлено';
+}
+window.toggleXray=()=>{S.xray=!S.xray;renderEngineering();};
+window.showRec=()=>flash('Камера → проблемный модуль');
+window.addHarden=()=>{S.hardened=true;S.recFixed=true;renderEngineering();refreshPrice(true);};
+
+/* ===== cost ===== */
+function renderCost(){
+  const p=calcPrice();
+  document.getElementById('costBig').textContent=fmt(p);
+  const parts=S.cabs.reduce((s,c)=>s+(c.fill==='drawers'?c.count*4:c.count+4)+(c.div?2:0),0);
+  document.getElementById('costItems').textContent=(parts+(S.hardened?6:0))+' позиций · '+S.cabs.length+' модулей';
+  const rows=[['Корпус и фасады',Math.round(p*0.52)],['Фурнитура и петли',Math.round(p*0.21)],['Столешница и кромка',Math.round(p*0.12)],['Сверловка / ЧПУ',Math.round(p*0.09)],['Доставка цеха',Math.round(p*0.06)]];
+  document.getElementById('ledger').innerHTML=rows.map(r=>`<div class="row"><span class="c">${r[0]}</span><b>${fmt(r[1])}</b></div>`).join('');
+  const adv=document.getElementById('advisor');
+  if(S.adviceApplied){adv.classList.add('applied');adv.querySelector('button').textContent='✓ Применено · −340 000 сум';}
+}
+window.applyAdvice=()=>{if(S.adviceApplied)return;S.adviceApplied=true;renderCost();refreshPrice(true);};
+
+/* ===== handoff ===== */
+function renderHandoff(){
+  const cards=[['3D-изометрия','общий вид'],['Вид сверху','TopPlan'],['Фасад','с размерами'],['Боковой разрез','узлы'],['Рентген','сверловка'],['Карта раскроя','лист ДСП']];
+  document.getElementById('deliv').innerHTML=cards.map(c=>{
+    let svg;
+    if(c[0]==='Вид сверху')svg=kitchenSVG({top:true});
+    else if(c[0]==='Рентген')svg=kitchenSVG({xray:true});
+    else svg=kitchenSVG({num:c[0]==='Фасад'});
+    return `<div class="dcard"><div class="dv">${svg}</div><div class="dl">${c[0]}<small>${c[1]}</small></div></div>`;
+  }).join('');
+  const checks=[['Проверка коллизий','ворота 1',true],['Песочница SWJ008','ворота 2',true],['Симуляция холостого хода','ворота 3',true],['Кромка 2мм / 0.4мм','правило',true],['Усиление узлов',S.hardened?'добавлено':'не добавлено',S.hardened]];
+  document.getElementById('checklist').innerHTML=checks.map(c=>`<div class="ci"><span class="b ${c[2]?'':'pend'}">${c[2]?'✓':'!'}</span><div style="flex:1">${c[0]}</div><small>${c[1]}</small></div>`).join('');
+  const d=new Date();
+  document.getElementById('prov').innerHTML=`Mebelchi · ${S.cabs.length} модулей · мат: ${MATS[S.mat].n}<br><b>${fmt(calcPrice())}</b> · стена ${S.wallLen}мм<br>сформировано ${d.toLocaleDateString('ru-RU')} ${d.toLocaleTimeString('ru-RU',{hour:'2-digit',minute:'2-digit'})}`;
+  if(S.exported){document.getElementById('exportDone').classList.add('on');
+    document.getElementById('exportFiles').innerHTML=`kitchen.dxf · ${S.cabs.length} модулей<br>${S.cabs.length*4} деталей · SWJ008 XML<br>cut_layout.pdf · карта раскроя`;}
+}
+
+/* ===== nav ===== */
+const RENDER={quiz:renderQuiz,space:renderSpace,variants:renderVariants,configure:renderConfigure,engineering:renderEngineering,cost:renderCost,handoff:renderHandoff};
+function show(name){
+  S.screen=name;
+  document.querySelectorAll('.screen').forEach(s=>s.classList.toggle('on',s.dataset.screen===name));
+  document.getElementById('body').scrollTop=0;
+  document.getElementById('phone').classList.toggle('warm',name==='cost'||name==='handoff');
+  RENDER[name]&&RENDER[name]();
+  renderPhaseBar();refreshPrice();updateCTA();
+  document.getElementById('backBtn').style.display=(name==='quiz'&&S.qi===0)?'none':'block';
+}
+function updateCTA(){
+  const cta=document.getElementById('cta');cta.className='cta';
+  if(S.screen==='quiz'){const ans=S.quiz[QUIZ[S.qi].id];cta.disabled=!ans;cta.textContent=S.qi<QUIZ.length-1?'Дальше →':'К помещению →';}
+  else if(S.screen==='space'){cta.disabled=false;cta.textContent='Сгенерировать 4 варианта →';cta.classList.add('gold');}
+  else if(S.screen==='variants'){cta.disabled=false;cta.textContent='Открыть в конструкторе →';}
+  else if(S.screen==='configure'){cta.disabled=false;cta.textContent='К инженерии →';}
+  else if(S.screen==='engineering'){cta.disabled=false;cta.textContent='К смете →';}
+  else if(S.screen==='cost'){cta.disabled=false;cta.textContent='К передаче →';}
+  else if(S.screen==='handoff'){cta.disabled=false;cta.classList.add('green');cta.textContent=S.exported?'✓ Готово · поделиться':'Экспорт на ЧПУ ⚙';}
+}
+window.next=()=>{
+  switch(S.screen){
+    case'quiz': if(S.quiz[QUIZ[S.qi].id])advanceQuiz(); break;
+    case'space': show('variants'); break;
+    case'variants':
+      if(S.cabsFrom!==S.variant){S.cabs=arch(S.variant);S.cabsFrom=S.variant;S.selIdx=-1;}
+      show('configure'); break;
+    case'configure': show('engineering'); break;
+    case'engineering': show('cost'); break;
+    case'cost': show('handoff'); break;
+    case'handoff': if(!S.exported){S.exported=true;renderHandoff();updateCTA();flash('Файлы прошли 3 ворота ✓');} break;
+  }
+};
+window.goBack=()=>{
+  if(S.screen==='quiz'&&S.qi>0){S.qi--;show('quiz');return;}
+  const i=FLOW.indexOf(S.screen);
+  if(i>0){if(FLOW[i-1]==='quiz')S.qi=QUIZ.length-1;show(FLOW[i-1]);}
+};
+let toastT;
+function flash(msg){let t=document.getElementById('toast');
+  if(!t){t=document.createElement('div');t.id='toast';t.style.cssText='position:absolute;bottom:96px;left:50%;transform:translateX(-50%);background:#1c1b18;color:#fff;padding:10px 16px;border-radius:12px;font:600 13px sans-serif;z-index:80;box-shadow:0 8px 24px rgba(0,0,0,.3);transition:.25s;opacity:0';document.getElementById('phone').appendChild(t);}
+  t.textContent=msg;t.style.opacity='1';clearTimeout(toastT);toastT=setTimeout(()=>t.style.opacity='0',1600);}
+window.flash=flash;
+show('quiz');
+</script>
+</body>
+</html>

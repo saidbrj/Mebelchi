@@ -1,0 +1,394 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mebelchi · Атлас функций и меню</title>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans:wght@300;400;500;600;700&family=IBM+Plex+Mono:wght@400;500;600&display=swap&subset=cyrillic" rel="stylesheet">
+<style>
+  :root{
+    --ink:#211d16; --ink-2:#6a6256; --ink-3:#9a917f;
+    --cream:#efe9db; --cream-2:#e6dfcd; --paper:#fbf8f1; --panel:#f4efe4;
+    --line:rgba(33,29,22,.12); --line-2:rgba(33,29,22,.06);
+    --r0:#ee7c2b; --r1:#3a6ea5; --r2:#7b5cff; --r3:#5f5e5a; --rA:#3f7d54; --rO:#c2410c;
+    --r0s:rgba(238,124,43,.12); --r1s:rgba(58,110,165,.12); --r2s:rgba(123,92,255,.12); --r3s:rgba(95,94,90,.12); --rAs:rgba(63,125,84,.12); --rOs:rgba(194,65,12,.12);
+    --sans:'IBM Plex Sans',system-ui,sans-serif; --mono:'IBM Plex Mono',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{font-family:var(--sans);background:#13120e;color:#ece5d6;line-height:1.5;
+    background-image:radial-gradient(1400px 700px at 50% -8%,#201d16,#13120e 70%);-webkit-font-smoothing:antialiased}
+  a{color:inherit}
+  .nav{position:sticky;top:0;z-index:90;display:flex;gap:16px;align-items:center;padding:12px 24px;
+    background:rgba(19,18,14,.82);backdrop-filter:blur(16px);border-bottom:1px solid rgba(255,255,255,.06)}
+  .nav a{color:#cfc6b4;text-decoration:none;font-size:13px;font-weight:500;opacity:.78}
+  .nav a:hover{opacity:1}.nav .home{color:#fff;font-weight:600}.nav .sp{flex:1}.nav .now{color:var(--r0);opacity:1}
+  .wrap{max-width:1180px;margin:0 auto;padding:34px 24px 100px}
+
+  .hero{max-width:820px;margin-bottom:26px}
+  .hero .k{font-family:var(--mono);font-size:11px;letter-spacing:.2em;text-transform:uppercase;color:#9a9484}
+  .hero h1{font-size:clamp(28px,4.6vw,46px);font-weight:600;letter-spacing:-.02em;color:#fff;margin:12px 0 12px;line-height:1.05}
+  .hero p{color:#b9b2a3;font-size:16px;font-weight:300}
+  .hero .src{font-family:var(--mono);font-size:11px;color:#7d786c;margin-top:10px}
+
+  /* the law / legend */
+  .law{background:rgba(255,255,255,.035);border:1px solid rgba(255,255,255,.08);border-radius:16px;padding:18px 20px;margin-bottom:14px}
+  .law h3{font-size:14px;color:#efe9da;font-weight:600;margin-bottom:4px}
+  .law .sub{color:#9a9484;font-size:12.5px;font-weight:300;margin-bottom:14px}
+  .rings{display:grid;grid-template-columns:repeat(6,1fr);gap:10px}
+  @media(max-width:820px){.rings{grid-template-columns:repeat(3,1fr)}}
+  @media(max-width:520px){.rings{grid-template-columns:repeat(2,1fr)}}
+  .ringcard{border-radius:12px;padding:12px;border:1px solid rgba(255,255,255,.08);cursor:pointer;transition:.15s;user-select:none}
+  .ringcard:hover{transform:translateY(-2px)}
+  .ringcard .badge{display:inline-flex;align-items:center;justify-content:center;width:26px;height:26px;border-radius:8px;font-family:var(--mono);font-weight:600;font-size:13px;color:#fff;margin-bottom:8px}
+  .ringcard .rn{font-size:12.5px;font-weight:600;color:#efe9da}
+  .ringcard .rd{font-family:var(--mono);font-size:10px;color:#9a9484;margin-top:2px;line-height:1.4}
+  .ringcard.off{opacity:.32;filter:grayscale(.6)}
+  .filterhint{font-family:var(--mono);font-size:11px;color:#7d786c;margin:10px 0 30px;text-align:center}
+
+  .sec{margin-top:38px}
+  .sec .sh{display:flex;align-items:baseline;gap:12px;margin-bottom:4px}
+  .sec .sh .gl{font-family:var(--mono);font-size:13px;color:var(--r0)}
+  .sec .sh h2{font-size:21px;font-weight:600;color:#f4eee0;letter-spacing:-.01em}
+  .sec .sd{color:#928c7e;font-size:13px;font-weight:300;margin-bottom:16px}
+
+  /* function groups */
+  .groups{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+  @media(max-width:980px){.groups{grid-template-columns:1fr 1fr}}
+  @media(max-width:640px){.groups{grid-template-columns:1fr}}
+  .grp{background:var(--cream);border-radius:16px;overflow:hidden;border:1px solid rgba(0,0,0,.25);box-shadow:0 18px 40px rgba(0,0,0,.3);align-self:start}
+  .grp .gt{padding:13px 15px;background:var(--paper);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:9px}
+  .grp .gt .l{font-family:var(--mono);font-size:11px;font-weight:600;color:#fff;background:var(--ink);width:22px;height:22px;border-radius:6px;display:flex;align-items:center;justify-content:center}
+  .grp .gt .nm{font-size:13.5px;font-weight:600;color:var(--ink)}
+  .grp .gt .nm small{display:block;font-family:var(--mono);font-size:9.5px;color:var(--ink-3);font-weight:400}
+  .fn{padding:11px 15px;border-bottom:1px solid var(--line-2);display:flex;gap:10px;align-items:flex-start}
+  .fn:last-child{border-bottom:none}
+  .fn.dim{opacity:.16}
+  .fn .dot{width:9px;height:9px;border-radius:50%;margin-top:5px;flex-shrink:0}
+  .fn .body{flex:1;min-width:0}
+  .fn .nm{font-size:12.5px;font-weight:500;color:var(--ink);line-height:1.35}
+  .fn .ctrl{font-family:var(--mono);font-size:10px;color:var(--ink-2);margin-top:2px;line-height:1.4}
+  .fn .tags{display:flex;gap:4px;flex-shrink:0;margin-top:2px}
+  .ftag{font-family:var(--mono);font-size:9px;font-weight:600;border-radius:5px;padding:2px 5px;line-height:1.3}
+
+  /* gesture grammar */
+  .gest{display:grid;grid-template-columns:repeat(4,1fr);gap:12px}
+  @media(max-width:820px){.gest{grid-template-columns:repeat(2,1fr)}}
+  .gcard{background:var(--cream);border-radius:14px;padding:14px;border:1px solid rgba(0,0,0,.22)}
+  .gcard svg{width:46px;height:46px;margin-bottom:8px}
+  .gcard .gn{font-size:12.5px;font-weight:600;color:var(--ink)}
+  .gcard .gm{font-family:var(--mono);font-size:10px;color:var(--ink-2);margin-top:2px;line-height:1.4}
+
+  /* scope + chrome row */
+  .duo{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+  @media(max-width:820px){.duo{grid-template-columns:1fr}}
+  .pcard{background:var(--cream);border-radius:16px;padding:18px;border:1px solid rgba(0,0,0,.22)}
+  .pcard h4{font-size:14px;font-weight:600;color:var(--ink);margin-bottom:3px}
+  .pcard .pd{font-family:var(--mono);font-size:10.5px;color:var(--ink-2);margin-bottom:13px}
+  .scopebar{display:flex;background:var(--cream-2);border-radius:10px;padding:4px;gap:3px;margin-bottom:10px}
+  .scopebar b{flex:1;text-align:center;font-size:12px;padding:9px 0;border-radius:7px;color:var(--ink-2);font-weight:500}
+  .scopebar b.on{background:var(--ink);color:#fff}
+  .scopebar b .mini{display:block;font-family:var(--mono);font-size:8px;opacity:.7;font-weight:400}
+  .chromelist{display:flex;flex-direction:column;gap:7px}
+  .chrome{display:flex;align-items:center;gap:10px;font-size:12.5px;color:var(--ink);background:var(--paper);border:1px solid var(--line);border-radius:10px;padding:9px 11px}
+  .chrome .n{font-family:var(--mono);font-size:10px;color:#fff;background:var(--ink-3);border-radius:5px;width:18px;height:18px;display:flex;align-items:center;justify-content:center}
+  .chrome small{margin-left:auto;font-family:var(--mono);font-size:9.5px;color:var(--ink-3)}
+
+  /* menus gallery */
+  .menus{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  @media(max-width:980px){.menus{grid-template-columns:1fr 1fr}}
+  @media(max-width:640px){.menus{grid-template-columns:1fr}}
+  .menu{background:var(--cream);border-radius:16px;overflow:hidden;border:1px solid rgba(0,0,0,.25);box-shadow:0 18px 40px rgba(0,0,0,.3)}
+  .menu .mh{padding:11px 14px;background:var(--paper);border-bottom:1px solid var(--line);display:flex;align-items:center;gap:8px}
+  .menu .mh .nm{font-size:12.5px;font-weight:600;color:var(--ink)}
+  .menu .mh .where{margin-left:auto;font-family:var(--mono);font-size:9px;font-weight:600;border-radius:5px;padding:2px 7px}
+  .menu .mb{padding:13px 14px}
+  .chip{display:inline-flex;align-items:center;gap:5px;font-size:11.5px;border:1px solid var(--line);border-radius:9px;padding:6px 10px;background:var(--paper);color:var(--ink-2);margin:0 5px 6px 0}
+  .chip.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .row{display:flex;align-items:center;gap:9px;padding:8px 0;border-bottom:1px dashed var(--line)}
+  .row:last-child{border-bottom:none}
+  .row .sw{width:13px;height:13px;border-radius:4px;flex-shrink:0}
+  .row .rn{font-size:12px;font-weight:500;color:var(--ink)}.row .rs{font-family:var(--mono);font-size:9.5px;color:var(--ink-2)}
+  .row .rt{margin-left:auto;font-family:var(--mono);font-size:10px;color:var(--ink-2)}
+  .row .tog{margin-left:auto;display:flex;gap:3px}
+  .row .tog b{font-family:var(--mono);font-size:10px;border:1px solid var(--line);border-radius:6px;padding:3px 7px;color:var(--ink-2)}
+  .row .tog b.on{background:var(--ink);color:#fff;border-color:var(--ink)}
+  .mininum{display:grid;grid-template-columns:repeat(3,1fr);gap:5px;max-width:150px}
+  .mininum b{background:var(--paper);border:1px solid var(--line);border-radius:7px;padding:8px 0;text-align:center;font-family:var(--mono);font-size:13px;color:var(--ink)}
+  .lens{display:flex;gap:5px;background:var(--cream-2);border-radius:10px;padding:4px}
+  .lens b{flex:1;text-align:center;font-size:10px;padding:7px 2px;border-radius:7px;color:var(--ink-2);font-weight:500}
+  .lens b.on{background:var(--paper);color:var(--ink);box-shadow:0 1px 2px rgba(0,0,0,.06)}
+  .swatches{display:flex;gap:7px}
+  .swatches .s{flex:1;aspect-ratio:1;border-radius:9px;border:2px solid transparent}
+  .swatches .s.on{border-color:var(--ink)}
+  .note{font-size:11px;color:var(--ink-2);line-height:1.45;margin-top:9px;font-family:var(--mono)}
+  .miniview{display:flex;gap:6px;align-items:flex-end;height:64px;margin-bottom:8px}
+  .miniview .bar{flex:1;background:var(--cream-2);border:1px solid var(--line);border-radius:5px}
+
+  .foot{color:#6b675c;font-size:12px;font-family:var(--mono);margin-top:54px;border-top:1px solid rgba(255,255,255,.07);padding-top:18px;line-height:1.8}
+  .foot b{color:#cfc6b4;font-weight:500}
+  .anchors{position:sticky;top:49px;z-index:80;display:flex;gap:6px;flex-wrap:wrap;padding:10px 0;background:rgba(19,18,14,.7);backdrop-filter:blur(10px)}
+  .anchors a{font-family:var(--mono);font-size:11px;color:#cfc6b4;text-decoration:none;border:1px solid rgba(255,255,255,.1);border-radius:7px;padding:5px 9px}
+  .anchors a:hover{border-color:var(--r0);color:#fff}
+</style>
+</head>
+<body>
+<div class="nav">
+  <a class="home" href="index.html">◀ Mebelchi UI</a><span class="sp"></span>
+  <a class="now" href="atlas.html">★ Атлас функций и меню</a>
+  <a href="v5-live.html">Конструктор · live</a><a href="v5-constructor.html">Листы</a>
+</div>
+<div class="wrap">
+  <div class="hero">
+    <div class="k">Карта всего · из 19_FUNCTION_MAP</div>
+    <h1>Все функции и меню — одной картой</h1>
+    <p>Каждая операция инструмента и каждое меню, как их определило исследование. Организовано по закону движка: <b style="color:#efe9da">как часто делаешь → так близко лежит</b>. Кликни кольцо ниже, чтобы подсветить только его функции — и иди исследуй сам.</p>
+    <div class="src">Источник: DB/19_FUNCTION_MAP · §2 инвентарь · §5 жесты · §4 scope · §6 chrome · §7 эргономика · подтверждено R7/F1</div>
+  </div>
+
+  <div class="anchors">
+    <a href="#law">Закон колец</a><a href="#fns">9 групп функций</a><a href="#gest">Жесты</a><a href="#scope">Scope + Chrome</a><a href="#menus">Меню (галерея)</a>
+  </div>
+
+  <!-- THE LAW -->
+  <div class="law" id="law">
+    <h3>Закон: частота определяет расстояние</h3>
+    <div class="sub">Контрол ближе, чем заслуживает частота — шум (ошибка «+», ошибка цвета). Дальше — трение (ошибка Bazis). Кликни кольцо — отфильтруешь все функции по нему.</div>
+    <div class="rings" id="rings">
+      <div class="ringcard" data-ring="0" style="background:var(--r0s)"><span class="badge" style="background:var(--r0)">M</span><div class="rn">Ring 0 · на объекте</div><div class="rd">много раз в час · жест, ноль меню</div></div>
+      <div class="ringcard" data-ring="1" style="background:var(--r1s)"><span class="badge" style="background:var(--r1)">H</span><div class="rn">Ring 1 · контекст</div><div class="rd">неск. раз за проект · лист/бар по выбору</div></div>
+      <div class="ringcard" data-ring="2" style="background:var(--r2s)"><span class="badge" style="background:var(--r2)">P</span><div class="rn">Ring 2 · фаза</div><div class="rd">раз-два за проект · ящик фазы снизу</div></div>
+      <div class="ringcard" data-ring="3" style="background:var(--r3s)"><span class="badge" style="background:var(--r3)">W</span><div class="rn">Ring 3 · мастерская</div><div class="rd">раз на цех · профиль/настройки</div></div>
+      <div class="ringcard" data-ring="A" style="background:var(--rAs)"><span class="badge" style="background:var(--rA)">A</span><div class="rn">Ambient · движок</div><div class="rd">непрерывно · бейджи, счётчики — не спрашивает</div></div>
+      <div class="ringcard" data-ring="O" style="background:var(--rOs)"><span class="badge" style="background:var(--rO)">O</span><div class="rn">Вывод · bookend</div><div class="rd">в конце · главное действие, все гейты</div></div>
+    </div>
+  </div>
+  <div class="filterhint" id="filterhint">показаны все кольца · кликни кольцо для фильтра</div>
+
+  <!-- FUNCTIONS -->
+  <div class="sec" id="fns">
+    <div class="sh"><span class="gl">§2</span><h2>Девять групп функций</h2></div>
+    <div class="sd">Полный инвентарь операций. Цвет точки = кольцо. Бейдж = класс частоты (M/H/P/W/A/O).</div>
+    <div class="groups" id="groups"></div>
+  </div>
+
+  <!-- GESTURES -->
+  <div class="sec" id="gest">
+    <div class="sh"><span class="gl">§5</span><h2>Грамматика жестов</h2></div>
+    <div class="sd">Один жест = один смысл, везде. Ни один жест не делает двух вещей.</div>
+    <div class="gest" id="gestgrid"></div>
+  </div>
+
+  <!-- SCOPE + CHROME -->
+  <div class="sec" id="scope">
+    <div class="sh"><span class="gl">§4 · §6</span><h2>Scope-селектор и постоянный хром</h2></div>
+    <div class="sd">Каждый размерный жест несёт область применения. На экране всегда — только пять элементов.</div>
+    <div class="duo">
+      <div class="pcard">
+        <h4>Scope-селектор</h4><div class="pd">«глобально/группа — первый приоритет», без ловушки случайного global</div>
+        <div class="scopebar"><b>Локально<span class="mini">1 панель</span></b><b class="on">Линия<span class="mini">по умолч.</span></b><b>Ряд<span class="mini">весь ряд</span></b><b>Все<span class="mini">глубина по умолч.</span></b></div>
+        <div class="note">Выбранная область подсвечивается в сцене ДО отпускания — видишь, что изменишь.</div>
+      </div>
+      <div class="pcard">
+        <h4>Постоянный хром v2 (5 элементов)</h4><div class="pd">убрано: стена-пилюля → setup · кнопка материала → фаза · счётчик вариантов → фаза B</div>
+        <div class="chromelist">
+          <div class="chrome"><span class="n">1</span> Холст (full-bleed)</div>
+          <div class="chrome"><span class="n">2</span> Ambient-читалка <small>цена + листы</small></div>
+          <div class="chrome"><span class="n">3</span> Бейдж проверки <small>зелёный/жёлтый/красный</small></div>
+          <div class="chrome"><span class="n">4</span> Контрол линз</div>
+          <div class="chrome"><span class="n">5</span> Главное действие <small>«Проверить и вывести»</small></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- MENUS -->
+  <div class="sec" id="menus">
+    <div class="sh"><span class="gl">меню</span><h2>Галерея меню</h2></div>
+    <div class="sd">Каждая поверхность, которая всплывает: где живёт (кольцо) и что внутри. Вот их и исследуй.</div>
+    <div class="menus" id="menusgrid"></div>
+  </div>
+
+  <div class="foot">
+    Это карта, не экран. Всё взято из <b>DB/19_FUNCTION_MAP</b> (инвентарь §2, жесты §5, scope §4, хром §6, эргономика §7) и подтверждено пакетами R7 / полем F1. Кольцевая модель — закон размещения: частота → расстояние.<br>
+    Дальше можно: открыть любой пункт в живом <b><a href="v5-live.html" style="color:#d8b98a">Конструкторе</a></b>, или в детальных <b><a href="v5-constructor.html" style="color:#d8b98a">Листах</a></b>. /UI Exploration · atlas v1 · 2026-06-15.
+  </div>
+</div>
+
+<script>
+(function(){
+  const $=id=>document.getElementById(id);
+  const RC={0:'var(--r0)',1:'var(--r1)',2:'var(--r2)',3:'var(--r3)',A:'var(--rA)',O:'var(--rO)'};
+  const RS={0:'var(--r0s)',1:'var(--r1s)',2:'var(--r2s)',3:'var(--r3s)',A:'var(--rAs)',O:'var(--rOs)'};
+  const FT={M:'0',H:'1',P:'2',W:'3',A:'·',O:'★'}; // freq -> ring label
+
+  // [name, freq, ring, control]
+  const GROUPS=[
+    ['A','Проект и контекст','bookend · Ring 2/3',[
+      ['Создать/открыть проект, данные клиента','P',2,'Экран проекта'],
+      ['Комната: стены, размеры, препятствия (окно/газ/розетки)','P',2,'Setup-флоу (Фаза A)'],
+      ['Тип мебели: кухня / шкаф / стеллаж','P',2,'Setup'],
+      ['Габарит: ширина/высота/глубина по умолчанию','P',2,'Setup · стена-пилюля убрана из хрома'],
+      ['Профиль мастерской применён','W',3,'Настройки'],
+    ]],
+    ['B','Структура каркаса','ЯДРО · Ring 0',[
+      ['Двигать линию (уровень полки, позиция перегородки)','M',0,'Перетаскивание · детент + тик · scope §4'],
+      ['Разделить секцию (полка = гориз. линия / стойка = верт.)','M',0,'Тап секции → ︱/— · ЗАМЕНЯЕТ «+»'],
+      ['Объединить (убрать линию)','H',0,'Перетащить на соседа / удалить в контексте'],
+      ['Размер секции Ш/В','M',0,'Тащить граничные линии — единственный жест'],
+      ['Глубина','H',1,'Контекст-бар · scope по умолчанию = Все'],
+      ['Выровнять / симметрия / равные промежутки','H',1,'«Выровнять» при ≥2 линиях/секциях'],
+      ['Ряды (высота столешницы, верхний ряд)','H',0,'Ряды — тоже линии, тот же drag'],
+      ['Копировать / зеркалить секцию','H',1,'Контекст-бар'],
+      ['Мультивыбор секций','H',0,'Долгий тап → группа, любое Ring-1 действие'],
+      ['Точный числовой ввод','H',0,'Двойной тап по размеру → numpad'],
+    ]],
+    ['C','Наполнение секции','Ring 0/1',[
+      ['Наполнение из библиотеки: полки×N, ящики, дверь(и), ниша, штанга, ниша под технику, угловой','M',0,'Свайп по секции = смена варианта'],
+      ['Открыть полную библиотеку / поиск','H',1,'Контекст → лист библиотеки'],
+      ['Сохранить секцию в МОЮ библиотеку','H',1,'Контекст-бар · каждый строит свою библиотеку'],
+      ['Кол-во / шаг полок внутри секции','M',0,'Это линии — тащить'],
+      ['Назначение секции (посуда/консервы/кастрюли/книги/обувь/одежда)','H',1,'Чип назначения → эргономика + нагрузка §7'],
+    ]],
+    ['D','Фасады и открывание','Ring 1',[
+      ['Тип фасада: распашной L/R, подъёмный, ящики, раздвижной, открытый','H',1,'Контекст-бар'],
+      ['Ручка / нажимной (push-to-open)','H',1,'Контекст-бар'],
+      ['Направление открывания + проверка коллизий','A','A','Ambient — бейдж-предупреждение'],
+    ]],
+    ['E','Материалы, толщина, листы','Ring 2 фаза + Ambient',[
+      ['Материал каркаса + толщина (16/18)','P',2,'Фаза «Материалы»'],
+      ['Задняя стенка: материал/толщина/крепление (4мм ХДФ, паз/накладка)','P',2,'Роль-строка · «не везде 16мм»'],
+      ['Пер-роль: дно, дно ящика, внутренние полки','P',2,'Список ролей · global-first · исключение в дайве'],
+      ['Фасад: декор / цвет','P',2,'Конец потока · для клиента · НЕ постоянный'],
+      ['Кромка (2мм видимая / 0.4 скрытая)','W',3,'По умолчанию из профиля · override проекта'],
+      ['Живой счётчик листов','A','A','Ambient · «3.8 листа ЛДСП · 0.5 ХДФ» — валюта мастера'],
+    ]],
+    ['F','Соединения и фурнитура','авто-ядро + экспертное кольцо',[
+      ['Авто-разрешение узлов (движок doc 16)','A','A','Тихо · видно в X-ray'],
+      ['Профиль правил узлов («у нас конфирматы, не минификсы»)','W',3,'Меню мастерской · правит jointResolver'],
+      ['Override / добавить / убрать узел','H',1,'Дайв секции → выбор семейства + «почему»'],
+      ['Усиление панелей (рёбра, стяжки)','H',0,'Мультивыбор секций → «Усилить»'],
+      ['Фурнитура по умолчанию (петля/направляющая бренд-серия)','W',3,'Профиль мастерской (что в наличии)'],
+      ['Пер-секция override фурнитуры','H',1,'Дайв секции'],
+    ]],
+    ['G','Интеллект и проверка','Ambient · движок',[
+      ['Физический гейт (прогиб, опрокидывание, ёмкость узла)','A','A','Бейдж на линии/секции → причина + фикс'],
+      ['Эргономика-советник (назначение + антропометрия)','A','A','«консервы ниже 1400», зоны досягаемости'],
+      ['Коллизии / зазоры (дверь, ящик vs ручка)','A','A','Ambient-бейдж'],
+      ['Производственный гейт (мин. деталь, валидность присадки)','O','O','Блок ТОЛЬКО на выводе — песочница внутри'],
+      ['«Почему» объяснения','A','A','Каждое авто-решение тапается'],
+    ]],
+    ['H','Виды и инспекция','постоянная линза + Ring 1 дайв',[
+      ['Орбита / зум вручную','M',0,'Два пальца + пинч · поправка конституции'],
+      ['Линзы: реалистично / X-ray / фасад / план / разрез','M',0,'Контрол линз (постоянный)'],
+      ['Дайв в секцию','H',1,'Пинч / «Деталь» · слои гаснут, узлы тапаются'],
+      ['Вид раскроя','P',2,'Линза или фаза вывода'],
+      ['Вид клиента','P',2,'Чистый рендер + декор — где живёт цвет'],
+    ]],
+    ['I','Вывод и коммерция','bookend',[
+      ['Цена (живая)','A','A','Ambient · в паре со счётчиком листов'],
+      ['Проверить → вывести: карты раскроя, этикетки, DXF/SWJ008, лист закупки','O','O','Главное действие · все гейты · церемония'],
+      ['Смета / рендер для клиента, Telegram-шер','O','O','Фаза вывода'],
+    ]],
+  ];
+
+  function tagFor(freq,ring){
+    return `<span class="ftag" style="background:${RS[ring]};color:${RC[ring]}">${freq}</span>`;
+  }
+  function renderGroups(){
+    $('groups').innerHTML = GROUPS.map(g=>`<div class="grp">
+      <div class="gt"><span class="l">${g[0]}</span><span class="nm">${g[1]}<small>${g[2]}</small></span></div>
+      ${g[3].map(f=>`<div class="fn" data-ring="${f[2]}">
+        <span class="dot" style="background:${RC[f[2]]}"></span>
+        <div class="body"><div class="nm">${f[0]}</div><div class="ctrl">${f[3]}</div></div>
+        <div class="tags">${tagFor(f[1],f[2])}</div>
+      </div>`).join('')}
+    </div>`).join('');
+  }
+  renderGroups();
+
+  // gestures §5
+  const G=[
+    ['Тащить линию','двигать · детент, тик, scope','<path d="M8,32 H38" stroke="#211d16" stroke-width="3" stroke-linecap="round"/><circle cx="23" cy="32" r="7" fill="#fff" stroke="#ee7c2b" stroke-width="3"/><path d="M14,20 l-5,5 5,5 M32,20 l5,5 -5,5" stroke="#9a8f78" stroke-width="2" fill="none" stroke-linecap="round"/>'],
+    ['Двойной тап по размеру','точный numpad','<rect x="10" y="14" width="26" height="13" rx="2" fill="#fff" stroke="#3a6ea5" stroke-width="2"/><circle cx="23" cy="38" r="4" fill="#3a6ea5"/><circle cx="23" cy="38" r="8" fill="none" stroke="#3a6ea5" stroke-width="1.5" opacity=".5"/>'],
+    ['Тап по секции','выбрать · поднимается контекст','<rect x="12" y="12" width="24" height="24" rx="3" fill="#ee7c2b22" stroke="#ee7c2b" stroke-width="2"/><circle cx="24" cy="24" r="4" fill="#ee7c2b"/>'],
+    ['Свайп по секции','цикл вариантов библиотеки','<rect x="10" y="14" width="28" height="20" rx="3" fill="#fff" stroke="#211d16" stroke-width="2"/><path d="M16,38 H32" stroke="#ee7c2b" stroke-width="3" stroke-linecap="round"/><path d="M30,34 l4,4 -4,4" stroke="#ee7c2b" stroke-width="3" fill="none" stroke-linecap="round"/>'],
+    ['Долгий тап','режим мультивыбора','<circle cx="24" cy="24" r="11" fill="none" stroke="#3a6ea5" stroke-width="2"/><circle cx="24" cy="24" r="4" fill="#3a6ea5"/><circle cx="24" cy="24" r="16" fill="none" stroke="#3a6ea5" stroke-width="1.2" opacity=".4"/>'],
+    ['Пинч в секцию','дайв · слои гаснут, узлы видны','<path d="M14,14 l8,8 M34,14 l-8,8 M14,34 l8,-8 M34,34 l-8,-8" stroke="#7b5cff" stroke-width="2.4" stroke-linecap="round"/><circle cx="24" cy="24" r="3" fill="#7b5cff"/>'],
+    ['Два пальца — драг','орбита (камера вручную)','<circle cx="18" cy="24" r="3" fill="#211d16"/><circle cx="30" cy="24" r="3" fill="#211d16"/><path d="M10,30 a14,9 0 0,0 28,0" fill="none" stroke="#9a8f78" stroke-width="2" stroke-dasharray="3 3"/>'],
+    ['Тап в пустоту','снять выбор · камера вернётся','<rect x="9" y="9" width="30" height="30" rx="4" fill="none" stroke="#9a8f78" stroke-width="1.6" stroke-dasharray="3 3"/><path d="M19,19 l10,10 M29,19 l-10,10" stroke="#9a8f78" stroke-width="2" stroke-linecap="round"/>'],
+  ];
+  $('gestgrid').innerHTML=G.map(g=>`<div class="gcard"><svg viewBox="0 0 48 48">${g[2]}</svg><div class="gn">${g[0]}</div><div class="gm">${g[1]}</div></div>`).join('');
+
+  // menus gallery
+  function whereTag(label,ring){return `<span class="where" style="background:${RS[ring]};color:${RC[ring]}">${label}</span>`;}
+  const MENUS=[
+    ['Контекст-бар','Ring 1', whereTag('по выбору · R1',1),
+      `<div style="margin-bottom:4px">${['Глубина','Выровнять','Копир.','Зеркало','Назначение ▾','Усилить','В библиотеку ☆'].map(c=>`<span class="chip">${c}</span>`).join('')}</div>
+       <div class="note">Поднимается при выборе секции/линии. Содержит все H-операции.</div>`],
+    ['Лист библиотеки','Ring 1', whereTag('контекст · R1',1),
+      `${['Полки ×N','Ящики','Дверь L','Дверь R','Ниша','Штанга','Под технику','Угловой','Сушка','Корзины'].map(c=>`<span class="chip">${c}</span>`).join('')}
+       <div class="note">Свайп листает их прямо на секции (M, Ring 0). Тут — полный список + поиск + «моя библиотека».</div>`],
+    ['Фаза «Материалы» (по ролям)','Ring 2', whereTag('ящик фазы · R2',2),
+      `<div class="row"><span class="sw" style="background:#e8dcc2"></span><div><div class="rn">Каркас</div><div class="rs">ЛДСП Egger</div></div><div class="tog"><b>16</b><b class="on">18</b></div></div>
+       <div class="row"><span class="sw" style="background:#f3efe7"></span><div><div class="rn">Задняя стенка</div><div class="rs">ХДФ · паз</div></div><div class="tog"><b class="on">4</b><b>8</b></div></div>
+       <div class="row"><span class="sw" style="background:#dcc9a6"></span><div><div class="rn">Дно / полки</div><div class="rs">ЛДСП</div></div><div class="tog"><b class="on">16</b><b>18</b></div></div>
+       <div class="note">«Не везде 16мм» — каждая роль отдельно, global-first.</div>`],
+    ['Меню соединений','Ring 1 / Ring 3', whereTag('дайв · R1',1),
+      `<div class="row"><span class="sw" style="background:#c2410c"></span><div><div class="rn">Конфирмат 7мм</div><div class="rs">каркас · силовой</div></div><span class="rt" style="color:#3f7d54">✓</span></div>
+       <div class="row"><span class="sw" style="background:#7b5cff"></span><div><div class="rn">Минификс</div><div class="rs">разборное · скрытый</div></div></div>
+       <div class="row"><span class="sw" style="background:#16a7c0"></span><div><div class="rn">Шкант (клей)</div><div class="rs">невидимый · неразборный</div></div></div>
+       <div class="row"><span class="sw" style="background:#d49a16"></span><div><div class="rn">Саморез</div><div class="rs">задняя стенка</div></div></div>
+       <div class="note">Цвет = семейство. Профиль мастерской (R3) задаёт наличие; тут переопределяешь.</div>`],
+    ['Чипы назначения','Ring 1', whereTag('контекст · R1',1),
+      `${['Посуда','Консервы','Кастрюли','Книги','Обувь','Одежда-штанга','Техника'].map(c=>`<span class="chip">${c}</span>`).join('')}
+       <div class="note">Каждое назначение → диапазон высоты/глубины/шага + класс нагрузки и зона досягаемости (§7).</div>`],
+    ['«Усилить» (мультивыбор)','Ring 0+1', whereTag('группа · R0+1',1),
+      `<div class="row"><span class="sw" style="background:#7b5cff"></span><div class="rn">Царга задняя</div><span class="rt">100×18 · конфирмат</span></div>
+       <div class="row"><span class="sw" style="background:#c2410c"></span><div class="rn">Ребро жёсткости</div><span class="rt">30×40 · пролёт</span></div>
+       <div class="row"><span class="sw" style="background:#16a7c0"></span><div class="rn">Доп. перегородка</div><span class="rt">ЛДСП 18</span></div>
+       <div class="row"><span class="sw" style="background:#d49a16"></span><div class="rn">Металлоуголок</div><span class="rt">40×40 · к стене</span></div>
+       <div class="note">«Где хочет, не по меню, но и не вручную» — конкретные элементы, движок подсказывает.</div>`],
+    ['Профиль мастерской','Ring 3', whereTag('настройки · R3',3),
+      `<div class="row"><div class="rn">Правила узлов</div><span class="rt">jointResolver ctx</span></div>
+       <div class="row"><div class="rn">Бренд петель / направляющих</div><span class="rt">что в наличии</span></div>
+       <div class="row"><div class="rn">Кромка по умолчанию</div><span class="rt">2.0 / 0.4 мм</span></div>
+       <div class="row"><div class="rn">Лист / керф / трим</div><span class="rt">2800×2070 · 4.0</span></div>
+       <div class="note">Раз на цех. Ограничено цитируемыми, проходящими гейт опциями.</div>`],
+    ['Контрол линз','Ring 0 (persistent)', whereTag('хром · R0',0),
+      `<div class="lens"><b class="on">Реал.</b><b>X-ray</b><b>Фасад</b><b>План</b><b>Разрез</b></div>
+       <div class="note">Постоянный. Орбита/зум — два пальца + пинч; NFS авто-кадрирование как ассист.</div>`],
+    ['Numpad (точный ввод)','Ring 0→1', whereTag('2× тап · R0',0),
+      `<div style="display:flex;gap:12px;align-items:center"><div class="mininum">${[7,8,9,4,5,6,1,2,3].map(n=>`<b>${n}</b>`).join('')}<b>⌫</b><b>0</b><b style="background:#211d16;color:#fff">✓</b></div>
+       <div class="note" style="margin:0">Свайп — шаги, попап — точность (лок основателя). Поддержит выражения.</div></div>`],
+    ['Ambient-читалка','Ambient', whereTag('всегда · A',  'A'),
+      `<div style="font-family:var(--mono);font-size:20px;font-weight:600;color:var(--ink)">3 740 000 <span style="font-size:13px;color:var(--ink-2)">сум</span></div>
+       <div style="font-family:var(--mono);font-size:12px;color:var(--ink-2);margin-top:4px">▢ 3.8 листа ЛДСП · 0.5 ХДФ</div>
+       <div class="note">Не спрашивает — только информирует. Обновляется на каждом структурном изменении.</div>`],
+    ['Бейдж проверки','Ambient', whereTag('всегда · A','A'),
+      `<div style="display:flex;gap:7px;flex-wrap:wrap"><span class="chip" style="background:#3f7d5418;color:#2c5a3c;border-color:#3f7d54">✓ норма</span><span class="chip" style="background:#c2781c22;color:#7a4a0c;border-color:#c2781c">▲ прогиб 4.1мм</span><span class="chip" style="background:#b5402c18;color:#7a2a1c;border-color:#b5402c">✕ блок вывода</span></div>
+       <div class="note">Тап → причина + фикс. Песочница внутри; красное блокирует только вывод.</div>`],
+    ['Вывод (церемония)','Вывод', whereTag('конец · O','O'),
+      `<div class="row"><span class="rn">Паспорт изделия</span><span class="rt">взрыв-схема · детали</span></div>
+       <div class="row"><span class="rn">Лист фасадов</span><span class="rt">в салон · декор</span></div>
+       <div class="row"><span class="rn">Карты раскроя · этикетки</span><span class="rt">DXF / SWJ008</span></div>
+       <div class="row"><span class="rn">Лист закупки фурнитуры</span><span class="rt">+ Telegram</span></div>
+       <div class="note">Главное действие. Прогоняет ВСЕ гейты. Церемония остаётся.</div>`],
+  ];
+  $('menusgrid').innerHTML=MENUS.map(m=>`<div class="menu"><div class="mh"><span class="nm">${m[0]}</span>${m[2]}</div><div class="mb">${m[4]||m[3]}</div></div>`).join('');
+  // note: MENUS items have body at index 3 (the html string)
+  $('menusgrid').innerHTML=MENUS.map(m=>`<div class="menu"><div class="mh"><span class="nm">${m[0]}</span>${m[2]}</div><div class="mb">${m[3]}</div></div>`).join('');
+
+  // ring filter
+  let active=null;
+  $('rings').addEventListener('click',e=>{
+    const c=e.target.closest('.ringcard'); if(!c)return;
+    const r=c.dataset.ring;
+    active = (active===r)? null : r;
+    document.querySelectorAll('.ringcard').forEach(x=>x.classList.toggle('off', active!==null && x.dataset.ring!==active));
+    document.querySelectorAll('.fn').forEach(f=>f.classList.toggle('dim', active!==null && f.dataset.ring!==active));
+    $('filterhint').textContent = active!==null? `фильтр: ${({'0':'Ring 0 · на объекте','1':'Ring 1 · контекст','2':'Ring 2 · фаза','3':'Ring 3 · мастерская','A':'Ambient · движок','O':'Вывод'})[active]} · кликни ещё раз чтобы снять` : 'показаны все кольца · кликни кольцо для фильтра';
+  });
+})();
+</script>
+</body>
+</html>

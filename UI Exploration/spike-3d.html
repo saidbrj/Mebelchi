@@ -1,0 +1,313 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no">
+<title>Mebelchi · 3D Spike (perf test)</title>
+<!--
+  PURPOSE: the go/no-go 3D test from ADR-001.
+  Validates on a real Redmi / iPhone:
+    1) parametric edits (width / shelves / drawers / module count) without freezing
+    2) realistic ⇄ x-ray ⇄ wireframe mode switch (material swap, NOT rebuild)
+    3) seamless 2D(plan) ⇄ 3D camera transition (one scene, animated camera)
+  TECHNIQUES DEMONSTRATED (the things that fix lag):
+    - shared unit geometry for all panels (geometry never recreated)
+    - InstancedMesh per part TYPE (carcass, fronts, shelves, dowels) → ~4 draw calls no matter the part count
+    - mode switch = material swap on those instanced meshes (NOT a rebuild)
+    - rebuilds dispose() old instance buffers (no GPU-memory leak under repeated edits)
+    - render-on-demand (only draws a frame when something changed)
+    - capped devicePixelRatio
+  NOTE: three.js is loaded from CDN for this test. For production/offline in Capacitor, bundle it.
+-->
+<style>
+  *{box-sizing:border-box;-webkit-tap-highlight-color:transparent}
+  html,body{margin:0;height:100%;overflow:hidden;font-family:-apple-system,system-ui,sans-serif;background:#eceae4}
+  #app{position:fixed;inset:0}
+  canvas{display:block;touch-action:none}
+  /* HUD */
+  #hud{position:fixed;top:10px;left:10px;background:rgba(20,18,15,.82);color:#e9e3d6;
+    font:11px/1.5 ui-monospace,Menlo,monospace;padding:9px 11px;border-radius:10px;pointer-events:none;min-width:168px;z-index:10}
+  #hud b{color:#e0b878}
+  #hud .warn{color:#ef8a5e}
+  #hud .ok{color:#7fd0a0}
+  /* controls */
+  #panel{position:fixed;left:0;right:0;bottom:0;z-index:10;padding:10px 10px calc(10px + env(safe-area-inset-bottom));
+    background:linear-gradient(transparent,rgba(236,234,228,.96) 26%);display:flex;flex-direction:column;gap:8px}
+  .row{display:flex;gap:8px;justify-content:center;flex-wrap:wrap}
+  .grp{display:flex;align-items:center;background:#fff;border:1.5px solid #d7d1c5;border-radius:13px;overflow:hidden;box-shadow:0 2px 8px rgba(30,25,15,.08)}
+  .grp .lab{font:600 12px/1 sans-serif;color:#5c574e;padding:0 11px}
+  .grp button{border:none;background:#fff;width:42px;height:44px;font-size:20px;cursor:pointer;color:#1b1a17}
+  .grp button:active{background:#f0ece3}
+  .grp .v{min-width:58px;text-align:center;font:700 13px/1 sans-serif}
+  .grp .v small{display:block;font:9px/1 monospace;color:#8f897d;margin-top:3px}
+  .seg{display:flex;background:#fff;border:1.5px solid #d7d1c5;border-radius:13px;overflow:hidden;box-shadow:0 2px 8px rgba(30,25,15,.08)}
+  .seg button{border:none;background:#fff;padding:0 13px;height:44px;font:600 12px/1 sans-serif;cursor:pointer;color:#1b1a17;border-left:1px solid #ece7dd}
+  .seg button:first-child{border-left:none}
+  .seg button.on{background:#1c1b18;color:#fff}
+  .big{background:#c0883a;color:#fff;border:none;border-radius:13px;height:44px;padding:0 16px;font:700 13px/1 sans-serif;cursor:pointer;box-shadow:0 2px 8px rgba(30,25,15,.12)}
+  .big.dark{background:#1c1b18}
+  #hint{position:fixed;top:10px;right:10px;z-index:10;background:rgba(255,255,255,.85);border:1px solid #d7d1c5;border-radius:10px;padding:7px 10px;font:11px/1.4 sans-serif;color:#5c574e;max-width:150px}
+</style>
+<script type="importmap">
+{
+  "imports":{
+    "three":"https://cdn.jsdelivr.net/npm/three@0.171.0/build/three.module.js",
+    "three/addons/":"https://cdn.jsdelivr.net/npm/three@0.171.0/examples/jsm/"
+  }
+}
+</script>
+</head>
+<body>
+<div id="app"></div>
+<div id="hud">
+  <div><b>Mebelchi 3D spike</b></div>
+  <div id="hFps">— fps</div>
+  <div id="hMs">— ms/кадр</div>
+  <div id="hCalls">— draw calls</div>
+  <div id="hTris">— треуг.</div>
+  <div id="hParts">— деталей</div>
+  <div id="hEdit" class="ok">правка: —</div>
+</div>
+<div id="hint">Крути пальцем · кнопки внизу меняют мебель</div>
+
+<div id="panel">
+  <div class="row">
+    <div class="grp"><span class="lab">Ширина</span><button onclick="ed('w',-50)">−</button><div class="v"><span id="vW">600</span><small>мм</small></div><button onclick="ed('w',50)">+</button></div>
+    <div class="grp"><span class="lab">Полки</span><button onclick="ed('sh',-1)">−</button><div class="v"><span id="vSh">3</span></div><button onclick="ed('sh',1)">+</button></div>
+    <div class="grp"><span class="lab">Ящики</span><button onclick="ed('dr',-1)">−</button><div class="v"><span id="vDr">0</span></div><button onclick="ed('dr',1)">+</button></div>
+  </div>
+  <div class="row">
+    <div class="seg" id="modeSeg">
+      <button class="on" onclick="setMode('real',this)">Реалистичный</button>
+      <button onclick="setMode('xray',this)">Рентген</button>
+      <button onclick="setMode('wire',this)">Линии</button>
+    </div>
+  </div>
+  <div class="row">
+    <button class="big dark" id="viewBtn" onclick="toggleView()">↗ В план (2D)</button>
+    <div class="grp"><span class="lab">Модулей</span><button onclick="ed('mods',-1)">−</button><div class="v"><span id="vMods">1</span></div><button onclick="ed('mods',1)">+</button></div>
+    <button class="big" onclick="stress()">Стресс ×8</button>
+  </div>
+</div>
+
+<script type="module">
+import * as THREE from 'three';
+import {OrbitControls} from 'three/addons/controls/OrbitControls.js';
+
+const MM=0.001;
+// ---- model state ----
+const tmpl=()=>({w:600,h:720,d:560,shelves:3,drawers:0});
+const M={ modules:[tmpl()], mode:'real', is2D:false };
+
+// ---- renderer / scene ----
+const app=document.getElementById('app');
+const renderer=new THREE.WebGLRenderer({antialias:true,alpha:true,powerPreference:'high-performance'});
+renderer.setPixelRatio(Math.min(window.devicePixelRatio||1,2)); // cap DPR for low-end phones
+renderer.setSize(innerWidth,innerHeight);
+app.appendChild(renderer.domElement);
+
+const scene=new THREE.Scene();
+const camera=new THREE.PerspectiveCamera(45,innerWidth/innerHeight,0.05,100);
+const controls=new OrbitControls(camera,renderer.domElement);
+controls.enableDamping=true;controls.dampingFactor=0.12;
+controls.target.set(0,0.42,0);
+controls.minDistance=0.6;controls.maxDistance=6;
+
+scene.add(new THREE.HemisphereLight(0xffffff,0x8a7256,1.0));
+const dir=new THREE.DirectionalLight(0xfff2e0,1.1);dir.position.set(2.5,4,2);scene.add(dir);
+// soft ground
+const ground=new THREE.Mesh(new THREE.PlaneGeometry(40,40),new THREE.MeshStandardMaterial({color:0xe2dccf,roughness:1}));
+ground.rotation.x=-Math.PI/2;ground.position.y=-0.001;scene.add(ground);
+
+// ---- shared geometry (NEVER recreated) ----
+const UNIT=new THREE.BoxGeometry(1,1,1);          // every panel shares this; we scale per-mesh
+const SHELF=new THREE.BoxGeometry(1,1,1);         // instanced
+const DOWEL=new THREE.CylinderGeometry(0.004,0.004,0.016,6); // instanced small part (draw-call stress)
+
+// ---- materials per mode (swapped, not rebuilt) ----
+const MATS={};
+MATS.real={
+  carcass:new THREE.MeshStandardMaterial({color:0xe9e1d2,roughness:.85,metalness:0}),
+  shelf:new THREE.MeshStandardMaterial({color:0xd8cdb8,roughness:.85}),
+  front:new THREE.MeshStandardMaterial({color:0xcabfa6,roughness:.8}),
+  dowel:new THREE.MeshStandardMaterial({color:0xb98a3a,roughness:.5}),
+};
+MATS.xray={
+  carcass:new THREE.MeshStandardMaterial({color:0x6fb0d8,transparent:true,opacity:.18,depthWrite:false}),
+  shelf:new THREE.MeshStandardMaterial({color:0x3f86d0,transparent:true,opacity:.30,depthWrite:false}),
+  front:new THREE.MeshStandardMaterial({color:0x9fb8d8,transparent:true,opacity:.14,depthWrite:false}),
+  dowel:new THREE.MeshStandardMaterial({color:0xc4451f,transparent:true,opacity:.9}),
+};
+MATS.wire={
+  carcass:new THREE.MeshBasicMaterial({color:0x4a463e,wireframe:true}),
+  shelf:new THREE.MeshBasicMaterial({color:0xc0883a,wireframe:true}),
+  front:new THREE.MeshBasicMaterial({color:0x6a6458,wireframe:true}),
+  dowel:new THREE.MeshBasicMaterial({color:0xc4451f,wireframe:true}),
+};
+
+// ---- the run group ----
+let run=new THREE.Group();scene.add(run);
+// every part type is its own InstancedMesh → ~4 draw calls total, regardless of module count
+let carcassInst=null, frontInst=null, shelfInst=null, dowelInst=null, partCount=0;
+const TH=18*MM; // panel thickness
+
+function disposeRun(){
+  // dispose() frees each InstancedMesh's instanceMatrix GPU buffer; the shared geometry is NOT touched.
+  // Without this, every rebuild orphaned a buffer → a slow GPU-memory leak that would skew the device test.
+  [carcassInst,frontInst,shelfInst,dowelInst].forEach(m=>{ if(m){m.dispose();run.remove(m);} });
+  carcassInst=frontInst=shelfInst=dowelInst=null;
+  for(let i=run.children.length-1;i>=0;i--) run.remove(run.children[i]); // safety net
+}
+function buildInst(geom,mat,mats){
+  if(!mats.length) return null;
+  const inst=new THREE.InstancedMesh(geom,mat,mats.length);
+  for(let i=0;i<mats.length;i++) inst.setMatrixAt(i,mats[i]);
+  inst.instanceMatrix.needsUpdate=true;run.add(inst);return inst;
+}
+
+function buildRun(){
+  const mat=MATS[M.mode];
+  disposeRun();
+  partCount=0;
+  const mods=M.modules;
+  const totalW=mods.reduce((s,m)=>s+m.w*MM,0);
+  let x=-totalW/2;
+  const carcassMat=[], frontMat=[], shelfMat=[], dowelMat=[];
+  const dummy=new THREE.Object3D();
+  // collect a box transform into an instance-matrix list (translate + per-instance scale, optional Z rotation)
+  const push=(arr,px,py,pz,sx,sy,sz,rz)=>{
+    dummy.position.set(px,py,pz);dummy.rotation.set(0,0,rz||0);dummy.scale.set(sx,sy,sz);
+    dummy.updateMatrix();arr.push(dummy.matrix.clone());
+  };
+  mods.forEach(mod=>{
+    const w=mod.w*MM,h=mod.h*MM,d=mod.d*MM;
+    const cx=x+w/2;
+    // carcass panels — instanced (shared UNIT geom, per-instance scale; box normals survive axis-aligned scale)
+    push(carcassMat, x+TH/2, h/2, 0, TH, h, d);        // left
+    push(carcassMat, x+w-TH/2, h/2, 0, TH, h, d);      // right
+    push(carcassMat, cx, h-TH/2, 0, w, TH, d);         // top
+    push(carcassMat, cx, TH/2, 0, w, TH, d);           // bottom
+    push(carcassMat, cx, h/2, -d/2+TH/2, w, h, TH);    // back
+    partCount+=5;
+    const innerW=w-2*TH, innerH=h-2*TH;
+    if(mod.drawers>0){
+      for(let k=0;k<mod.drawers;k++){            // drawer fronts → instanced
+        const dh=innerH/mod.drawers, dy=TH+dh*(k+0.5);
+        push(frontMat, cx, dy, d/2-TH/2, innerW, dh-0.01, TH);partCount++;
+      }
+    } else {
+      for(let k=0;k<mod.shelves;k++){            // shelves → instanced
+        const sy=TH+innerH/(mod.shelves+1)*(k+1);
+        push(shelfMat, cx, sy, 0, innerW, TH*0.8, d-TH);partCount++;
+      }
+    }
+    // dowels at shelf/panel joints (small repeated parts → instanced; the draw-call stress)
+    const rows = mod.drawers>0?mod.drawers:Math.max(mod.shelves,2);
+    for(let r=0;r<=rows;r++){
+      const yy=TH+ (innerH/(rows))*r;
+      [x+TH, x+w-TH].forEach(px=>{
+        [ -d/2+0.05, d/2-0.05 ].forEach(pz=>{
+          push(dowelMat, px, Math.min(yy,h-TH), pz, 1,1,1, Math.PI/2);partCount++;
+        });
+      });
+    }
+    x+=w;
+  });
+  // one InstancedMesh per part type → draw calls stay flat (~4) as the part count scales into the hundreds
+  carcassInst=buildInst(UNIT, mat.carcass, carcassMat);
+  frontInst  =buildInst(UNIT, mat.front,   frontMat);
+  shelfInst  =buildInst(SHELF,mat.shelf,   shelfMat);
+  dowelInst  =buildInst(DOWEL,mat.dowel,   dowelMat);
+  invalidate();
+}
+
+// mode change = swap the material on each existing InstancedMesh — NO geometry/instance rebuild.
+// This makes ADR-001's "material swap, not rebuild" claim literal. Wired to setMode().
+function applyMode(){
+  const mat=MATS[M.mode];
+  if(carcassInst) carcassInst.material=mat.carcass;
+  if(frontInst)   frontInst.material=mat.front;
+  if(shelfInst)   shelfInst.material=mat.shelf;
+  if(dowelInst)   dowelInst.material=mat.dowel;
+  invalidate();
+}
+
+// ---- render-on-demand ----
+let needsRender=true, tween=null;
+function invalidate(){needsRender=true;}
+controls.addEventListener('change',invalidate);
+addEventListener('resize',()=>{camera.aspect=innerWidth/innerHeight;camera.updateProjectionMatrix();renderer.setSize(innerWidth,innerHeight);invalidate();});
+
+// ---- camera poses & 2D/3D tween ----
+function pose3D(){const tw=M.modules.reduce((s,m)=>s+m.w*MM,0);return {p:new THREE.Vector3(tw*0.55,0.95,1.5+tw*0.2),t:new THREE.Vector3(0,0.42,0)};}
+function pose2D(){const tw=M.modules.reduce((s,m)=>s+m.w*MM,0);return {p:new THREE.Vector3(0,2.6+tw*0.3,0.0001),t:new THREE.Vector3(0,0,0)};}
+function startTween(to){
+  const from={p:camera.position.clone(),t:controls.target.clone()};
+  tween={from,to,t0:performance.now(),dur:650};
+  controls.enabled=false;
+}
+window.toggleView=()=>{
+  M.is2D=!M.is2D;
+  document.getElementById('viewBtn').textContent=M.is2D?'↘ В 3D':'↗ В план (2D)';
+  startTween(M.is2D?pose2D():pose3D());
+};
+
+// ---- edits ----
+window.ed=(k,d)=>{
+  const t0=performance.now();
+  const m=M.modules[0]; // edit applies to first module (and stress duplicates)
+  if(k==='w'){ M.modules.forEach(mm=>mm.w=Math.min(1200,Math.max(300,mm.w+d))); document.getElementById('vW').textContent=M.modules[0].w; }
+  if(k==='sh'){ M.modules.forEach(mm=>{mm.shelves=Math.min(8,Math.max(0,mm.shelves+d));mm.drawers=0;}); document.getElementById('vSh').textContent=M.modules[0].shelves; document.getElementById('vDr').textContent=0;}
+  if(k==='dr'){ M.modules.forEach(mm=>mm.drawers=Math.min(7,Math.max(0,mm.drawers+d))); document.getElementById('vDr').textContent=M.modules[0].drawers; }
+  if(k==='mods'){ const n=Math.min(12,Math.max(1,M.modules.length+d));
+    if(n>M.modules.length) while(M.modules.length<n) M.modules.push(tmpl());
+    else M.modules.length=n;
+    document.getElementById('vMods').textContent=n; }
+  buildRun();
+  const dt=(performance.now()-t0);
+  const he=document.getElementById('hEdit');
+  he.textContent='правка: '+dt.toFixed(1)+' мс';
+  he.className = dt<16?'ok':(dt<33?'':'warn');
+};
+window.stress=()=>{ M.modules=Array.from({length:8},tmpl); document.getElementById('vMods').textContent=8; document.getElementById('vW').textContent=600; const t0=performance.now(); buildRun(); document.getElementById('hEdit').textContent='8 модулей: '+(performance.now()-t0).toFixed(1)+' мс'; if(!M.is2D)startTween(pose3D()); };
+window.setMode=(mode,btn)=>{ M.mode=mode; document.querySelectorAll('#modeSeg button').forEach(b=>b.classList.remove('on')); btn.classList.add('on'); applyMode(); };
+
+// ---- HUD perf ----
+let lastT=performance.now(), ema=16;
+function updateHUD(dt){
+  ema=ema*0.9+dt*0.1;
+  document.getElementById('hFps').innerHTML='<b>'+(1000/ema).toFixed(0)+'</b> fps';
+  document.getElementById('hMs').textContent=ema.toFixed(1)+' ms/кадр';
+  const info=renderer.info.render;
+  document.getElementById('hCalls').innerHTML='draw calls: <b>'+info.calls+'</b>';
+  document.getElementById('hTris').textContent='треуг.: '+info.triangles.toLocaleString('ru-RU');
+  document.getElementById('hParts').innerHTML='деталей: <b>'+partCount+'</b>';
+}
+
+// ---- loop (render-on-demand + tween) ----
+function loop(){
+  requestAnimationFrame(loop);
+  if(tween){
+    const k=Math.min(1,(performance.now()-tween.t0)/tween.dur);
+    const e=k<.5?2*k*k:1-Math.pow(-2*k+2,2)/2; // easeInOutQuad
+    camera.position.lerpVectors(tween.from.p,tween.to.p,e);
+    controls.target.lerpVectors(tween.from.t,tween.to.t,e);
+    camera.lookAt(controls.target);
+    if(k>=1){tween=null;controls.enabled=true;}
+    needsRender=true;
+  }
+  controls.update();
+  if(needsRender){
+    const now=performance.now();
+    renderer.render(scene,camera);
+    updateHUD(now-lastT); lastT=now; // read draw-call/tri counts from the frame we just rendered (not the previous one)
+    needsRender=false;
+  }
+}
+// init
+camera.position.copy(pose3D().p);
+buildRun();
+loop();
+</script>
+</body>
+</html>
