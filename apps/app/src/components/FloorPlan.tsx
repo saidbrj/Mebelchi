@@ -53,7 +53,7 @@ function dim(key: string, a: Pt, b: Pt, nx: number, ny: number, off: number, lab
   const chipH = F + 70 * s;
   const tx = nx * 50 * s;
   const ty = ny * 50 * s;
-  const col = strong ? "#2a6df0" : "#333";
+  const col = strong ? "#00ac7a" : "#333";
   return (
     <g key={key}>
       <g pointerEvents="none">
@@ -64,7 +64,7 @@ function dim(key: string, a: Pt, b: Pt, nx: number, ny: number, off: number, lab
         <line x1={e2.x - tx} y1={e2.y - ty} x2={e2.x + tx} y2={e2.y + ty} stroke={col} strokeWidth={5 * s} />
       </g>
       <g transform={`translate(${mx} ${my}) rotate(${ang})`} style={{ cursor: "pointer" }} onPointerDown={(e) => e.stopPropagation()} onClick={(e) => onEdit(e.clientX, e.clientY)}>
-        <rect x={-chipW / 2} y={-chipH / 2} width={chipW} height={chipH} rx={30 * s} fill="#fff" stroke={strong ? "#2a6df0" : "#d6d6d6"} strokeWidth={(strong ? 8 : 5) * s} />
+        <rect x={-chipW / 2} y={-chipH / 2} width={chipW} height={chipH} rx={30 * s} fill="#fff" stroke={strong ? "#00ac7a" : "#d6d6d6"} strokeWidth={(strong ? 8 : 5) * s} />
         <text x={0} y={F * 0.34} textAnchor="middle" fontFamily="Inter, sans-serif" fontSize={F} fontWeight={strong ? 600 : 400} fill="#222">
           {label}
         </text>
@@ -118,7 +118,7 @@ function openingSymbol(kind: Opening["kind"], p1: Pt, p2: Pt, nx: number, ny: nu
 // handles) so it stays tappable at any zoom. Glyph varies by category/kind:
 // sockets & switches (electric), a finned radiator (heating), a grille (vent).
 function fittingSymbol(it: Fitting, cx: number, cy: number, ang: number, s: number, selected: boolean) {
-  const stroke = selected ? "#2a6df0" : "#6f6f6f";
+  const stroke = selected ? "#00ac7a" : "#6f6f6f";
   const sw = (selected ? 22 : 13) * s;
   let glyph: React.ReactNode;
   let W: number;
@@ -171,7 +171,7 @@ function fittingSymbol(it: Fitting, cx: number, cy: number, ang: number, s: numb
 function waterMarker(cx: number, cy: number, r: number) {
   return (
     <g pointerEvents="none">
-      <circle cx={cx} cy={cy} r={r} fill="#2a6df0" />
+      <circle cx={cx} cy={cy} r={r} fill="#00ac7a" />
       <path
         d={`M${cx} ${cy - r * 0.52} C ${cx + r * 0.6} ${cy - r * 0.05} ${cx + r * 0.42} ${cy + r * 0.5} ${cx} ${cy + r * 0.5} C ${cx - r * 0.42} ${cy + r * 0.5} ${cx - r * 0.6} ${cy - r * 0.05} ${cx} ${cy - r * 0.52} Z`}
         fill="#fff"
@@ -736,10 +736,10 @@ export function FloorPlan({
           return <g key={`el${it.id}`}>{fittingSymbol(it, sp.cx, sp.cy, ang, s, selectedFitting === it.id)}</g>;
         })}
         {selW != null && (
-          <line x1={points[selW].x} y1={points[selW].y} x2={points[(selW + 1) % n].x} y2={points[(selW + 1) % n].y} stroke="#2a6df0" strokeWidth={70 * s} strokeLinecap="round" />
+          <line x1={points[selW].x} y1={points[selW].y} x2={points[(selW + 1) % n].x} y2={points[(selW + 1) % n].y} stroke="#00ac7a" strokeWidth={70 * s} strokeLinecap="round" />
         )}
         {selDrawnSeg != null && (
-          <line x1={segEnds(selDrawnSeg).a.x} y1={segEnds(selDrawnSeg).a.y} x2={segEnds(selDrawnSeg).b.x} y2={segEnds(selDrawnSeg).b.y} stroke="#2a6df0" strokeWidth={T + 30 * s} strokeLinecap="round" opacity={0.55} />
+          <line x1={segEnds(selDrawnSeg).a.x} y1={segEnds(selDrawnSeg).a.y} x2={segEnds(selDrawnSeg).b.x} y2={segEnds(selDrawnSeg).b.y} stroke="#00ac7a" strokeWidth={T + 30 * s} strokeLinecap="round" opacity={0.55} />
         )}
       </g>
 
@@ -748,13 +748,13 @@ export function FloorPlan({
       {addWall && (
         <g>
           {draft.map((p, pi) => (
-            <circle key={`dh${pi}`} cx={p.x} cy={p.y} r={70 * s} fill="#fff" stroke="#2a6df0" strokeWidth={16 * s} style={{ cursor: "grab" }} onPointerDown={onDraftDown(pi)} />
+            <circle key={`dh${pi}`} cx={p.x} cy={p.y} r={70 * s} fill="#fff" stroke="#00ac7a" strokeWidth={16 * s} style={{ cursor: "grab" }} onPointerDown={onDraftDown(pi)} />
           ))}
           {draft.length >= 2 && (
-            <polyline points={draft.map((p) => `${p.x},${p.y}`).join(" ")} fill="none" stroke="#2a6df0" strokeWidth={T} strokeLinecap="round" strokeLinejoin="round" opacity={0.55} pointerEvents="none" />
+            <polyline points={draft.map((p) => `${p.x},${p.y}`).join(" ")} fill="none" stroke="#00ac7a" strokeWidth={T} strokeLinecap="round" strokeLinejoin="round" opacity={0.55} pointerEvents="none" />
           )}
           {draft.map((p, pi) => (
-            <circle key={`dd${pi}`} cx={p.x} cy={p.y} r={22 * s} fill="#2a6df0" pointerEvents="none" />
+            <circle key={`dd${pi}`} cx={p.x} cy={p.y} r={22 * s} fill="#00ac7a" pointerEvents="none" />
           ))}
         </g>
       )}
@@ -810,7 +810,7 @@ export function FloorPlan({
           const snapped = Math.abs(deg - 90) < 0.6 || Math.abs(deg - 45) < 0.6 || Math.abs(deg - 135) < 0.6;
           return (
             <g pointerEvents="none">
-              <rect x={lx - 150 * s} y={ly - 105 * s} width={300 * s} height={210 * s} rx={36 * s} fill={snapped ? "#2a6df0" : "#1c1b18"} />
+              <rect x={lx - 150 * s} y={ly - 105 * s} width={300 * s} height={210 * s} rx={36 * s} fill={snapped ? "#00ac7a" : "#1c1b18"} />
               <text x={lx} y={ly + 60 * s} textAnchor="middle" fontFamily="Inter, sans-serif" fontSize={150 * s} fontWeight={600} fill="#fff">
                 {`${Math.round(deg)}°`}
               </text>
@@ -846,7 +846,7 @@ export function FloorPlan({
             const sel = selectedOpening === o.id;
             return (
               <g key={`oh${o.id}`}>
-                {sel && <line x1={sp.p1.x} y1={sp.p1.y} x2={sp.p2.x} y2={sp.p2.y} stroke="#2a6df0" strokeWidth={T + 40 * s} strokeLinecap="round" opacity={0.5} pointerEvents="none" />}
+                {sel && <line x1={sp.p1.x} y1={sp.p1.y} x2={sp.p2.x} y2={sp.p2.y} stroke="#00ac7a" strokeWidth={T + 40 * s} strokeLinecap="round" opacity={0.5} pointerEvents="none" />}
                 <line x1={sp.p1.x} y1={sp.p1.y} x2={sp.p2.x} y2={sp.p2.y} stroke="transparent" strokeWidth={T + 240 * s} strokeLinecap="round" style={{ cursor: "move" }} onPointerDown={onOpeningDown(o.id)} />
               </g>
             );
@@ -862,13 +862,13 @@ export function FloorPlan({
 
           {/* corner handles */}
           {points.map((p, i) => (
-            <rect key={`h${i}`} x={p.x - 90 * s} y={p.y - 90 * s} width={180 * s} height={180 * s} rx={24 * s} fill="#fff" stroke="#2a6df0" strokeWidth={16 * s} style={{ cursor: "grab" }} onPointerDown={onCornerDown(i)} />
+            <rect key={`h${i}`} x={p.x - 90 * s} y={p.y - 90 * s} width={180 * s} height={180 * s} rx={24 * s} fill="#fff" stroke="#00ac7a" strokeWidth={16 * s} style={{ cursor: "grab" }} onPointerDown={onCornerDown(i)} />
           ))}
 
           {/* interior wall point handles (editable in the main scene) */}
           {interiorWalls.map((poly, wi) =>
             poly.map((p, pi) => (
-              <circle key={`iwp${wi}-${pi}`} cx={p.x} cy={p.y} r={60 * s} fill="transparent" stroke="#2a6df0" strokeWidth={14 * s} style={{ cursor: "grab" }} onPointerDown={onInteriorDown(wi, pi)} />
+              <circle key={`iwp${wi}-${pi}`} cx={p.x} cy={p.y} r={60 * s} fill="transparent" stroke="#00ac7a" strokeWidth={14 * s} style={{ cursor: "grab" }} onPointerDown={onInteriorDown(wi, pi)} />
             )),
           )}
         </>

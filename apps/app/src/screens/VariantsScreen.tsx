@@ -1,23 +1,32 @@
-// Phase B — "Выберите вариант". Generate four realistic kitchen layouts from the
-// room the user designed, each priced, previewed in 3D like IKEA's planner:
-//   1. tap "Сгенерировать раскладки"
-//   2. WATER GATE — if no water supply was placed, warn first (the sink needs it);
-//      skip the warning when it's already set
-//   3. a short loading screen while the solver runs
-//   4. one big 3D preview + a 1·2·3·4 stepper to flip between the four layouts
-// The footer's "Открыть в конструкторе" commits the selected layout to the run.
+// Phase B — "Выберите вариант". On entering the screen we generate four realistic kitchen
+// layouts straight away (no intro/CTA screen — that was friction): a short loading screen
+// while the solver runs, then one big 3D preview + a 1·2·3·4 stepper to flip between the
+// four layouts. "↻ Заново" regenerates. The footer's "Открыть в конструкторе" commits it.
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useStore } from "../store";
-import { priceCabs } from "../model/toProject";
-import { fmtSum } from "../model/format";
+import { useT } from "../i18n/useT";
+import { priceCabs, sqmPrice } from "../model/toProject";
+import { useMoney } from "../useMoney";
+import { useRateTable } from "../pricing/usePrice";
 import { VariantScene } from "../three/VariantScene";
+import { QuizScreen } from "./QuizScreen";
+import { FLOOR_COVERINGS } from "../model/floors";
+import { IconTabSettings } from "../components/icons";
 
 export function VariantsScreen() {
+  const t = useT();
+  const money = useMoney();
+  const rates = useRateTable();
+  const showPricing = useStore((s) => s.settings.showPricing);
+  const pricingItems = useStore((s) => s.settings.pricingItems);
+  const pricingSqm = useStore((s) => s.settings.pricingSqm);
+  const sqmRate = useStore((s) => s.settings.sqmRate);
   const genVariants = useStore((s) => s.genVariants);
   const variant = useStore((s) => s.variant);
   const points = useStore((s) => s.roomPoints);
   const ceiling = useStore((s) => s.ceiling);
+  const reveal = useStore((s) => s.reveal);
   const openings = useStore((s) => s.openings);
   const interiorWalls = useStore((s) => s.interiorWalls);
   const fittings = useStore((s) => s.fittings);
@@ -26,12 +35,21 @@ export function VariantsScreen() {
   const waterWall = useStore((s) => s.waterWall);
   const generateVariants = useStore((s) => s.generateVariants);
   const selectVariant = useStore((s) => s.selectVariant);
-  const goTo = useStore((s) => s.goTo);
+  const startBlank = useStore((s) => s.startBlank);
+  const requestWater = useStore((s) => s.requestWater);
+  const openMenu = useStore((s) => s.openMenu);
 
   const [loading, setLoading] = useState(false);
-  const [warn, setWarn] = useState(false);
+  // ask about water ONCE on entry if none was placed (non-blocking — you can continue)
+  const [warn, setWarn] = useState(() => genVariants.length === 0 && waterWall == null);
+  // the onboarding questions, now HERE. They used to be a gate in front of the room editor — four
+  // abstract questions before you'd seen a single kitchen, one of them ("what shape?") asked before
+  // you'd drawn a wall. They drive the same generator; they just belong next to the thing they
+  // change. Unanswered ones fall back to defaults, so most kitchens never open this at all.
+  const [opts, setOpts] = useState(false);
 
-  const coveringColor = FLOOR_COLORS[floorCovering] ?? "#ecd9b4";
+  const coveringColor = FLOOR_COVERINGS[floorCovering]?.color ?? "#ecd9b4";
+  const floorId = FLOOR_COVERINGS[floorCovering]?.id;
 
   const run = () => {
     setLoading(true);
@@ -41,42 +59,24 @@ export function VariantsScreen() {
     }, 900);
   };
 
-  const onGenerate = () => {
-    if (waterWall == null) {
-      setWarn(true); // water gate — must place a supply before we can site the sink
-      return;
-    }
-    run();
-  };
+  // on entry: auto-generate if water is set; otherwise the water prompt (above) handles it
+  useEffect(() => {
+    if (genVariants.length === 0 && waterWall != null) run();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
-  if (loading) {
+  if (loading || genVariants.length === 0) {
     return (
       <section className="screen var-screen">
-        <div className="loader-wrap">
-          <div className="spinner" />
-          <div className="loader-title">Генерируем раскладки…</div>
-          <div className="loader-sub">Подбираем модули под вашу комнату и водоснабжение</div>
-        </div>
-      </section>
-    );
-  }
-
-  if (genVariants.length === 0) {
-    return (
-      <section className="screen var-screen">
-        <div className="qblock">
-          <div className="qnum">Фаза Б · Раскладка</div>
-          <h1 className="h1">Раскладка мебели</h1>
-          <p className="sub">
-            Сгенерируем 4 варианта расстановки кухни под размеры вашей комнаты — в 3D, прямо в вашем
-            помещении. Раковина встанет у водоснабжения, плита — на безопасном расстоянии,
-            холодильник — с краю.
-          </p>
-          <button className="gen-btn gen-btn-lg" onClick={onGenerate} type="button">
-            ↻ Сгенерировать раскладки
-          </button>
-        </div>
-        {warn && <WaterWarn onClose={() => setWarn(false)} onGoRoom={() => goTo("details")} />}
+        {warn ? (
+          <WaterWarn onAdd={requestWater} onContinue={() => { setWarn(false); run(); }} />
+        ) : (
+          <div className="loader-wrap">
+            <div className="spinner" />
+            <div className="loader-title">{t.variants.loadingTitle}</div>
+            <div className="loader-sub">{t.variants.loadingSub}</div>
+          </div>
+        )}
       </section>
     );
   }
@@ -85,22 +85,56 @@ export function VariantsScreen() {
 
   return (
     <section className="var-screen-3d">
-      <div className="var-bar">
-        <div className="var-bar-head">
-          <span className="var-name">{cur.name}</span>
-          <span className="var-price">{fmtSum(priceCabs(cur.cabs))}</span>
+      <div className="var-bar cfg-bar">
+        <div className="cfg-bar-l">
+          <button className="cfg-burger" onClick={openMenu} type="button" aria-label={t.menu.menu}>
+            <span /><span />
+          </button>
         </div>
-        <button className="gen-btn" onClick={onGenerate} type="button">
-          ↻ Заново
+        {/* the layout TYPE («П-образная» / «Угловая» / …) is the heading — when the room supports one
+            shape this is the strategy name instead (generateVariants sets `name` accordingly) */}
+        <div className="cfg-title">{cur.name}</div>
+        {/* the same settings gear the home hub uses — icon only, no label */}
+        <button className="var-settings" onClick={() => setOpts(true)} type="button" aria-label={t.variants.options}>
+          <IconTabSettings />
         </button>
       </div>
+
+      {/* just the price under the bar (the strategy name is the blurb under the stage) */}
+      {showPricing && (
+        <div className="var-caption">
+          <span className="var-price">
+            {money(pricingItems || !pricingSqm ? priceCabs(cur.cabs, rates) : sqmPrice(cur.cabs, sqmRate))}
+          </span>
+        </div>
+      )}
+
+      {/* the questions, in a sheet over the kitchen they change. Closing regenerates. */}
+      {opts && (
+        <div className="var-opts-sheet" onClick={() => { setOpts(false); run(); }}>
+          <div className="var-opts-card" onClick={(e) => e.stopPropagation()}>
+            {/* «↻ Заново» lives up here now (it used to sit in the top bar): regenerate with the
+                current answers, then drop back to the kitchen to look at the result. */}
+            <button className="gen-btn var-opts-again" onClick={() => { setOpts(false); run(); }} type="button">
+              {t.variants.again}
+            </button>
+            <button className="sheet-x" onClick={() => { setOpts(false); run(); }} type="button" aria-label={t.fe.close}>✕</button>
+            <QuizScreen />
+            <button className="btn btn-next var-opts-apply" onClick={() => { setOpts(false); run(); }} type="button">
+              {t.variants.optionsApply}
+            </button>
+          </div>
+        </div>
+      )}
 
       <div className="var-stage">
         <VariantScene
           points={points}
           ceiling={ceiling}
+          reveal={reveal}
           openings={openings}
           coveringColor={coveringColor}
+          floorId={floorId}
           interiorWalls={interiorWalls}
           fittings={fittings}
           wallSurfaces={wallSurfaces}
@@ -109,7 +143,9 @@ export function VariantsScreen() {
           style={cur.style}
           cabs={cur.cabs}
         />
-        <span className="var-hint">Поверните, чтобы осмотреть</span>
+        {/* regenerate the 4 layouts, right on the scene (it used to sit in the top bar) */}
+        <button className="var-regen" onClick={run} type="button">{t.variants.again}</button>
+        <span className="var-hint">{t.variants.rotate}</span>
       </div>
 
       <div className="var-blurb">{cur.blurb}</div>
@@ -128,30 +164,28 @@ export function VariantsScreen() {
         ))}
       </div>
 
-      {warn && <WaterWarn onClose={() => setWarn(false)} onGoRoom={() => goTo("details")} />}
+      {/* the ALTERNATIVE path: skip the generated options and build on a bare room. The seller who
+          is going to rebuild everything anyway takes this instead of clearing an auto-layout first. */}
+      <button className="var-scratch" onClick={startBlank} type="button">
+        <span className="var-scratch-name">{t.variants.scratch} →</span>
+        <span className="var-scratch-sub">{t.variants.scratchSub}</span>
+      </button>
     </section>
   );
 }
 
-// floor-covering colours (mirror of model/floors.ts FLOOR_COVERINGS order)
-const FLOOR_COLORS = ["#ecd9b4", "#f1e3c6", "#e7d3ab", "#cda877", "#d9b48f", "#d2cabd"];
-
-function WaterWarn({ onClose, onGoRoom }: { onClose: () => void; onGoRoom: () => void }) {
+// no water supply placed → offer to add it (opens the room's water picker) or continue.
+// Non-blocking: "Не важно" generates anyway (the sink defaults to a sensible wall).
+function WaterWarn({ onAdd, onContinue }: { onAdd: () => void; onContinue: () => void }) {
+  const t = useT();
   return (
-    <div className="confirm-overlay" onClick={onClose}>
+    <div className="confirm-overlay">
       <div className="confirm-box" onClick={(e) => e.stopPropagation()}>
-        <div className="confirm-title">Сначала добавьте водоснабжение</div>
-        <div className="confirm-body">
-          Чтобы расставить раковину и посудомойку, укажите на стене точку подвода воды. Вернитесь
-          к комнате и выберите стену, к которой подходит вода.
-        </div>
+        <div className="confirm-title">{t.variants.waterTitle}</div>
+        <div className="confirm-body">{t.variants.waterBody}</div>
         <div className="confirm-actions">
-          <button className="btn btn-back" onClick={onClose} type="button">
-            Отмена
-          </button>
-          <button className="btn btn-next" onClick={onGoRoom} type="button">
-            К комнате →
-          </button>
+          <button className="btn btn-back" onClick={onContinue} type="button">{t.variants.waterSkip}</button>
+          <button className="btn btn-next" onClick={onAdd} type="button">{t.variants.waterAdd}</button>
         </div>
       </div>
     </div>

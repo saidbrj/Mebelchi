@@ -5,8 +5,10 @@
 import { useEffect, useRef } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { polygonBoundsMm, offsetPolygon, defaultOpeningSill, type Pt, type Opening, type Fitting } from "../model/room";
+import { polygonBoundsMm, offsetPolygon, defaultOpeningSill, openingFinish, type Pt, type Opening, type Fitting } from "../model/room";
 import { leafRects, coveringColor, defaultSurface, type Surface } from "../model/walls";
+import { PBR, applyPbrFloor, onTexturesReady, texturedMaterial } from "./pbr";
+import { buildRig } from "./lighting";
 
 export type SceneView = "3d" | "plan" | "front";
 
@@ -63,8 +65,27 @@ function makeOpening(
   kind: "window" | "door" | "opening",
   design: string,
   sillM: number,
+  finishId?: string,
 ): THREE.Object3D[] {
   if (kind === "opening") return [];
+  // resolve the chosen frame/leaf finish (colour or wood texture); a wood finish uses a
+  // PBR material, a colour finish a flat one, undefined keeps the per-kind default
+  const fin = openingFinish(finishId);
+  const finMat = (fallback: number, rough: number) => {
+    if (!fin) return new THREE.MeshStandardMaterial({ color: fallback, roughness: rough });
+    if (fin.tex) {
+      const m = texturedMaterial(fin.tex, parseInt(fin.color.slice(1), 16));
+      if (m) return m;
+    }
+    return new THREE.MeshStandardMaterial({ color: fin.color, roughness: rough });
+  };
+  const shade = (hex: string, mul: number) => {
+    const n = parseInt(hex.slice(1), 16);
+    const r = Math.min(255, Math.round(((n >> 16) & 255) * mul));
+    const g = Math.min(255, Math.round(((n >> 8) & 255) * mul));
+    const b = Math.min(255, Math.round((n & 255) * mul));
+    return (r << 16) | (g << 8) | b;
+  };
   const cx = C0.x + (C1.x - C0.x) * t;
   const cz = C0.z + (C1.z - C0.z) * t;
   const angle = Math.atan2(C1.z - C0.z, C1.x - C0.x);
@@ -86,14 +107,23 @@ function makeOpening(
     const fw = design === "pano" ? 0.045 : 0.06;
     const top = sill + h;
     const yc = (sill + top) / 2;
-    const frameMat = new THREE.MeshStandardMaterial({ color: 0xf4f4f4, roughness: 0.6 });
+    const frameMat = finMat(0xf4f4f4, 0.6);
+    // the casing lip overlaps the wall/paint at nearly the same depth → z-fight ("glitch")
+    // once it's a colour; a polygon-offset biases the frame in front so it always wins
+    frameMat.polygonOffset = true;
+    frameMat.polygonOffsetFactor = -2;
+    frameMat.polygonOffsetUnits = -2;
     const glass = new THREE.MeshStandardMaterial({ color: 0xaedcf0, transparent: true, opacity: 0.4, roughness: 0.1, metalness: 0.1 });
-    const mull = new THREE.MeshStandardMaterial({ color: 0xeaeaea, roughness: 0.6 });
+    const mull = fin ? finMat(0xeaeaea, 0.6) : new THREE.MeshStandardMaterial({ color: 0xeaeaea, roughness: 0.6 });
+    // frame stands PROUD of the wall (depth 0.14 > wall 0.1) so its faces never sit
+    // coplanar with the wall/paint — that co-planarity z-fights ("glitches"), which only
+    // shows once the frame is a non-white colour
+    const fd = 0.14;
     add(box(w, h, 0.02), glass, 0, yc, 0); // glass
-    add(box(w + 2 * fw, fw, 0.1), frameMat, 0, top + fw / 2, 0); // top
-    add(box(w + 2 * fw, fw, 0.1), frameMat, 0, sill - fw / 2, 0); // bottom
-    add(box(fw, h + 2 * fw, 0.1), frameMat, -w / 2 - fw / 2, yc, 0); // left
-    add(box(fw, h + 2 * fw, 0.1), frameMat, w / 2 + fw / 2, yc, 0); // right
+    add(box(w + 2 * fw, fw, fd), frameMat, 0, top + fw / 2, 0); // top
+    add(box(w + 2 * fw, fw, fd), frameMat, 0, sill - fw / 2, 0); // bottom
+    add(box(fw, h + 2 * fw, fd), frameMat, -w / 2 - fw / 2, yc, 0); // left
+    add(box(fw, h + 2 * fw, fd), frameMat, w / 2 + fw / 2, yc, 0); // right
     const [cols, rows] = WIN_GRID[design] ?? [2, 1];
     for (let k = 1; k < cols; k++) add(box(0.04, h, 0.06), mull, -w / 2 + (k * w) / cols, yc, 0.01);
     for (let k = 1; k < rows; k++) add(box(w, 0.04, 0.06), mull, 0, sill + (k * h) / rows, 0.01);
@@ -105,16 +135,21 @@ function makeOpening(
   const h = heightM > 0 ? heightM : 2.05;
   const fw = 0.07; // casing width
   const yc = h / 2;
-  const caseMat = new THREE.MeshStandardMaterial({ color: 0xcdbfa6, roughness: 0.8 });
-  const leafMat = new THREE.MeshStandardMaterial({ color: 0xd8cbb2, roughness: 0.85 });
-  const panelMat = new THREE.MeshStandardMaterial({ color: 0xc3b496, roughness: 0.85 });
+  const caseMat = fin ? finMat(0xcdbfa6, 0.8) : new THREE.MeshStandardMaterial({ color: 0xcdbfa6, roughness: 0.8 });
+  // the casing lip overlaps the wall/paint at near-equal depth → z-fight ("glitch") at the
+  // door corners; bias it forward so it always wins (same fix as the window frame)
+  caseMat.polygonOffset = true;
+  caseMat.polygonOffsetFactor = -2;
+  caseMat.polygonOffsetUnits = -2;
+  const leafMat = finMat(0xd8cbb2, 0.85);
+  const panelMat = fin ? new THREE.MeshStandardMaterial({ color: shade(fin.color, 0.88), roughness: 0.85 }) : new THREE.MeshStandardMaterial({ color: 0xc3b496, roughness: 0.85 });
   const glassMat = new THREE.MeshStandardMaterial({ color: 0xaedcf0, transparent: true, opacity: 0.4, roughness: 0.1 });
   const handleMat = new THREE.MeshStandardMaterial({ color: 0x3a3a3a, roughness: 0.4, metalness: 0.6 });
   const leaves = design === "double" ? 2 : 1;
   const lw = (w - (leaves - 1) * 0.02) / leaves; // per-leaf width
-  add(box(fw, h + fw, 0.12), caseMat, -w / 2 - fw / 2, yc, 0); // left casing
-  add(box(fw, h + fw, 0.12), caseMat, w / 2 + fw / 2, yc, 0); // right casing
-  add(box(w + 2 * fw, fw, 0.12), caseMat, 0, h + fw / 2, 0); // head casing
+  add(box(fw, h + fw, 0.14), caseMat, -w / 2 - fw / 2, yc, 0); // left casing
+  add(box(fw, h + fw, 0.14), caseMat, w / 2 + fw / 2, yc, 0); // right casing
+  add(box(w + 2 * fw, fw, 0.14), caseMat, 0, h + fw / 2, 0); // head casing
   for (let li = 0; li < leaves; li++) {
     const lx = -w / 2 + lw / 2 + li * (lw + 0.02);
     add(box(lw - 0.02, h - 0.03, 0.05), leafMat, lx, yc, 0); // leaf
@@ -215,7 +250,7 @@ export function makeRoom(
   floorGeo.rotateX(Math.PI / 2);
   const floorMat = new THREE.MeshStandardMaterial({ map: wood, roughness: 0.95, side: THREE.DoubleSide });
   if (floorSel) {
-    floorMat.emissive = new THREE.Color(0x2a6df0);
+    floorMat.emissive = new THREE.Color(0x00ac7a);
     floorMat.emissiveIntensity = 0.18;
   }
   const floor = new THREE.Mesh(floorGeo, floorMat);
@@ -225,7 +260,7 @@ export function makeRoom(
   const cx = outer.reduce((s, p) => s + p.x, 0) / outer.length;
   const cz = outer.reduce((s, p) => s + p.z, 0) / outer.length;
 
-  const wallMat = new THREE.MeshStandardMaterial({ color: 0xededed, roughness: 1 });
+  const wallMat = new THREE.MeshStandardMaterial({ color: 0xf4f3ef, roughness: 1 });
   const walls: WallInfo[] = [];
   const wallNormals: { nx: number; nz: number; mx: number; mz: number }[] = []; // per room wall
   const n = outer.length;
@@ -370,7 +405,7 @@ export function makeRoom(
       facePlane(lr.x0, lr.x1, lr.y0, lr.y1, 0.012, new THREE.MeshStandardMaterial({ color: col, roughness: 0.9, side: THREE.DoubleSide }));
     }
     if (selected === i) {
-      facePlane(0, 1, 0, 1, 0.02, new THREE.MeshStandardMaterial({ color: 0x2a6df0, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false }));
+      facePlane(0, 1, 0, 1, 0.02, new THREE.MeshStandardMaterial({ color: 0x00ac7a, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false }));
     }
   }
 
@@ -448,7 +483,7 @@ export function makeRoom(
       o.traverse((c) => {
         const mat = (c as THREE.Mesh).material as THREE.MeshStandardMaterial | undefined;
         if (mat && "emissive" in mat) {
-          mat.emissive = new THREE.Color(0x2a6df0);
+          mat.emissive = new THREE.Color(0x00ac7a);
           mat.emissiveIntensity = 0.55;
         }
       });
@@ -459,7 +494,7 @@ export function makeRoom(
     if (op.wall < n) {
       const wi = wallNormals[op.wall];
       if (!wi) continue;
-      const meshes = makeOpening(centerline[op.wall], centerline[(op.wall + 1) % n], op.t, op.width / 1000, (op.height ?? 0) / 1000, op.kind, op.design, (op.sill ?? defaultOpeningSill(op.kind, op.design)) / 1000);
+      const meshes = makeOpening(centerline[op.wall], centerline[(op.wall + 1) % n], op.t, op.width / 1000, (op.height ?? 0) / 1000, op.kind, op.design, (op.sill ?? defaultOpeningSill(op.kind, op.design)) / 1000, op.finish);
       for (const m of meshes) {
         g.add(tagOpening(m, op.id));
         walls.push({ mesh: m, nx: wi.nx, nz: wi.nz, mx: wi.mx, mz: wi.mz });
@@ -467,7 +502,7 @@ export function makeRoom(
     } else {
       const seg = interiorSegs[op.wall - n];
       if (!seg) continue;
-      for (const m of makeOpening(seg.a, seg.b, op.t, op.width / 1000, (op.height ?? 0) / 1000, op.kind, op.design, (op.sill ?? defaultOpeningSill(op.kind, op.design)) / 1000)) g.add(tagOpening(m, op.id));
+      for (const m of makeOpening(seg.a, seg.b, op.t, op.width / 1000, (op.height ?? 0) / 1000, op.kind, op.design, (op.sill ?? defaultOpeningSill(op.kind, op.design)) / 1000, op.finish)) g.add(tagOpening(m, op.id));
     }
   }
 
@@ -475,7 +510,7 @@ export function makeRoom(
   const litFit = (m: THREE.Mesh) => {
     if (m.userData.fitting === selectedFit) {
       const mat = m.material as THREE.MeshStandardMaterial;
-      mat.emissive = new THREE.Color(0x2a6df0);
+      mat.emissive = new THREE.Color(0x00ac7a);
       mat.emissiveIntensity = 0.5;
     }
     return m;
@@ -511,7 +546,7 @@ export function makeRoom(
 
 interface Api {
   setView: (v: SceneView) => void;
-  rebuild: (points: Pt[], ceilingMm: number, openings: Opening[], color: string, interior: Pt[][], fittings: Fitting[], wallSurfaces: Record<number, Surface>, selected: number | null, selectedFit: string | null, selectedOpen: string | null, floorSel: boolean) => void;
+  rebuild: (points: Pt[], ceilingMm: number, openings: Opening[], color: string, floor: string | undefined, interior: Pt[][], fittings: Fitting[], wallSurfaces: Record<number, Surface>, selected: number | null, selectedFit: string | null, selectedOpen: string | null, floorSel: boolean) => void;
   dispose: () => void;
 }
 
@@ -521,6 +556,7 @@ export function ThreeScene({
   view,
   openings,
   coveringColor,
+  floorId,
   interiorWalls,
   fittings,
   wallSurfaces,
@@ -539,6 +575,7 @@ export function ThreeScene({
   view: SceneView;
   openings: Opening[];
   coveringColor: string;
+  floorId?: string;
   interiorWalls: Pt[][];
   fittings: Fitting[];
   wallSurfaces: Record<number, Surface>;
@@ -580,10 +617,11 @@ export function ThreeScene({
     const center = new THREE.Vector3(0, 0, 0);
     controls.target.copy(center);
 
-    scene.add(new THREE.HemisphereLight(0xffffff, 0xc8c8c8, 1.25));
-    const dir = new THREE.DirectionalLight(0xffffff, 0.8);
-    dir.position.set(4, 8, 6);
-    scene.add(dir);
+    // THE SAME LIGHT AS EVERY OTHER SCENE (three/lighting.ts). This used to be its own hemisphere +
+    // directional, tuned separately — so the room the seller drew was lit one way and the kitchen
+    // standing in it another. No shadows here: the room editor has nothing to cast them onto, and the
+    // depth pass is the expensive half of a light.
+    const rig = buildRig(scene, renderer, { shadows: false, preset: "day" });
 
     let wood: THREE.Texture | null = null;
 
@@ -592,6 +630,7 @@ export function ThreeScene({
       needs = true;
     };
     controls.addEventListener("change", invalidate);
+    const offTextures = PBR ? onTexturesReady(invalidate) : null; // redraw when textures load
 
     let room: THREE.Group | null = null;
     let walls: WallInfo[] = [];
@@ -606,7 +645,7 @@ export function ThreeScene({
         else mat?.dispose();
       });
     };
-    const rebuild = (pts: Pt[], ceilMm: number, ops: Opening[], color: string, interior: Pt[][], fits: Fitting[], surfaces: Record<number, Surface>, selected: number | null, selectedFit: string | null, selectedOpen: string | null, floorSel: boolean) => {
+    const rebuild = (pts: Pt[], ceilMm: number, ops: Opening[], color: string, floor: string | undefined, interior: Pt[][], fits: Fitting[], surfaces: Record<number, Surface>, selected: number | null, selectedFit: string | null, selectedOpen: string | null, floorSel: boolean) => {
       if (room) {
         scene.remove(room);
         disposeGroup(room);
@@ -622,6 +661,7 @@ export function ThreeScene({
       bounds.cy = b.cy;
       const innerMm = offsetPolygon(pts, 100);
       const toM = (p: Pt) => ({ x: (p.x - b.cx) / 1000, z: (p.y - b.cy) / 1000 });
+      rig.aim({ points: pts, openings: ops, ceiling: ceilMm }); // daylight through this room's window
       const built = makeRoom(
         pts.map(toM),
         innerMm.map(toM),
@@ -638,6 +678,7 @@ export function ThreeScene({
       );
       room = built.group;
       walls = built.walls;
+      applyPbrFloor(room, color, floor); // real floor material (same as the constructor)
       scene.add(room);
       invalidate();
     };
@@ -689,6 +730,7 @@ export function ThreeScene({
       raf = requestAnimationFrame(loop);
       controls.update();
       if (needs) {
+        rig.follow(camera, controls.target);
         updateCull();
         renderer.render(scene, camera);
         needs = false;
@@ -761,7 +803,7 @@ export function ThreeScene({
     renderer.domElement.addEventListener("pointermove", onMove);
     renderer.domElement.addEventListener("pointerup", onPick);
 
-    rebuild(points, ceiling, openings, coveringColor, interiorWalls, fittings, wallSurfaces, selectedWall3D, selectedFit3D, selectedOpen3D, floorSel3D);
+    rebuild(points, ceiling, openings, coveringColor, floorId, interiorWalls, fittings, wallSurfaces, selectedWall3D, selectedFit3D, selectedOpen3D, floorSel3D);
     setView(view);
 
     apiRef.current = {
@@ -774,9 +816,11 @@ export function ThreeScene({
         renderer.domElement.removeEventListener("pointermove", onMove);
         renderer.domElement.removeEventListener("pointerup", onPick);
         controls.removeEventListener("change", invalidate);
+        offTextures?.();
         controls.dispose();
         if (room) disposeGroup(room);
         wood?.dispose();
+        rig.dispose();
         renderer.dispose();
         if (renderer.domElement.parentNode === mount) mount.removeChild(renderer.domElement);
       },
@@ -791,8 +835,8 @@ export function ThreeScene({
   }, []);
 
   useEffect(() => {
-    apiRef.current?.rebuild(points, ceiling, openings, coveringColor, interiorWalls, fittings, wallSurfaces, selectedWall3D, selectedFit3D, selectedOpen3D, floorSel3D);
-  }, [points, ceiling, openings, coveringColor, interiorWalls, fittings, wallSurfaces, selectedWall3D, selectedFit3D, selectedOpen3D, floorSel3D]);
+    apiRef.current?.rebuild(points, ceiling, openings, coveringColor, floorId, interiorWalls, fittings, wallSurfaces, selectedWall3D, selectedFit3D, selectedOpen3D, floorSel3D);
+  }, [points, ceiling, openings, coveringColor, floorId, interiorWalls, fittings, wallSurfaces, selectedWall3D, selectedFit3D, selectedOpen3D, floorSel3D]);
 
   useEffect(() => {
     apiRef.current?.setView(view);

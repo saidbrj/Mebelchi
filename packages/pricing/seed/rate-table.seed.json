@@ -1,8 +1,8 @@
 {
   "id": "d5044143-95d8-4994-bdaa-55d915b6ac87",
   "currency": "UZS",
-  "effectiveDate": "2026-06-20",
-  "source": "placeholder seed — replace numbers with a real eman.uz snapshot",
+  "effectiveDate": "2026-05-14",
+  "source": "Chin Wood прайс 2026-05-14 — РЕАЛЬНЫЕ: распил, кромка (ПВХ HUALI, с клеем) и ЧПУ/доп.услуги. ОЦЕНОЧНЫЕ (нет в прайсе Chin Wood — нужен прайс поставщика плиты/фурнитуры): плита (pricePerM2), фурнитура (pricePerUnit), столешница (pricePerM), сборка и доставка.",
   "materials": {
     "cca8dc43-3ec6-4c8c-980d-05bf4625cc16": {
       "name": "ЛДСП 16мм, белый",
@@ -10,7 +10,7 @@
       "pricePerM2": 95000
     },
     "1d2c7bbe-c4c8-4f08-a1b7-85a55823c545": {
-      "name": "МДФ фасад фрезерованный 18мм",
+      "name": "МДФ фасад 18мм (заготовка)",
       "type": "MDF",
       "pricePerM2": 240000
     },
@@ -18,16 +18,21 @@
       "name": "ХДФ задняя стенка 3мм",
       "type": "HDF",
       "pricePerM2": 42000
+    },
+    "b7c1f0a4-2d3e-4a55-9c18-6f2e5a91d4b3": {
+      "name": "Стекло 4мм (витрина)",
+      "type": "GLASS",
+      "pricePerM2": 120000
     }
   },
   "edge": {
     "3f5c7d17-561b-4d84-bb87-4367cfcb769d": {
-      "name": "Кромка ПВХ 2мм (видимая)",
-      "pricePerM": 3500
+      "name": "Кромка ПВХ HUALI 19/2мм (видимая, с клеем 773)",
+      "pricePerM": 5500
     },
     "ea86c841-0136-43ea-b06e-8fa8f5977408": {
-      "name": "Кромка 0.4мм (скрытая)",
-      "pricePerM": 1200
+      "name": "Кромка ПВХ HUALI 19/0.4мм (скрытая, с клеем 773)",
+      "pricePerM": 3500
     }
   },
   "worktop": {
@@ -56,12 +61,19 @@
       "name": "Стяжка эксцентриковая (минификс)",
       "sku": "CAM-MINIFIX-15",
       "pricePerUnit": 1500
+    },
+    "9c4f1e07-2b6d-4a3f-8e51-b0d7a6c9f412": {
+      "name": "Навес регулируемый (комплект с планкой)",
+      "sku": "HANG-BRACKET-01",
+      "pricePerUnit": 7000
     }
   },
   "operations": {
-    "drillPerHole": 250,
-    "cutPerPanel": 4000,
-    "edgebandPerM": 1800
+    "drillPerHole": 800,
+    "cutPerPanel": 2200,
+    "edgebandPerM": 0,
+    "millPerM": 0,
+    "flutePerM2": 0
   },
   "labor": {
     "assemblyPerModule": 80000,

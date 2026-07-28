@@ -15,9 +15,14 @@ export type {
   ModuleKind,
   ModuleFill,
   DoorStyle,
+  FrontProfile,
   HandleType,
   ModuleDoor,
   ModuleHandle,
+  Cell,
+  CombinedDoor,
+  DoorOpening,
+  HandlePos,
 } from "./module.js";
 
 export type {
@@ -25,10 +30,12 @@ export type {
   MaterialSelection,
   ProjectPricing,
   ProjectMeta,
+  ProductionOpts,
 } from "./project.js";
 
 export type {
   RateTable,
+  Currency,
   MaterialType,
   MaterialRate,
   EdgeRate,

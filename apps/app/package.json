@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Mebelchi customer app — React + Vite, wrapped with Capacitor (iOS/Android). The 6-phase journey + live 3D constructor.",
+  "description": "Jihozla customer app — React + Vite, wrapped with Capacitor (iOS/Android). The 6-phase journey + live 3D constructor.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",
@@ -11,18 +11,25 @@
     "typecheck": "tsc --noEmit -p tsconfig.json && tsc --noEmit -p tsconfig.node.json",
     "cap:sync": "cap sync",
     "cap:add:ios": "cap add ios",
-    "cap:add:android": "cap add android"
+    "cap:add:android": "cap add android",
+    "cap:assets": "capacitor-assets generate --assetPath assets --iconBackgroundColor '#00a961' --iconBackgroundColorDark '#00a961' --splashBackgroundColor '#ffffff' --splashBackgroundColorDark '#0e0e0e'",
+    "test": "vitest run"
   },
   "dependencies": {
     "@capacitor/android": "^7.0.0",
     "@capacitor/core": "^7.0.0",
+    "@capacitor/filesystem": "^7.1.8",
     "@capacitor/ios": "^7.0.0",
+    "@capacitor/share": "^7.0.4",
+    "@supabase/supabase-js": "^2.109.0",
+    "jspdf": "^4.2.1",
     "react": "^18.3.1",
     "react-dom": "^18.3.1",
     "three": "^0.171.0",
     "zustand": "^5.0.2"
   },
   "devDependencies": {
+    "@capacitor/assets": "^3.0.5",
     "@capacitor/cli": "^7.0.0",
     "@types/node": "^22.10.2",
     "@types/react": "^18.3.12",

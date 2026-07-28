@@ -53,20 +53,29 @@ const kitchen: Project = {
   },
 };
 
-// Hand-checked totals (see derivation in the assertions below).
-//   carcassFacade : panels 311982 + assembly 80000          = 391982
-//   worktopEdge   : edge 9240 + 3168 + worktop 111000        = 123408
-//   hardware      : hinge 24000 + dowel 2400 + cam 12000     =  38400
-//   cnc           : drill 6500 + cut 28000 + edgeband 9504   =  44004
-//   delivery      : base 150000 + perModule 20000            = 170000
-//   total                                                    = 767794
+// Hand-checked totals, against the CURRENT seed rate table.
+//
+// The QUANTITIES below are the same ones this cabinet has always produced — 7 panels, 26 drilled
+// holes, 2.64m of visible + 2.64m of hidden edge, 0.6m of worktop. (packages/pricing/test/
+// cells.test.ts proves the cell-tree decomposition emits panels bit-identical to the flat one it
+// replaced, for every shape a project can contain.) What moved is the seed's RATES — edge went
+// 3500→5500 / 1200→3500 per m, drill 250→800 per hole, cut 4000→2200 per panel, edgeband 1800→0
+// per m — and these expectations were never updated with them, so they were failing before the
+// cell tree landed. Re-derived here:
+//
+//   carcassFacade : panels 311982 + assembly 80000                     = 391982
+//   worktopEdge   : edge 2.64×5500 + 2.64×3500 + worktop 0.6×185000    = 134760
+//   hardware      : hinge 24000 + dowel 2400 + cam 12000               =  38400
+//   cnc           : drill 26×800 + cut 7×2200 + edgeband 5.28×0        =  36200
+//   delivery      : base 150000 + perModule 20000                      = 170000
+//   total                                                              = 771342
 const EXPECTED = {
-  total: 767_794,
+  total: 771_342,
   groups: {
     carcassFacade: 391_982,
-    worktopEdge: 123_408,
+    worktopEdge: 134_760,
     hardware: 38_400,
-    cnc: 44_004,
+    cnc: 36_200,
     delivery: 170_000,
   },
 } as const;

@@ -5,7 +5,7 @@
 
 import type { UUID } from "./common.js";
 
-export type MaterialType = "LDSP" | "MDF" | "HDF" | "solid";
+export type MaterialType = "LDSP" | "MDF" | "HDF" | "solid" | "GLASS";
 
 export interface MaterialRate {
   name: string;
@@ -34,6 +34,12 @@ export interface OperationRates {
   drillPerHole: number;
   cutPerPanel: number;
   edgebandPerM: number;
+  /** CNC routing of a front's profile — per metre of routed contour. A shaker / raised / glazed
+   *  front is one MDF blank with its shape milled in, so THIS is what a profile costs, not extra
+   *  parts. Seeded at 0: until the seller sets it, no existing quote moves. */
+  millPerM: number;
+  /** CNC fluting of a front's face — per m² of ribbed surface. Same story. */
+  flutePerM2: number;
 }
 
 export interface LaborRates {
@@ -46,9 +52,13 @@ export interface DeliveryRates {
   perModule: number;
 }
 
+/** The seller's working currency. Rates are entered and displayed natively in it — no
+ *  cross-currency conversion (a KZT seller's numbers are KZT, a UZS seller's are UZS). */
+export type Currency = "UZS" | "KZT" | "USD";
+
 export interface RateTable {
   id: UUID;
-  currency: "UZS";
+  currency: Currency;
   effectiveDate: string;
   /** e.g. 'eman.uz snapshot 2026-06-20' | 'manual' | 'api:eman'. */
   source: string;

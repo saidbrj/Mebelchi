@@ -15,8 +15,8 @@
 // sink prefers it), the sink anchors to the water side, and the hob stays clear of
 // the sink and any window.
 
-import { mk, type ApplianceKind, type Cabinet } from "./cabinet";
-import type { RunOpening, KitchenLayout } from "./runPlan";
+import { mk, type ApplianceKind, type Cabinet, type FrontProfile } from "./cabinet";
+import { runReach, DEFAULT_REVEAL, type RunOpening, type KitchenLayout } from "./runPlan";
 
 export type Zone = "left" | "center" | "right";
 export type FridgeType = "integ" | "free" | "none";
@@ -44,6 +44,8 @@ export interface LayoutInput {
   /** The selected layout(s), each pre-planned; spread across the variants. */
   layouts: PlannedLayout[];
   ceiling: number;
+  /** filler «добор» gap (mm) held back at the ceiling on floor-to-ceiling runs; absent → DEFAULT_REVEAL. */
+  reveal?: number;
   water: Zone;
   hasGas: boolean;
   // each is the SET of options the user is open to; with >1 the variants explore
@@ -51,6 +53,57 @@ export interface LayoutInput {
   fridge: FridgeType[];
   oven: OvenType[];
   hood: HoodType[];
+  /** OVERRIDE how the wall is banded, on every variant. Empty (the default) → each strategy keeps
+   *  its own, so the four variants show all three shapes and the user can just pick one. */
+  wall?: WallBand[];
+  /** OVERRIDE the front's body, same rules as `wall`: pick one → every variant is built with it;
+   *  pick none → the strategies keep their variety (flat / fluted / shaker / neoclassic). */
+  front?: FrontProfile[];
+}
+
+/** How a wall is banded — see Strategy.wall.
+ *  `antresolDeep` is an antresol at BASE depth (560): a deep storage box overhanging the wall units,
+ *  which is what real kitchens do with the top row. */
+export type WallBand = "single" | "tall" | "antresol" | "antresolDeep";
+
+/** One band of wall units: where it hangs, how tall it is, how deep. */
+export interface WallBandSpec {
+  mountY: number;
+  h: number;
+  depth: number;
+}
+
+/** shortest antresol worth building — below this it's a sliver, so run one tall row instead */
+const MIN_ANTRESOL = 300;
+
+/**
+ * THE WALL BANDS a strategy builds at a given ceiling — main row first, the antresol (if any) on
+ * top. Nothing is left over: a strip of bare wall above the cabinets is the one thing none of the
+ * reference kitchens have.
+ *
+ * Exported because the STORE seats a corner unit in each band, and re-deriving the banding there
+ * would be a second copy of this arithmetic waiting to drift.
+ */
+export function wallBandsFor(wall: WallBand, ceiling: number, reveal = 0): WallBandSpec[] {
+  const wallSpace = ceiling - GEOM.upperBottom; // 1180 on a 2700 ceiling
+  const antresolH = wallSpace - UPPER_H; // what's left once a standard row is seated
+  const deep = wall === "antresolDeep";
+  const wantsAntresol = wall === "antresol" || deep;
+
+  // graceful degradation: no room for a real antresol → one tall row; no room even for that → standard
+  const band: WallBand =
+    wantsAntresol && antresolH < MIN_ANTRESOL ? "tall" : wall === "tall" && wallSpace <= UPPER_H ? "single" : wall;
+
+  const main: WallBandSpec = {
+    mountY: GEOM.upperBottom,
+    // a "tall" wall band runs worktop→ceiling; hold back the filler reveal so a scribe strip closes
+    // the gap to the ceiling (a "single" row already stops well short — that's open wall, not a gap).
+    h: band === "tall" ? Math.max(UPPER_H, wallSpace - reveal) : UPPER_H,
+    depth: UPPER_DEPTH,
+  };
+  if (band !== "antresol" && band !== "antresolDeep") return [main];
+  // the antresol is the band that meets the ceiling → it carries the top reveal
+  return [main, { mountY: GEOM.upperBottom + UPPER_H, h: Math.max(UPPER_H / 2, antresolH - reveal), depth: deep ? BASE_DEPTH : UPPER_DEPTH }];
 }
 
 /** A single variant's resolved onboarding choices (one option per dimension). */
@@ -59,6 +112,7 @@ interface VariantInput {
   runs: RunInput[];
   waterRun: number;
   ceiling: number;
+  reveal: number;
   water: Zone;
   fridge: FridgeType;
   oven: OvenType;
@@ -81,12 +135,18 @@ export interface GenVariant {
   style: KitchenStyle;
   /** the layout this variant uses (the scene needs it to place the runs) */
   layout: KitchenLayout;
+  /** the WALL BANDS this variant built, bottom → top. The store seats a corner unit in each one
+   *  (an L/U kitchen needs a corner in the antresol too, not just in the main row), and it must not
+   *  re-derive the banding to do it. */
+  bands: WallBandSpec[];
 }
 
 // ---- standard catalog (mm) ----
 const BASE_H = 720;
 const TALL_H = 2100;
 const UPPER_H = 720;
+const UPPER_DEPTH = 350;
+const BASE_DEPTH = 560;
 export const GEOM = {
   plinth: 100,
   baseH: BASE_H,
@@ -101,6 +161,10 @@ const NARROW_LADDER = [600, 500, 450, 400, 300, 800];
 const MIN_W = 300;
 const TALL_W = 600;
 const DOOR_MARGIN = 40; // clearance kept around a door (mm)
+/** A wall run shorter than this is a SMALL kitchen's wall: every strategy covers it fully with wall
+ *  units, because there is nowhere else for the storage to go. ~3m is about four base slots — below
+ *  that, skipping the sink slot and the narrow ones leaves you with almost nothing. */
+const TIGHT_RUN = 3000;
 
 const zoneCenterFrac = (z: Zone): number => (z === "left" ? 1 / 6 : z === "right" ? 5 / 6 : 0.5);
 
@@ -155,9 +219,21 @@ interface Strategy {
   drawerCount: number;
   ladder: number[];
   upperCoverage: "partial" | "full";
-  upperTall: boolean;
-  upperDoor: number;
-  baseDoor: number;
+  /** HOW THE WALL IS BANDED — the biggest structural difference between variants, and the one
+   *  the generator could not express: it only ever emitted a single 720mm row at 1520.
+   *    single   — one standard row, a plain gap of wall above it
+   *    tall     — ONE row running from the worktop line to the ceiling
+   *    antresol — the standard row PLUS a second row seated on top of it, up to the ceiling
+   *  `tall` and `antresol` are what the reference kitchens actually do; `single` stays the cheap
+   *  option. Both fall back to `single`/`tall` when a low ceiling leaves no room. */
+  wall: WallBand;
+  /** columns run floor-to-ceiling instead of stopping at the standard 2100 */
+  tallToCeiling: boolean;
+  /** THE FRONT'S BODY per row (three/frontFace + pricing/fronts). These used to be indices into the
+   *  legacy DOORS list — where «Фрезер» was read by NOTHING: not the 3D, not the elevation, not the
+   *  PDF, not the quote. So every variant was, in fact, the same flat slab in a different colour. */
+  frontUpper: FrontProfile;
+  frontBase: FrontProfile;
   handle: number;
   /** Add a freestanding island when the room is large enough. */
   island: boolean;
@@ -175,9 +251,10 @@ const STRATEGIES: Strategy[] = [
     drawerCount: 3,
     ladder: WIDE_LADDER,
     upperCoverage: "partial",
-    upperTall: false,
-    upperDoor: 0,
-    baseDoor: 0,
+    wall: "single",
+    tallToCeiling: false,
+    frontUpper: "flat",
+    frontBase: "flat",
     handle: 0,
     island: false,
     style: { carcass: 0xefe8da, facade: 0xe7ddc9, worktop: 0x7c756b, handle: 0x6f6a62, glassUppers: false },
@@ -192,9 +269,10 @@ const STRATEGIES: Strategy[] = [
     drawerCount: 3,
     ladder: NARROW_LADDER,
     upperCoverage: "full",
-    upperTall: false,
-    upperDoor: 0,
-    baseDoor: 0,
+    wall: "single",
+    tallToCeiling: false,
+    frontUpper: "fluted", // ribbed uppers over flat bases — the look of three of the reference photos
+    frontBase: "flat",
     handle: 2,
     island: false,
     style: { carcass: 0xeeeeec, facade: 0xf2f2f0, worktop: 0x8a8f93, handle: 0x9aa0a6, glassUppers: false },
@@ -202,16 +280,19 @@ const STRATEGIES: Strategy[] = [
   {
     id: "storage",
     name: "Максимум хранения",
-    blurb: "Тёплое дерево, колонны и шкафы до потолка",
+    // it always PROMISED "шкафы до потолка" in this blurb; until now it could not actually build
+    // them — the wall stopped at 2240 and the columns at 2200
+    blurb: "Тёплое дерево, колонны и антресоли до потолка",
     dishwasher: true,
     extraPantry: true,
     baseFill: "mix",
     drawerCount: 3,
     ladder: WIDE_LADDER,
     upperCoverage: "full",
-    upperTall: true,
-    upperDoor: 0,
-    baseDoor: 0,
+    wall: "antresol", // the second row — the thing five of the reference kitchens have
+    tallToCeiling: true,
+    frontUpper: "shaker",
+    frontBase: "shaker",
     handle: 0,
     island: true,
     style: { carcass: 0xe3d5b8, facade: 0xd8c69f, worktop: 0x5b5550, handle: 0x6f6a62, glassUppers: false },
@@ -219,16 +300,17 @@ const STRATEGIES: Strategy[] = [
   {
     id: "premium",
     name: "Премиум",
-    blurb: "Графит, стеклянные витрины, ящики",
+    blurb: "Графит, стеклянные витрины во всю высоту",
     dishwasher: true,
     extraPantry: false,
     baseFill: "drawers",
     drawerCount: 3,
     ladder: WIDE_LADDER, // bold full-width drawer fronts (vs ergonomic's many narrow)
     upperCoverage: "full",
-    upperTall: false,
-    upperDoor: 2, // glass
-    baseDoor: 1, // milled
+    wall: "tall", // one unbroken glass-fronted band, worktop line → ceiling
+    tallToCeiling: true,
+    frontUpper: "grid", // витрина with раскладка — the neoclassic upper in photo 1
+    frontBase: "raised", // филёнка
     handle: 1,
     island: true,
     style: { carcass: 0x44484d, facade: 0x4c5157, worktop: 0x2e3236, handle: 0xc8ccd0, glassUppers: true },
@@ -257,6 +339,8 @@ interface RunFill {
   talls: TallSpec[];
   tallEnd: "near" | "far";
   openings: RunOpening[];
+  cornerStart: boolean; // blind corner at the near (x=0) end
+  cornerEnd: boolean; // blind corner at the far (x=L) end
 }
 
 interface BaseSlot {
@@ -282,13 +366,18 @@ function fillRun(rf: RunFill, st: Strategy, v: VariantInput): Cabinet[] {
   const tallBlock: Span[] = tallStart >= 0 ? [{ a: tallStart, b: tallStart + talls.length * TALL_W }] : [];
 
   // --- base modules fill the run minus doors minus the tall bank (windows OK) ---
+  // The last module in each span absorbs the packing remainder so the span is filled
+  // edge-to-edge — no sub-300mm gap, and the run-end cabinet butts a corner unit flush.
   const baseSlots: BaseSlot[] = [];
   for (const sp of subtract(0, L, [...doors, ...tallBlock])) {
+    const ws = packWidths(sp.b - sp.a, st.ladder);
+    const extra = sp.b - sp.a - ws.reduce((a, w) => a + w, 0);
     let x = sp.a;
-    for (const w of packWidths(sp.b - sp.a, st.ladder)) {
-      baseSlots.push({ x, w });
-      x += w;
-    }
+    ws.forEach((w, k) => {
+      const wEff = k === ws.length - 1 ? w + extra : w;
+      baseSlots.push({ x, w: wEff });
+      x += wEff;
+    });
   }
   baseSlots.sort((p, q) => p.x - q.x);
 
@@ -303,15 +392,23 @@ function fillRun(rf: RunFill, st: Strategy, v: VariantInput): Cabinet[] {
     sinkIdx = cand.reduce((b, i) => (Math.abs(frac(baseSlots[i]) - wf) < Math.abs(frac(baseSlots[b]) - wf) ? i : b), cand[0]);
   }
 
-  // hob/cooktop — clear of the sink and window, and away from the fridge tower
-  // (the work-triangle guideline: don't put the cooktop next to the fridge)
+  // hob/cooktop — clear of the sink + window, and as far as possible from the fridge
+  // tower AND the dead corners (work-triangle: spread the three points, keep the
+  // cooktop out of the blind corner and away from the fridge)
   const tallCenter = tallStart >= 0 && talls.length ? tallStart + (talls.length * TALL_W) / 2 : null;
-  const hobIdx = rf.cook === "none" ? -1 : pickHob(baseSlots, sinkIdx, overlapsWin, tallCenter);
+  const avoid: number[] = [];
+  if (sinkIdx >= 0) avoid.push(baseSlots[sinkIdx].x + baseSlots[sinkIdx].w / 2);
+  if (tallCenter != null) avoid.push(tallCenter);
+  if (rf.cornerStart) avoid.push(0);
+  if (rf.cornerEnd) avoid.push(L);
+  const hobIdx = rf.cook === "none" ? -1 : pickHob(baseSlots, sinkIdx, overlapsWin, avoid);
 
-  // dishwasher — beside the sink
+  // dishwasher — beside the sink, on the side AWAY from the hob (so the hob never ends
+  // up next to the dishwasher either)
   let dwIdx = -1;
   if (rf.dishwasher && sinkIdx >= 0) {
-    for (const j of [sinkIdx - 1, sinkIdx + 1]) {
+    const order = hobIdx >= 0 && hobIdx < sinkIdx ? [sinkIdx + 1, sinkIdx - 1] : [sinkIdx - 1, sinkIdx + 1];
+    for (const j of order) {
       if (j >= 0 && j < baseSlots.length && j !== hobIdx && baseSlots[j].w >= 450) {
         dwIdx = j;
         break;
@@ -321,14 +418,17 @@ function fillRun(rf: RunFill, st: Strategy, v: VariantInput): Cabinet[] {
 
   const cabs: Cabinet[] = [];
 
-  // tall columns
+  // tall columns. A floor-to-ceiling strategy runs them right up to the ceiling; a free-standing
+  // fridge is the exception — it's a machine of a fixed height, not a cabinet we can stretch.
+  // a floor-to-ceiling column stops the filler reveal short of the ceiling; a scribe strip closes the gap
+  const tallH = st.tallToCeiling ? Math.max(TALL_H, v.ceiling - GEOM.plinth - v.reveal) : TALL_H;
   let tx = tallStart;
   if (tallStart >= 0) {
     for (const t of talls) {
       const b = { w: TALL_W, handle: st.handle, x: tx, run: rf.run };
-      if (t.kind === "fridge") cabs.push(mk({ ...b, kind: "tall", h: TALL_H, fill: "shelves", count: 0, door: 0, appliance: "fridge", builtin: t.builtin }));
-      else if (t.kind === "oven") cabs.push(mk({ ...b, kind: "tall", h: TALL_H, fill: "shelves", count: 2, door: st.baseDoor, appliance: "oven", builtin: true }));
-      else cabs.push(mk({ ...b, kind: "tall", h: TALL_H, fill: "shelves", count: 5, door: st.baseDoor, appliance: "none" }));
+      if (t.kind === "fridge") cabs.push(mk({ ...b, kind: "tall", h: t.builtin ? tallH : TALL_H, fill: "shelves", count: 0, front: "flat", appliance: "fridge", builtin: t.builtin }));
+      else if (t.kind === "oven") cabs.push(mk({ ...b, kind: "tall", h: tallH, fill: "shelves", count: 2, front: st.frontBase, appliance: "oven", builtin: true }));
+      else cabs.push(mk({ ...b, kind: "tall", h: tallH, fill: "shelves", count: 5, front: st.frontBase, appliance: "none" }));
       tx += TALL_W;
     }
   }
@@ -337,54 +437,152 @@ function fillRun(rf: RunFill, st: Strategy, v: VariantInput): Cabinet[] {
   let mix = 0;
   baseSlots.forEach((s, i) => {
     const b = { w: s.w, handle: st.handle, x: s.x, run: rf.run };
-    if (i === sinkIdx) cabs.push(mk({ ...b, kind: "base", h: BASE_H, fill: "shelves", count: 0, door: st.baseDoor, appliance: "sink" }));
-    else if (i === hobIdx) cabs.push(mk({ ...b, kind: "base", h: BASE_H, fill: "drawers", count: 2, door: st.baseDoor, appliance: rf.cook === "cooktop" ? "cooktop" : "hob" }));
-    else if (i === dwIdx) cabs.push(mk({ ...b, kind: "base", h: BASE_H, fill: "open", count: 0, door: st.baseDoor, appliance: "dishwasher" }));
+    if (i === sinkIdx) cabs.push(mk({ ...b, kind: "base", h: BASE_H, fill: "shelves", count: 0, front: st.frontBase, appliance: "sink" }));
+    else if (i === hobIdx) cabs.push(mk({ ...b, kind: "base", h: BASE_H, fill: "drawers", count: 2, front: st.frontBase, appliance: rf.cook === "cooktop" ? "cooktop" : "hob" }));
+    else if (i === dwIdx) cabs.push(mk({ ...b, kind: "base", h: BASE_H, fill: "open", count: 0, front: st.frontBase, appliance: "dishwasher" }));
     else {
       const drawers = st.baseFill === "drawers" || (st.baseFill === "mix" && mix++ % 2 === 0);
       cabs.push(
         drawers
-          ? mk({ ...b, kind: "base", h: BASE_H, fill: "drawers", count: st.drawerCount, door: st.baseDoor })
-          : mk({ ...b, kind: "base", h: BASE_H, fill: "shelves", count: 2, door: st.baseDoor }),
+          ? mk({ ...b, kind: "base", h: BASE_H, fill: "drawers", count: st.drawerCount, front: st.frontBase })
+          : mk({ ...b, kind: "base", h: BASE_H, fill: "shelves", count: 2, front: st.frontBase }),
       );
     }
   });
 
-  // upper cabinets — never over a window; hob gets the hood; height per strategy
-  const upperH = st.upperTall ? Math.max(UPPER_H, Math.min(1100, v.ceiling - GEOM.upperBottom - 80)) : UPPER_H;
+  // ── THE WALL BANDS ─────────────────────────────────────────────────────────────────────────
+  // One definition (wallBandsFor), shared with the store, which seats a CORNER UNIT in each band.
+  const bands = wallBandsFor(st.wall, v.ceiling, v.reveal);
+  const mainBand = bands[0];
+  const antresolBand = bands[1]; // undefined unless the strategy asked for a second row
+  const upperH = mainBand.h;
+
+  // A SMALL KITCHEN CANNOT AFFORD BARE WALLS.
+  //
+  // `upperCoverage: "partial"` skips the wall unit over the sink, and any slot under 500mm. In a
+  // big kitchen that reads as airy and it is the cheap variant's whole point. In a SMALL one it is
+  // ruinous: a 2.2m run has about three base slots, one is the sink and one is usually narrow, so
+  // the rules stack up and the kitchen comes out with NO WALL STORAGE AT ALL — which is exactly
+  // where the storage has to go when there is no floor to spare.
+  //
+  // So coverage is a function of how much wall the kitchen actually has, not just of the variant.
+  // Below `TIGHT_RUN` the wall gets covered regardless of the strategy. The window rule stays: that
+  // one is physics, not taste.
+  const coverage = L < TIGHT_RUN ? "full" : st.upperCoverage;
+
+  const uppers: Cabinet[] = [];
   baseSlots.forEach((s, i) => {
     const onWindow = overlapsWin(s.x, s.w);
     if (i === hobIdx) {
-      if (v.hood === "dome") cabs.push(mk({ kind: "upper", w: s.w, h: 350, fill: "open", count: 0, door: 3, handle: 3, appliance: "hood", x: s.x, run: rf.run }));
-      else if (!onWindow) cabs.push(mk({ kind: "upper", w: s.w, h: upperH, fill: "shelves", count: 2, door: st.upperDoor, handle: st.handle, x: s.x, run: rf.run }));
+      if (v.hood === "dome") uppers.push(mk({ kind: "upper", w: s.w, h: 350, fill: "open", count: 0, front: "none", handle: 3, appliance: "hood", x: s.x, run: rf.run }));
+      else if (!onWindow) uppers.push(mk({ kind: "upper", w: s.w, h: upperH, fill: "shelves", count: 2, front: st.frontUpper, handle: st.handle, x: s.x, run: rf.run }));
       return;
     }
-    if (onWindow) return; // no upper blocking a window
-    if (i === sinkIdx && st.upperCoverage !== "full") return;
-    if (st.upperCoverage === "partial" && s.w < 500) return;
-    cabs.push(mk({ kind: "upper", w: s.w, h: upperH, fill: "shelves", count: 2, door: st.upperDoor, handle: st.handle, x: s.x, run: rf.run }));
+    if (i === sinkIdx && coverage !== "full") return;
+    if (coverage === "partial" && s.w < 500) return;
+
+    // CLIP THE UPPER TO THE WALL THAT IS ACTUALLY THERE — don't throw the whole slot away.
+    //
+    // This used to be `if (onWindow) return`: a base slot that overlapped a window by ONE
+    // MILLIMETRE got no wall unit at all. On a 2.2m run with a 1.2m window that is every slot, so a
+    // small kitchen came out with zero wall storage — the wall beside the glass, which is perfectly
+    // good hanging space, was thrown away with the glass.
+    //
+    // Subtracting the windows leaves the hangable spans. A slot clear of glass yields itself back
+    // unchanged, so nothing about a window-free wall changes. The clipped edges land on the window
+    // reveal, which is where a cabinet should end anyway — and where the sheet puts a column line.
+    for (const sp of subtract(s.x, s.x + s.w, windows)) {
+      const w = sp.b - sp.a;
+      if (w < MIN_W) continue; // a sliver of wall beside a window is a filler, not a cabinet
+      uppers.push(mk({ kind: "upper", w, h: upperH, fill: "shelves", count: 2, front: st.frontUpper, handle: st.handle, x: sp.a, run: rf.run }));
+    }
   });
+
+  // The antresol row's columns are taken from the main row so the two share the same boundaries and
+  // the stack reads as one bank. Snapshot them BEFORE the corner widening below: a DEEP antresol
+  // needs the big 840 corner square and therefore has no reach into the zone, so it must not
+  // inherit the shallow row's +227.
+  const preWiden = uppers.map((u) => ({ x: u.x ?? 0, w: u.w, hood: u.appliance === "hood" }));
+
+  // A shallow wall unit's corner (613) is smaller than the zone the run cleared (840), so the
+  // corner-most upper is widened by the difference to butt it flush. `runReach` is the same
+  // quantity, keyed on depth — a deep row gets 0.
+  const EXT = runReach(mainBand.depth);
+  const TOL = 60;
+  if (EXT > 0 && uppers.length) {
+    if (rf.cornerStart) {
+      const first = uppers.reduce((a, b) => ((b.x ?? 0) < (a.x ?? 0) ? b : a));
+      if ((first.x ?? 0) <= TOL) { first.x = (first.x ?? 0) - EXT; first.w += EXT; }
+    }
+    if (rf.cornerEnd) {
+      const last = uppers.reduce((a, b) => ((b.x ?? 0) + b.w > (a.x ?? 0) + a.w ? b : a));
+      if ((last.x ?? 0) + last.w >= L - TOL) last.w += EXT;
+    }
+  }
+  cabs.push(...uppers);
+
+  // ── THE ANTRESOL ROW ──────────────────────────────────────────────────────────────────────
+  // A second band of wall units SEATED ON the first, filling the last of the wall to the ceiling.
+  // It may be DEEPER than the row below it (base depth, 560) — real kitchens do this for storage,
+  // and the box simply overhangs the uppers.
+  //
+  // It also spans the dome-hood slot: a dome hood tops out at 1770, far below the antresol's 2240,
+  // so the band runs unbroken over it instead of leaving a hole in the middle of the wall.
+  if (antresolBand) {
+    const AEXT = runReach(antresolBand.depth); // 0 when the row is deep
+    const seats = [...preWiden.filter((s) => !s.hood), ...preWiden.filter((s) => s.hood)];
+    const lastIdx = seats.reduce((b, s, i) => (s.x + s.w > seats[b].x + seats[b].w ? i : b), 0);
+    const firstIdx = seats.reduce((b, s, i) => (s.x < seats[b].x ? i : b), 0);
+    seats.forEach((s, i) => {
+      let { x, w } = s;
+      // widen this row's corner-most unit by ITS OWN reach, not the row below it's
+      if (AEXT > 0 && rf.cornerStart && i === firstIdx && x <= TOL) { x -= AEXT; w += AEXT; }
+      if (AEXT > 0 && rf.cornerEnd && i === lastIdx && x + w >= L - TOL) w += AEXT;
+      cabs.push(
+        mk({
+          kind: "upper",
+          w,
+          h: antresolBand.h,
+          mountY: antresolBand.mountY,
+          depth: antresolBand.depth,
+          fill: "shelves",
+          count: 1,
+          front: st.frontUpper,
+          handle: st.handle,
+          x,
+          run: rf.run,
+        }),
+      );
+    });
+  }
 
   return cabs;
 }
 
-/** Hob slot: keep ≥600mm worktop from the sink, wide enough, not under a window,
- *  and as far as possible from the fridge tower (`awayX`, else from the sink). */
-function pickHob(slots: BaseSlot[], sinkIdx: number, overlapsWin: (x: number, w: number) => boolean, awayX: number | null): number {
+/** Hob slot, by kitchen-design rules (priority order, never relaxing the window rule
+ *  until the last resort): a cooktop must NOT sit under/in front of a window (fire +
+ *  no hood venting), and must have worktop BETWEEN it and the sink/dishwasher (no
+ *  cooktop directly next to water). Among the valid slots, sit as far as possible from
+ *  EVERY `avoid` point (sink, fridge tower, dead corners) — i.e. maximise the smallest
+ *  distance to any of them — to spread the work triangle and keep the cooktop out of
+ *  the blind corner. */
+function pickHob(slots: BaseSlot[], sinkIdx: number, overlapsWin: (x: number, w: number) => boolean, avoid: number[]): number {
   if (!slots.length) return -1;
   const cx = (i: number) => slots[i].x + slots[i].w / 2;
-  const sinkX = sinkIdx >= 0 ? cx(sinkIdx) : 0;
-  const ref = awayX != null ? awayX : sinkX;
-  const dist = (i: number) => Math.abs(cx(i) - ref);
-  const farthest = (pool: number[]) => (pool.length ? pool.reduce((b, i) => (dist(i) > dist(b) ? i : b), pool[0]) : -1);
-  const gapOK = (i: number) => sinkIdx < 0 || Math.abs(cx(i) - sinkX) >= 600; // worktop between sink & hob
+  const pts = avoid.length ? avoid : [sinkIdx >= 0 ? cx(sinkIdx) : 0];
+  const minDist = (i: number) => Math.min(...pts.map((p) => Math.abs(cx(i) - p)));
+  const farthest = (pool: number[]) => (pool.length ? pool.reduce((b, i) => (minDist(i) > minDist(b) ? i : b), pool[0]) : -1);
+  const win = (i: number) => overlapsWin(slots[i].x, slots[i].w);
+  // index gap from the sink — the dishwasher sits at sink±1, so ≥2 means a cabinet
+  // stands between the cooktop and both the sink and the dishwasher
+  const sep = (i: number) => (sinkIdx < 0 ? 99 : Math.abs(i - sinkIdx));
   const idxs = slots.map((_, i) => i).filter((i) => i !== sinkIdx);
   const tiers = [
-    idxs.filter((i) => gapOK(i) && slots[i].w >= 500 && !overlapsWin(slots[i].x, slots[i].w)),
-    idxs.filter((i) => gapOK(i) && slots[i].w >= 500),
-    idxs.filter((i) => slots[i].w >= 450 && !overlapsWin(slots[i].x, slots[i].w)),
-    idxs.filter((i) => slots[i].w >= 450),
-    idxs,
+    idxs.filter((i) => !win(i) && sep(i) >= 2 && slots[i].w >= 500), // ideal: off-window, clear of sink+dishwasher, wide
+    idxs.filter((i) => !win(i) && sep(i) >= 2 && slots[i].w >= 450),
+    idxs.filter((i) => !win(i) && sep(i) >= 1 && slots[i].w >= 450), // off-window, at least not abutting the sink
+    idxs.filter((i) => !win(i)), // any off-window slot — the window rule holds
+    idxs, // last resort only (a run that's all window)
   ];
   for (const t of tiers) {
     const pick = farthest(t);
@@ -400,36 +598,40 @@ interface Role {
   talls: boolean;
 }
 
-/** Spread sink / hob / fridge-bank across the wall runs per the layout. */
+/** Spread sink / hob / fridge-bank across the wall runs per the layout — the
+ *  work-triangle placement from kitchen-design guides (KitchenAid "9 kitchen layouts"):
+ *   • single wall  → fridge — sink — cooktop in a line (fillRun spaces them).
+ *   • galley       → fridge + cooktop on ONE wall (opposite ends); sink + dishwasher on
+ *                    the OPPOSITE (water) wall.
+ *   • L            → sink + dishwasher + fridge on the water wall; cooktop on the other
+ *                    wall, so the fridge and cooktop land at the two open ends with the
+ *                    sink "between" them by the corner.
+ *   • U            → sink + dishwasher in the CENTRE (middle run); fridge and cooktop on
+ *                    the two opposite arms.
+ *  Dishwasher always rides with the sink (fillRun seats it beside the sink). */
 function assignRoles(layout: KitchenLayout, runs: RunInput[], waterRun: number): Record<number, Role> {
   const wallIdx = runs.map((_, i) => i).filter((i) => runs[i].kind === "wall");
   const roles: Record<number, Role> = {};
   const set = (i: number, r: Partial<Role>) => (roles[i] = { sink: false, hob: false, dw: false, talls: false, ...r });
+  const water = wallIdx.includes(waterRun) ? waterRun : wallIdx[0];
 
   if (layout === "i" || layout === "peninsula" || wallIdx.length === 1) {
     set(wallIdx[0], { sink: true, hob: true, dw: true, talls: true });
   } else if (layout === "u" && wallIdx.length >= 3) {
     const mid = wallIdx[1];
-    const sinkRun = wallIdx.includes(waterRun) ? waterRun : mid;
-    let hobRun: number;
-    let tallsRun: number;
-    if (sinkRun !== mid) {
-      hobRun = mid;
-      tallsRun = wallIdx.find((i) => i !== sinkRun && i !== mid) ?? mid;
-    } else {
-      const arms = wallIdx.filter((i) => i !== mid);
-      hobRun = arms[0];
-      tallsRun = arms[1] ?? arms[0];
-    }
-    set(sinkRun, { sink: true, dw: true });
-    set(hobRun, { hob: true });
-    set(tallsRun, { talls: true });
+    const arms = wallIdx.filter((i) => i !== mid);
+    set(mid, { sink: true, dw: true }); // sink in the centre of the U
+    set(arms[0], { hob: true }); // cooktop on one arm,
+    set(arms[1] ?? arms[0], { talls: true }); // fridge on the opposite arm
+  } else if (layout === "l") {
+    const other = wallIdx.find((i) => i !== water) ?? water;
+    set(water, { sink: true, dw: true, talls: true }); // sink by the corner, fridge at the open end
+    set(other, { hob: true }); // cooktop on the other wall → opposite open end
   } else {
-    // galley / l — sink + hob on the water wall; fridge bank on the other
-    const work = wallIdx.includes(waterRun) ? waterRun : wallIdx[0];
-    const other = wallIdx.find((i) => i !== work) ?? work;
-    set(work, { sink: true, hob: true, dw: true });
-    set(other, { talls: true });
+    // galley (two parallel walls)
+    const other = wallIdx.find((i) => i !== water) ?? water;
+    set(water, { sink: true, dw: true }); // sink on the water wall
+    set(other, { hob: true, talls: true }); // fridge + cooktop on the opposite wall
   }
   for (const i of wallIdx) if (!roles[i]) set(i, {});
   return roles;
@@ -440,7 +642,7 @@ function fillStorageRun(r: RunInput, runIdx: number, st: Strategy): Cabinet[] {
   const cabs: Cabinet[] = [];
   let x = 0;
   for (const w of packWidths(r.len, st.ladder)) {
-    cabs.push(mk({ kind: "base", h: BASE_H, w, fill: "drawers", count: 3, door: st.baseDoor, handle: st.handle, x, run: runIdx }));
+    cabs.push(mk({ kind: "base", h: BASE_H, w, fill: "drawers", count: 3, front: st.frontBase, handle: st.handle, x, run: runIdx }));
     x += w;
   }
   return cabs;
@@ -449,7 +651,7 @@ function fillStorageRun(r: RunInput, runIdx: number, st: Strategy): Cabinet[] {
 const FRIDGE_NOTE: Record<FridgeType, string> = { integ: "встроенный х-к", free: "отдельный х-к", none: "без х-ка" };
 const OVEN_NOTE: Record<OvenType, string> = { under: "духовка под столешницей", tall: "духовка-пенал" };
 const HOOD_NOTE: Record<HoodType, string> = { integ: "встроенная вытяжка", dome: "купольная вытяжка" };
-const LAYOUT_NOTE: Record<KitchenLayout, string> = { i: "Прямая", galley: "Параллельная", l: "Угловая", u: "П-образная", peninsula: "С полуостровом" };
+const LAYOUT_NOTE: Record<KitchenLayout, string> = { i: "Прямая", galley: "Параллельная", l: "Угловая", u: "П-образная", peninsula: "С полуостровом", all: "По всем стенам" };
 
 const FALLBACK_LAYOUT: PlannedLayout = { layout: "i", runs: [], waterRun: 0 };
 
@@ -467,9 +669,26 @@ export function generateVariants(input: LayoutInput): GenVariant[] {
   // min 4, max 8. Staggered so every (layout × finish) pairing is distinct.
   const count = Math.max(4, Math.min(8, lays.length * 2));
 
+  const wl = input.wall ?? [];
+  const fl = input.front ?? [];
+  // A raised-panel (неоклассика) kitchen glazes its wall units — that IS photo 1. Every other pick
+  // runs the same body top and bottom.
+  const upperFor = (p: FrontProfile): FrontProfile => (p === "raised" ? "grid" : p);
+
   return Array.from({ length: count }, (_, si) => {
     const pl = lays[si % lays.length];
-    const st = STRATEGIES[Math.floor(si / lays.length) % STRATEGIES.length];
+    const base = STRATEGIES[Math.floor(si / lays.length) % STRATEGIES.length];
+    // The user ASKED for a wall shape → every variant obeys, and the variants then differ by finish
+    // and storage instead. With >1 picked, they're spread across the variants like the appliances.
+    // Nothing picked → each strategy keeps its own, which is the better default: you see all three
+    // shapes side by side and just point at one.
+    let st: Strategy = wl.length
+      ? { ...base, wall: wl[si % wl.length], tallToCeiling: wl[si % wl.length] !== "single" }
+      : base;
+    if (fl.length) {
+      const p = fl[si % fl.length];
+      st = { ...st, frontBase: p, frontUpper: upperFor(p) };
+    }
     const { layout, runs, waterRun } = pl;
     const roles = assignRoles(layout, runs, waterRun);
     const hi = (si >> 1) & 1;
@@ -478,7 +697,7 @@ export function generateVariants(input: LayoutInput): GenVariant[] {
     const oven = ov[lo % ov.length];
     const hood = ho[(hi ^ lo) % ho.length];
 
-    const v: VariantInput = { layout, runs, waterRun, ceiling: input.ceiling, water: input.water, fridge, oven, hood };
+    const v: VariantInput = { layout, runs, waterRun, ceiling: input.ceiling, reveal: input.reveal ?? DEFAULT_REVEAL, water: input.water, fridge, oven, hood };
     const cook: RunFill["cook"] = oven === "tall" ? "cooktop" : "hob";
     const talls = tallsFor(v, st);
     const cabs: Cabinet[] = [];
@@ -492,7 +711,7 @@ export function generateVariants(input: LayoutInput): GenVariant[] {
       const tallEnd: RunFill["tallEnd"] = r.cornerEnd ? "near" : layout === "i" && v.water === "right" ? "near" : "far";
       cabs.push(
         ...fillRun(
-          { length: r.len, run: i, sink: role.sink, cook: role.hob ? cook : "none", dishwasher: role.dw && st.dishwasher, talls: role.talls ? talls : [], tallEnd, openings: r.openings },
+          { length: r.len, run: i, sink: role.sink, cook: role.hob ? cook : "none", dishwasher: role.dw && st.dishwasher, talls: role.talls ? talls : [], tallEnd, openings: r.openings, cornerStart: r.cornerStart, cornerEnd: r.cornerEnd },
           st,
           v,
         ),
@@ -504,6 +723,14 @@ export function generateVariants(input: LayoutInput): GenVariant[] {
     const bits: string[] = [];
     if (layoutVaries) bits.push(st.name);
     if (applVaries) bits.push([FRIDGE_NOTE[fridge], OVEN_NOTE[oven], HOOD_NOTE[hood]].join(", "));
-    return { id: `${st.id}-${si}`, name, blurb: bits.join(" · ") || st.blurb, cabs, style: st.style, layout };
+    return {
+      id: `${st.id}-${si}`,
+      name,
+      blurb: bits.join(" · ") || st.blurb,
+      cabs,
+      style: st.style,
+      layout,
+      bands: wallBandsFor(st.wall, input.ceiling, input.reveal ?? DEFAULT_REVEAL),
+    };
   });
 }

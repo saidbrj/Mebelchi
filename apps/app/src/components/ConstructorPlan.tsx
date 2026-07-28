@@ -13,15 +13,23 @@ import {
   type Pt,
   type Opening,
 } from "../model/room";
-import { type KitchenLayout } from "../model/runPlan";
+import { cornerUnits, outerEndSeats, pickSeat, planRuns, DEFAULT_REVEAL, type KitchenLayout, type CornerSpec } from "../model/runPlan";
 import type { Cabinet } from "../model/cabinet";
-import { cabFootprints, type Foot } from "../model/footprint";
+import { isOuterCorner, cabDepth } from "../model/bands";
+import { cabFootprints, footsClash, rectCorners, FOOT_DEPTH_MM, type Foot } from "../model/footprint";
+import { outerFacingSigns, chamferRing } from "../model/outerCorner";
 import { useSvgZoom } from "./useSvgZoom";
 import { ICON_DRAG_PATH, ICON_ROTATE_PATH } from "./icons";
 
 const T = 100; // wall thickness (mm)
 const MARGIN = 500;
 const GRID = 500; // visual + snap grid spacing (mm)
+// a corner unit has ONE legal seat per inside corner, so its magnet is deliberately wide
+const CORNER_SNAP_MM = 900;
+
+/** a seat a dragged corner unit can drop into: an inside corner, or (outer) a run's exposed end,
+ *  which also carries the `face` its cut corner looks toward and the `vertex` it caps. */
+type PlanSeat = CornerSpec & { face?: Pt; vertex?: Pt };
 
 const C = {
   facade: "#e7ddc9",
@@ -29,32 +37,16 @@ const C = {
   carcass: "#efe8da",
   steel: "#d6dadd",
   steelLine: "#a9afb4",
-  sel: "#2a6df0",
+  filler: "#ddd5c8",
+  sel: "#00ac7a",
 };
 
 const path = (pts: Pt[]) => pts.map((p, i) => `${i ? "L" : "M"}${p.x} ${p.y}`).join(" ") + " Z";
 const DEG = 180 / Math.PI;
 
+// `rectCorners` + the SAT overlap test live in model/footprint.ts — this file used to carry a
+// verbatim copy of both. SIGNS stays (the corner-notch geometry below needs the quadrant order).
 const SIGNS: [number, number][] = [[1, 1], [-1, 1], [-1, -1], [1, -1]];
-function rectCorners(cx: number, cy: number, ux: number, uy: number, ix: number, iy: number, w: number, depth: number) {
-  const hw = w / 2;
-  const hd = depth / 2;
-  return SIGNS.map(([su, si]) => ({ x: cx + ux * su * hw + ix * si * hd, y: cy + uy * su * hw + iy * si * hd }));
-}
-// separating-axis test for two oriented rectangles (footprints)
-function rectsOverlap(a: Foot, b: Foot): boolean {
-  const ca = rectCorners(a.cx, a.cy, a.ux, a.uy, a.ix, a.iy, a.w, a.depth);
-  const cb = rectCorners(b.cx, b.cy, b.ux, b.uy, b.ix, b.iy, b.w, b.depth);
-  const axes = [{ x: a.ux, y: a.uy }, { x: a.ix, y: a.iy }, { x: b.ux, y: b.uy }, { x: b.ix, y: b.iy }];
-  const EPS = 12; // touching (shared edge) is not an overlap
-  for (const ax of axes) {
-    let amin = Infinity, amax = -Infinity, bmin = Infinity, bmax = -Infinity;
-    for (const p of ca) { const dd = p.x * ax.x + p.y * ax.y; if (dd < amin) amin = dd; if (dd > amax) amax = dd; }
-    for (const p of cb) { const dd = p.x * ax.x + p.y * ax.y; if (dd < bmin) bmin = dd; if (dd > bmax) bmax = dd; }
-    if (amax <= bmin + EPS || bmax <= amin + EPS) return false;
-  }
-  return true;
-}
 function pointInPoly(x: number, y: number, poly: Pt[]): boolean {
   let inside = false;
   for (let i = 0, j = poly.length - 1; i < poly.length; j = i++) {
@@ -114,7 +106,14 @@ function OpeningGlyph({ o, a, b, nx, ny, coveringColor }: { o: Opening; a: Pt; b
 type DragRef =
   | { id: string; mode: "move"; startCx: number; startCy: number; rot: number; downX: number; downY: number }
   | { id: string; mode: "rotate"; cx: number; cy: number; startRot: number; startAngle: number; r: number; prevA: number; accum: number }
+  /** dragging a DIMENSION arrow. `axX/axY` is the axis it measures along (width → the module's
+   *  u axis, depth → its i axis); `sign` is which end was grabbed, so pulling either arrowhead
+   *  outward grows the module. */
+  | { id: string; mode: "dim"; kind: "w" | "depth"; v0: number; axX: number; axY: number; sign: 1 | -1; downX: number; downY: number }
   | null;
+
+/** dimension drags snap to 5 cm, like the 3D arrows */
+const DIM_STEP = 50;
 
 export interface PlanEdit {
   clientX: number;
@@ -131,6 +130,7 @@ export function ConstructorPlan({
   coveringColor,
   layout,
   waterWall,
+  reveal = DEFAULT_REVEAL,
   cabs,
   mode = "real",
   grid = false,
@@ -140,6 +140,7 @@ export function ConstructorPlan({
   onMovePlan,
   onBeginEdit,
   onEditDim,
+  onDragDim,
 }: {
   points: Pt[];
   openings: Opening[];
@@ -147,6 +148,7 @@ export function ConstructorPlan({
   coveringColor: string;
   layout: KitchenLayout;
   waterWall: number | null;
+  reveal?: number;
   cabs: Cabinet[];
   /** furniture render style — real (filled) / xray (faded) / wire (outlines) */
   mode?: "real" | "xray" | "wire";
@@ -154,10 +156,13 @@ export function ConstructorPlan({
   magnet?: boolean;
   selectedId: string | null;
   onSelectCab: (id: string | null) => void;
-  onMovePlan?: (id: string, patch: { px?: number; pz?: number; rot?: number }) => void;
+  onMovePlan?: (id: string, patch: { px?: number; pz?: number; rot?: number; cornerFace?: Pt }) => void;
   /** snapshot for undo before a drag/rotate gesture starts */
   onBeginEdit?: () => void;
   onEditDim?: (e: PlanEdit) => void;
+  /** DRAG a dimension arrow (width re-tiles the row; depth honours the row-scope mode).
+   *  Tapping the number still opens the type-in editor — this is the pull. */
+  onDragDim?: (id: string, kind: "w" | "depth", value: number) => void;
 }) {
   const [rotUI, setRotUI] = useState<{ cx: number; cy: number; r: number; a0: number; a1: number } | null>(null);
   const [moveGuide, setMoveGuide] = useState<{ vx?: number; vy?: number } | null>(null);
@@ -179,21 +184,80 @@ export function ConstructorPlan({
 
   // footprints — base/tall + appliances + uppers (wall units drawn dashed on top);
   // shared with the 3D editor so free transforms (px/pz/rot) read identically
-  const foot = cabFootprints(cabs, points, waterWall, layout, openings);
+  const foot = cabFootprints(cabs, points, waterWall, layout, openings, reveal);
   const selFoot = selectedId ? foot.find((f) => f.id === selectedId) : undefined;
 
-  // overlap warning: same-layer footprints clashing, or a module pushed into a wall
+  // FILLER PANELS («доборы») — a thin rectangle in the reserved gap at each wall-butting run end, so
+  // the plan shows the same scribe strip the 3D and front view do. Base-depth, run-aligned; measured
+  // from the run placement (same room-mm space as the footprints).
+  const fillerQuads = (() => {
+    const runs = planRuns(points, waterWall, layout, openings, cabs, reveal).runs;
+    const quads: { pts: { x: number; y: number }[]; upper?: boolean; cab?: Cabinet }[] = [];
+    runs.forEach((r, rIdx) => {
+      if (r.kind !== "wall") return;
+      const revS = r.revealStart ?? 0;
+      const revE = r.revealEnd ?? 0;
+      if (!revS && !revE) return;
+
+      const onRun = cabs.filter(
+        (c) => (c.run ?? 0) === rIdx && c.px == null && c.appliance !== "filler" && !c.furniture && !c.corner,
+      );
+      if (!onRun.length) return;
+
+      const p = r.placement;
+      const uppers = onRun.filter((c) => c.kind === "upper" && c.appliance !== "hood");
+      const bases = onRun.filter((c) => c.kind === "base");
+      const talls = onRun.filter((c) => c.kind === "tall");
+
+      const edge = (pool: Cabinet[], atStart: boolean): Cabinet | null => {
+        if (!pool.length) return null;
+        const key = (c: Cabinet) => (atStart ? (c.x ?? 0) : -((c.x ?? 0) + c.w));
+        return pool.reduce((b, c) => (key(c) < key(b) ? c : b));
+      };
+
+      const addQuads = (sC: number, w: number, atStart: boolean) => {
+        const levels = new Map<number, Cabinet[]>();
+        for (const c of onRun) {
+          const band = cabBand(c);
+          const list = levels.get(band.carcass0) ?? [];
+          list.push(c);
+          levels.set(band.carcass0, list);
+        }
+        for (const pool of levels.values()) {
+          const outer = edge(pool, atStart);
+          if (outer) {
+            const dep = cabDepth(outer);
+            const cx = (p.ax + p.ux * sC + p.ix * (dep / 2000)) * 1000 + b.cx;
+            const cy = (p.az + p.uz * sC + p.iz * (dep / 2000)) * 1000 + b.cy;
+            const upper = outer.kind === "upper";
+            quads.push({ pts: rectCorners(cx, cy, p.ux, p.uz, p.ix, p.iz, w, dep), upper, cab: outer });
+          }
+        }
+      };
+
+      if (revS) addQuads(revS / 2000, revS, true);
+      if (revE) addQuads(p.lenM - revE / 2000, revE, false);
+    });
+    return quads;
+  })();
+
+  // overlap warning: footprints clashing (in plan AND in height — footsClash), or a module pushed
+  // into a wall
   const overlap = new Set<string>();
   for (let i = 0; i < foot.length; i++) {
     for (let j = i + 1; j < foot.length; j++) {
-      if (foot[i].upper !== foot[j].upper) continue; // a wall unit over a base is fine
-      if (rectsOverlap(foot[i], foot[j])) {
+      if (footsClash(foot[i], foot[j])) {
         overlap.add(foot[i].id);
         overlap.add(foot[j].id);
       }
     }
   }
   for (const f of foot) {
+    if (f.furniture) continue; // furniture isn't pinned to the walls
+    // An OUTER corner WRAPS a wall corner: the quadrant its ring leaves out is the wall itself, so a
+    // quarter of its bounding rectangle is SUPPOSED to be outside the room. Testing that rectangle
+    // paints the one module that is seated correctly red.
+    if (f.cornerShape === "outer") continue;
     const corners = rectCorners(f.cx, f.cy, f.ux, f.uy, f.ix, f.iy, f.w * 0.9, f.depth * 0.9);
     if (corners.some((p) => !pointInPoly(p.x, p.y, inner))) overlap.add(f.id);
   }
@@ -204,6 +268,22 @@ export function ConstructorPlan({
   const wallMaxX = Math.max(...inner.map((p) => p.x));
   const wallMinY = Math.min(...inner.map((p) => p.y));
   const wallMaxY = Math.max(...inner.map((p) => p.y));
+  /** the seat a dragged CORNER unit should drop into, if it's near one. An INNER corner is sized to
+   *  the module itself (base corner 840, upper 613) so the square lands flush on both walls; an
+   *  OUTER unit is an END UNIT, so its seats are the exposed ends of the wall runs, and its seat
+   *  carries the `face` its cut corner looks toward. Away from a seat either one drags on freely
+   *  (wall snap, via snapMove). */
+  const cornerSeat = (id: string, px: number, py: number, rotDeg: number): PlanSeat | null => {
+    const cab = cabs.find((c) => c.id === id);
+    if (!cab?.corner || !magnet) return null;
+    const seats: PlanSeat[] = isOuterCorner(cab)
+      ? outerEndSeats(points, cab.w, cabDepth(cab))
+      : cornerUnits(points, waterWall, layout, openings, cab.w);
+    // the seat the drag is AIMED at — measured to the room corner as well as to the seat centre,
+    // and preferring one that doesn't spin the module onto the perpendicular wall (see pickSeat)
+    return pickSeat(seats, px, py, rotDeg, CORNER_SNAP_MM);
+  };
+
   const snapMove = (f: Foot, cx: number, cy: number) => {
     const TH = 0.03 * U; // ≈ constant on screen
     let sx = cx;
@@ -231,11 +311,44 @@ export function ConstructorPlan({
     return { x: sx, y: sy, gvx, gvy };
   };
 
+  // four oriented corners of a footprint rectangle
+  const footCorners = (f: Foot) => {
+    const hw = f.w / 2, hd = f.depth / 2;
+    return SIGNS.map(([su, si]) => ({ x: f.cx + f.ux * su * hw + f.ix * si * hd, y: f.cy + f.uy * su * hw + f.iy * si * hd }));
+  };
+  // Corner-unit outline: a square with its ROOM-FACING corner removed — either via an inner notch
+  // (L-shape, L-door) or via a single 45° chamfer (pentagon, diagonal door). `cut` is how far the
+  // run-butt edge sits past centre (armDepth − halfSide).
+  //
+  // This is the TWIN of kitchen3d's `footPts`. The two are separate implementations of the same
+  // polygon, so both must read the module's `cornerShape` / `armDepth` — if only one does, the plan
+  // and the 3D quietly draw different cabinets.
+  const cornerGeom = (f: Foot) => {
+    const P = (uu: number, ii: number) => ({ x: f.cx + f.ux * uu + f.ix * ii, y: f.cy + f.uy * uu + f.iy * ii });
+    // OUTER = the ANGLED END UNIT: a rectangle with its exposed front corner cut at 45°, open across
+    // the cut. The shared model/outerCorner ring is the SAME one the 3D reads.
+    if (f.cornerShape === "outer") {
+      const face = f.cornerFace ?? c;
+      const { su } = outerFacingSigns(face, f.cx, f.cy, f.rotDeg);
+      const { ring: local, openEdges } = chamferRing(f.w, f.depth, f.chamfer ?? Infinity, su);
+      const ring = local.map((p) => P(p.along, p.into));
+      const doorSegs = openEdges.map((e) => [ring[e], ring[(e + 1) % ring.length]]);
+      return { ring, doorSegs };
+    }
+    const cs = footCorners(f);
+    let ri = 0, rd = Infinity;
+    cs.forEach((p, i) => { const d = Math.hypot(p.x - c.x, p.y - c.y); if (d < rd) { rd = d; ri = i; } });
+    const [su, si] = SIGNS[ri];
+    const diagonal = f.cornerShape === "diagonal";
+    const hw = f.w / 2, cut = f.armDepth - hw;
+    const buttA = P(su * hw, si * cut), buttB = P(su * cut, si * hw), notch = P(su * cut, si * cut);
+    const ring = [P(-su * hw, -si * hw), P(su * hw, -si * hw), buttA, ...(diagonal ? [] : [notch]), buttB, P(-su * hw, si * hw)];
+    const doorSegs = diagonal ? [[buttA, buttB]] : [[buttA, notch], [notch, buttB]];
+    return { ring, doorSegs };
+  };
   const quadPts = (f: Foot) => {
-    const hw = f.w / 2;
-    const hd = f.depth / 2;
-    const corner = (su: number, si: number) => `${f.cx + f.ux * su * hw + f.ix * si * hd},${f.cy + f.uy * su * hw + f.iy * si * hd}`;
-    return `${corner(1, 1)} ${corner(-1, 1)} ${corner(-1, -1)} ${corner(1, -1)}`;
+    if (!f.corner) return footCorners(f).map((p) => `${p.x},${p.y}`).join(" ");
+    return cornerGeom(f).ring.map((p) => `${p.x},${p.y}`).join(" ");
   };
 
   // ---- pointer + drag/rotate ----
@@ -266,15 +379,49 @@ export function ConstructorPlan({
     dragRef.current = { id: f.id, mode: "rotate", cx: f.cx, cy: f.cy, startRot: f.rotDeg, startAngle: a, r, prevA: a, accum: 0 };
     setRotUI({ cx: f.cx, cy: f.cy, r, a0: a, a1: a });
   };
+  /** grab a dimension arrow. `sign` says which arrowhead the finger landed on, so pulling either
+   *  end outward grows the module — the same rule the 3D arrows use. */
+  const onDimDown = (f: Foot, kind: "w" | "depth") => (e: React.PointerEvent) => {
+    if (!onDragDim) return;
+    e.stopPropagation();
+    try { (e.target as Element).setPointerCapture(e.pointerId); } catch { /* ignore */ }
+    begun.current = false; // lazy snapshot — a tap (to type a number) makes no undo step
+    const mm = clientToMm(e);
+    const axX = kind === "w" ? f.ux : f.ix;
+    const axY = kind === "w" ? f.uy : f.iy;
+    const sign: 1 | -1 = (mm.x - f.cx) * axX + (mm.y - f.cy) * axY >= 0 ? 1 : -1;
+    dragRef.current = { id: f.id, mode: "dim", kind, v0: kind === "w" ? f.w : f.depth, axX, axY, sign, downX: mm.x, downY: mm.y };
+  };
+
   const onPointerMove = (e: React.PointerEvent) => {
     const dr = dragRef.current;
-    if (!dr || !onMovePlan) return;
+    if (!dr) return;
+    if (dr.mode === "dim") {
+      if (!onDragDim) return;
+      e.stopPropagation();
+      if (!begun.current) { onBeginEdit?.(); begun.current = true; }
+      const mm = clientToMm(e);
+      const along = (mm.x - dr.downX) * dr.axX + (mm.y - dr.downY) * dr.axY;
+      const raw = dr.v0 + dr.sign * along;
+      onDragDim(dr.id, dr.kind, Math.round(raw / DIM_STEP) * DIM_STEP);
+      return;
+    }
+    if (!onMovePlan) return;
     e.stopPropagation();
     if (!begun.current) { onBeginEdit?.(); begun.current = true; } // first move → one undo step
     const mm = clientToMm(e);
     if (dr.mode === "move") {
       const nx = dr.startCx + (mm.x - dr.downX);
       const ny = dr.startCy + (mm.y - dr.downY);
+      // A CORNER UNIT has exactly one legal seat per corner — flush against BOTH walls (inner), or
+      // wrapping the vertex (outer) — so it snaps to a corner, never to a single wall like an
+      // ordinary module. Same rule the 3D uses, so dragging it in either view lands it identically.
+      const seat = cornerSeat(dr.id, nx, ny, dr.rot);
+      if (seat) {
+        onMovePlan(dr.id, { px: seat.px, pz: seat.pz, rot: seat.rot, ...(seat.face ? { cornerFace: seat.face } : {}) });
+        setMoveGuide(null);
+        return;
+      }
       const f = foot.find((x) => x.id === dr.id);
       const sn = f ? snapMove(f, nx, ny) : { x: nx, y: ny, gvx: undefined, gvy: undefined };
       onMovePlan(dr.id, { px: sn.x, pz: sn.y, rot: dr.rot });
@@ -306,6 +453,14 @@ export function ConstructorPlan({
   // handle geometry for the selected footprint
   const R = 0.05 * U;
   const isc = (0.9 * R) / 16;
+  // rotate is worth offering only when no wall is orienting the module — see the handle below.
+  // An END UNIT is the exception among corners: an elbow has TWO of them, one per wall, and turning
+  // it is how you say which wall it caps. Without a handle it was stuck on whichever one the app
+  // happened to seat it against.
+  const selCabP = selectedId ? cabs.find((c) => c.id === selectedId) : undefined;
+  const selRotatable =
+    !!selCabP && (!selCabP.corner || isOuterCorner(selCabP)) &&
+    (!!selCabP.furniture || !!selCabP.island || selCabP.px != null);
   const rotDist = selFoot ? Math.max(selFoot.w, selFoot.depth) / 2 + R * 2.2 : 0;
   const rotHx = selFoot ? selFoot.cx + selFoot.ix * rotDist : 0;
   const rotHy = selFoot ? selFoot.cy + selFoot.iy * rotDist : 0;
@@ -315,23 +470,50 @@ export function ConstructorPlan({
   const editClick = (value: number, cabId: string, kind: "w" | "depth") =>
     onEditDim ? (e: React.MouseEvent) => onEditDim({ clientX: e.clientX, clientY: e.clientY, value, cabId, kind }) : undefined;
   const sc = zoom.scale;
-  const oDim = (a: Pt, b: Pt, perp: Pt, label: string, key: string, onClick?: (e: React.MouseEvent) => void) => {
+  const oDim = (
+    a: Pt,
+    b: Pt,
+    perp: Pt,
+    label: string,
+    key: string,
+    onClick?: (e: React.MouseEvent) => void,
+    onDown?: (e: React.PointerEvent) => void,
+  ) => {
     const OFF = 230 * sc;
-    const TICK = 26 * sc;
     const STK = 4 * sc;
     const e1 = { x: a.x + perp.x * OFF, y: a.y + perp.y * OFF };
     const e2 = { x: b.x + perp.x * OFF, y: b.y + perp.y * OFF };
     const mx = (e1.x + e2.x) / 2;
     const my = (e1.y + e2.y) / 2;
-    const px = perp.x * TICK;
-    const py = perp.y * TICK;
     return (
       <g key={key}>
         <line x1={a.x} y1={a.y} x2={e1.x} y2={e1.y} stroke="#9aa0a6" strokeWidth={STK * 0.7} />
         <line x1={b.x} y1={b.y} x2={e2.x} y2={e2.y} stroke="#9aa0a6" strokeWidth={STK * 0.7} />
-        <line x1={e1.x} y1={e1.y} x2={e2.x} y2={e2.y} stroke={C.sel} strokeWidth={STK} />
-        <line x1={e1.x - px} y1={e1.y - py} x2={e1.x + px} y2={e1.y + py} stroke={C.sel} strokeWidth={STK} />
-        <line x1={e2.x - px} y1={e2.y - py} x2={e2.x + px} y2={e2.y + py} stroke={C.sel} strokeWidth={STK} />
+        {/* ARROWHEADS, not the old end ticks — and the line is draggable, so the arrow means what
+            it looks like. A fat invisible line under it is the real grab target (a 4-unit stroke in
+            a 4-metre viewBox is unhittable with a finger). */}
+        <line
+          x1={e1.x}
+          y1={e1.y}
+          x2={e2.x}
+          y2={e2.y}
+          stroke="transparent"
+          strokeWidth={90 * sc}
+          strokeLinecap="round"
+          onPointerDown={onDown}
+          style={onDown ? { cursor: "ew-resize", touchAction: "none" } : undefined}
+        />
+        <line
+          x1={e1.x}
+          y1={e1.y}
+          x2={e2.x}
+          y2={e2.y}
+          stroke={C.sel}
+          strokeWidth={STK}
+          markerStart="url(#planArrow)"
+          markerEnd="url(#planArrow)"
+          pointerEvents="none"
+        />
         <g onClick={onClick} style={onClick ? { cursor: "pointer" } : undefined}>
           {onClick && <rect x={mx - 200 * sc} y={my - 100 * sc} width={400 * sc} height={200 * sc} fill="transparent" />}
           <rect x={mx - 150 * sc} y={my - 78 * sc} width={300 * sc} height={156 * sc} rx={36 * sc} fill="#fff" stroke={C.sel} strokeWidth={5 * sc} />
@@ -351,6 +533,13 @@ export function ConstructorPlan({
           <line x1="160" y1="85" x2="160" y2="170" stroke="rgba(150,120,80,0.14)" strokeWidth="2" />
           <line x1="480" y1="85" x2="480" y2="170" stroke="rgba(150,120,80,0.14)" strokeWidth="2" />
         </pattern>
+        {/* dimension arrowhead. `markerUnits="strokeWidth"` (the default) makes it scale with the
+            line's stroke — which is already `4 * sc` — so it stays a constant size on screen at any
+            zoom. Sized 30× the stroke: an unscaled 6.5 (what the 3D uses, in SCREEN px) would be a
+            6.5mm speck here, because this SVG's user units are room millimetres. */}
+        <marker id="planArrow" viewBox="0 0 10 10" refX="9" refY="5" markerWidth={30} markerHeight={30} orient="auto-start-reverse">
+          <path d="M0 0 L10 5 L0 10 z" fill={C.sel} />
+        </marker>
       </defs>
 
       {/* tap empty space to deselect */}
@@ -388,15 +577,35 @@ export function ConstructorPlan({
         })}
       </g>
 
+      {/* filler «доборы» — the scribe strip in the reserved gap at each wall-butting run end */}
+      {fillerQuads.map((q, i) => {
+        const typeFill = q.cab?.finish?.facade != null
+          ? `#${q.cab.finish.facade.toString(16).padStart(6, "0")}`
+          : C.facade;
+        return (
+          <polygon
+            key={`fill${i}`}
+            points={q.pts.map((p) => `${p.x},${p.y}`).join(" ")}
+            fill={q.upper ? "none" : typeFill}
+            stroke={q.upper ? "#9aa0a6" : C.facadeLine}
+            strokeWidth={q.upper ? 7 : 8}
+            strokeDasharray={q.upper ? `${70} ${45}` : undefined}
+          />
+        );
+      })}
+
       {/* footprint bodies — render style (Lines/Transparent) applied here only */}
       <g className={mode === "wire" ? "svg-wire plan-wire" : mode === "xray" ? "svg-xray" : undefined}>
         {foot.map((f) => {
-          const typeFill = f.appliance === "fridge" || f.appliance === "oven" || f.appliance === "dishwasher" ? C.steel : f.appliance === "sink" || f.appliance === "hob" ? C.carcass : C.facade;
+          const appl = f.appliance === "fridge" || f.appliance === "oven" || f.appliance === "dishwasher" || f.appliance === "washer" ? C.steel : f.appliance === "sink" || f.appliance === "hob" ? C.carcass : null;
+          // a picked facade finish recolours the footprint (appliances keep their look)
+          const typeFill = appl ?? (f.finish?.facade != null ? `#${f.finish.facade.toString(16).padStart(6, "0")}` : C.facade);
           const along = (mm: number) => ({ x: f.ux * mm, y: f.uy * mm });
           const into = (mm: number) => ({ x: f.ix * mm, y: f.iy * mm });
           return (
             <g key={f.id} pointerEvents="none">
               <polygon points={quadPts(f)} fill={f.upper ? "none" : typeFill} stroke={f.upper ? "#9aa0a6" : C.facadeLine} strokeWidth={f.upper ? 7 : 8} strokeDasharray={f.upper ? `${70} ${45}` : undefined} />
+              {f.corner && cornerGeom(f).doorSegs.map((s, si) => <line key={`dr${si}`} x1={s[0].x} y1={s[0].y} x2={s[1].x} y2={s[1].y} stroke={f.upper ? "#9aa0a6" : C.facadeLine} strokeWidth={f.upper ? 7 : 9} />)}
               {!f.upper && f.appliance === "sink" && [-0.12, 0.12].map((k, ki) => { const o = along(k * f.w); return <circle key={ki} cx={f.cx + o.x} cy={f.cy + o.y} r={Math.min(f.w * 0.16, 160)} fill="none" stroke={C.steelLine} strokeWidth={10} />; })}
               {!f.upper && f.appliance === "hob" && [-0.18, 0.18].flatMap((au) => [-0.16, 0.16].map((ai) => { const o1 = along(au * f.w); const o2 = into(ai * f.depth); return <circle key={`${au}-${ai}`} cx={f.cx + o1.x + o2.x} cy={f.cy + o1.y + o2.y} r={70} fill="#2c3035" />; }))}
               {!f.upper && f.appliance === "fridge" && (() => { const o = into(f.depth * 0.32); return <circle cx={f.cx + o.x} cy={f.cy + o.y} r={70} fill="#111417" />; })()}
@@ -451,24 +660,31 @@ export function ConstructorPlan({
         const dB = { x: f.cx + dperp.x * hw + f.ix * hd, y: f.cy + dperp.y * hw + f.iy * hd };
         return (
           <>
-            {oDim(wA, wB, wperp, `${f.w}`, "dimw", editClick(f.w, f.id, "w"))}
-            {oDim(dA, dB, dperp, `${f.depth}`, "dimd", editClick(f.depth, f.id, "depth"))}
+            {oDim(wA, wB, wperp, `${f.w}`, "dimw", editClick(f.w, f.id, "w"), onDimDown(f, "w"))}
+            {oDim(dA, dB, dperp, `${f.depth}`, "dimd", editClick(f.depth, f.id, "depth"), onDimDown(f, "depth"))}
           </>
         );
       })()}
       {selFoot && onMovePlan && (
         <>
-          <line x1={selFoot.cx} y1={selFoot.cy} x2={rotHx} y2={rotHy} stroke={C.sel} strokeWidth={0.004 * U} pointerEvents="none" />
           {/* drag handle (centre) */}
           <g transform={`translate(${selFoot.cx} ${selFoot.cy})`} onPointerDown={onMoveDown(selFoot)} style={{ cursor: "grab", touchAction: "none" }}>
             <circle r={R} fill="#fff" stroke="#cfcfcf" strokeWidth={0.004 * U} />
             <g transform={`translate(${-16 * isc} ${-16 * isc}) scale(${isc})`}><path d={ICON_DRAG_PATH} fill="#1c1b18" /></g>
           </g>
-          {/* rotate handle */}
-          <g transform={`translate(${rotHx} ${rotHy})`} onPointerDown={onRotateDown(selFoot, rotDist)} style={{ cursor: "grab", touchAction: "none" }}>
-            <circle r={R} fill="#fff" stroke="#cfcfcf" strokeWidth={0.004 * U} />
-            <g transform={`translate(${-16 * isc} ${-16 * isc}) scale(${isc})`}><path d={ICON_ROTATE_PATH} fill="#1c1b18" /></g>
-          </g>
+          {/* ROTATE — only for a module with no wall to face it: furniture, an island, or something
+              pulled free of a run. A cabinet tiled into a wall is oriented BY the wall, so the
+              handle did nothing there but clutter the most common object on the plan. Same rule as
+              the 3D (VariantScene's selRotatable), so the two views agree. */}
+          {selRotatable && (
+            <>
+              <line x1={selFoot.cx} y1={selFoot.cy} x2={rotHx} y2={rotHy} stroke={C.sel} strokeWidth={0.004 * U} pointerEvents="none" />
+              <g transform={`translate(${rotHx} ${rotHy})`} onPointerDown={onRotateDown(selFoot, rotDist)} style={{ cursor: "grab", touchAction: "none" }}>
+                <circle r={R} fill="#fff" stroke="#cfcfcf" strokeWidth={0.004 * U} />
+                <g transform={`translate(${-16 * isc} ${-16 * isc}) scale(${isc})`}><path d={ICON_ROTATE_PATH} fill="#1c1b18" /></g>
+              </g>
+            </>
+          )}
         </>
       )}
     </svg>
