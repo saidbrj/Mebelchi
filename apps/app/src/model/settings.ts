@@ -84,7 +84,14 @@ export const DEFAULT_RATE_OVERRIDES: RateOverrides = {
  *  replaces with their own client-facing rate. */
 export const DEFAULT_SQM_RATE = 200;
 
+/** Workshop fastener / joint family:
+ *  `confirmat` = Евровинт Ø7×50mm screw (manual drill assembly default)
+ *  `minifix` = Минификс Ø15×12.5mm cam + dowel Ø8×34mm (CNC factory standard)
+ *  `dowel` = Шкант деревянный Ø8×30mm (glued non-demountable joint) */
+export type JointFamily = "confirmat" | "minifix" | "dowel";
+
 export interface Settings {
+  // ... existing fields ...
   // Профиль (the designer's own contact — used on quotes/orders)
   name: string;
   phone: string;
@@ -122,6 +129,10 @@ export interface Settings {
    *  ширины (шкаф на монтажной планке) — так объединённый ряд 2400 берёт 2 навеса вместо 8.
    *  Мастерская, которая вешает пару на каждые 900 мм, ставит 900. */
   hangingSpanMm: number;
+  /** Fastener / Joint family used by this workshop: "confirmat" | "minifix" | "dowel" */
+  jointFamily: JointFamily;
+  /** Distance from front edge to first joint fastener bore (mm, default 65mm). */
+  jointSetbackMm: number;
   /** Show the professional/advanced exports (CNC drilling SWJ008 + the CSV spec). OFF by
    *  default — ~95% of workshops cut manually and only need the cutting plan (PDF/DXF). */
   advancedExport: boolean;
@@ -152,6 +163,8 @@ export const DEFAULT_SETTINGS: Settings = {
   respectGrain: true,
   hangingsPerCarcass: 2,
   hangingSpanMm: 0, // one set per box however wide — the mounting-rail build
+  jointFamily: "confirmat",
+  jointSetbackMm: 65,
   advancedExport: false,
   quality: "auto",
 };

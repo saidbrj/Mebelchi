@@ -7,6 +7,7 @@ import { carcassPanels, groupCarcasses, carcassWidth, panelAreaM2, panelThicknes
 import type { ProductionOpts } from "@mebelchi/schema";
 import { projectFromCabs } from "./toProject";
 import type { Cabinet, FrontProfile } from "./cabinet";
+import { loadSettings } from "./settings";
 
 const matName = (ref: string): string => seedRateTable.materials[ref]?.name ?? ref;
 const hwName = (sku: string): string => Object.values(seedRateTable.hardware).find((h) => h.sku === sku)?.name ?? sku;
@@ -211,6 +212,28 @@ export function production(cabs: Cabinet[], prod: ProductionOpts = DEFAULT_PRODU
     if (line.kind !== "hardware") continue;
     const name = hwName(line.ref);
     hw.set(name, (hw.get(name) ?? 0) + line.qty);
+  }
+
+  // Joint family fasteners count (4 fasteners per horizontal panel: shelves + bottom)
+  try {
+    const settings = loadSettings();
+    const family = settings.jointFamily ?? "confirmat";
+    let jointCount = 0;
+    for (const c of real) {
+      const horizontalPanels = (c.count ?? 0) + 1; // shelves + bottom
+      jointCount += horizontalPanels * 4;
+    }
+
+    if (family === "confirmat") {
+      hw.set("Конфирмат (евровинт) 7×50 мм", (hw.get("Конфирмат (евровинт) 7×50 мм") ?? 0) + jointCount);
+    } else if (family === "minifix") {
+      hw.set("Минификс (эксцентрик) Ø15×12.5 мм", (hw.get("Минификс (эксцентрик) Ø15×12.5 мм") ?? 0) + jointCount);
+      hw.set("Шкант деревянный 8×30 мм", (hw.get("Шкант деревянный 8×30 мм") ?? 0) + jointCount);
+    } else if (family === "dowel") {
+      hw.set("Шкант деревянный 8×30 мм", (hw.get("Шкант деревянный 8×30 мм") ?? 0) + jointCount);
+    }
+  } catch (e) {
+    // fallback if localStorage not available
   }
 
   return {

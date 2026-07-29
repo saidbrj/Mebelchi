@@ -217,6 +217,66 @@ export function SettingsScreen() {
         <p className="set-hint">{t.settings.hangingSpanHint}</p>
       </div>
 
+      {/* УЗЛЫ И СОЕДИНЕНИЯ (Prototype 4 — Joint Settings) */}
+      <div className="menu-sec-title">Узлы и Крепёж (Полка ⊥ Бок)</div>
+      <div className="set-group">
+        <div className="set-pref">
+          <span className="set-label">Тип крепежа</span>
+          <div className="set-lang">
+            <button
+              className={`set-lang-btn ${(settings.jointFamily ?? "confirmat") === "confirmat" ? "on" : ""}`}
+              onClick={() => update({ jointFamily: "confirmat" })}
+              type="button"
+            >
+              Конфирмат
+            </button>
+            <button
+              className={`set-lang-btn ${settings.jointFamily === "minifix" ? "on" : ""}`}
+              onClick={() => update({ jointFamily: "minifix" })}
+              type="button"
+            >
+              Минификс
+            </button>
+            <button
+              className={`set-lang-btn ${settings.jointFamily === "dowel" ? "on" : ""}`}
+              onClick={() => update({ jointFamily: "dowel" })}
+              type="button"
+            >
+              Шкант
+            </button>
+          </div>
+        </div>
+
+        <div className="set-joint-info">
+          <div className="set-joint-title">
+            {(settings.jointFamily ?? "confirmat") === "confirmat" && "Евровинт (Конфирмат Ø7×50 мм)"}
+            {settings.jointFamily === "minifix" && "Минификс Ø15×12.5 мм + Шкант Ø8×34 мм"}
+            {settings.jointFamily === "dowel" && "Шкант деревянный Ø8×30 мм (клей)"}
+          </div>
+          <div className="set-joint-desc">
+            {(settings.jointFamily ?? "confirmat") === "confirmat" && "Диаметр: Ø7/Ø5 мм · Длина: 50 мм · Сборка ручной дрелью"}
+            {settings.jointFamily === "minifix" && "Диаметр: Ø15/Ø8 мм · Глубина чашки: 12.5 мм · Скрытый разборный узел (CNC)"}
+            {settings.jointFamily === "dowel" && "Диаметр: Ø8 мм · Глубина: 15 мм · Неразборное клеевое соединение"}
+          </div>
+        </div>
+
+        <label className="set-field">
+          <span className="set-label">Отступ от переднего края (мм)</span>
+          {numInput("jointSetbackMm", settings.jointSetbackMm ?? 65, (n) => update({ jointSetbackMm: n }), false)}
+        </label>
+        <span className="set-hint set-block-hint">
+          Профиль конфирмата используется для евро-сборки ручной дрелью. Минификс Ø15×12.5 выводится в SWJ008 для ЧПУ присадочного станка.
+        </span>
+        <div style={{ padding: "10px 14px", borderTop: "1px solid var(--line)", background: "#f5f8fe" }}>
+          <div style={{ fontSize: 13, fontWeight: 650, color: "#2f6fe4", marginBottom: 3 }}>
+            📐 Живые чертежи V21 (Стандарт мастерской)
+          </div>
+          <div style={{ fontSize: 12, color: "#555", lineHeight: 1.4 }}>
+            Паз задника 4×8 мм, дно накладное, цоколь-коробка 120 мм, конфирмат 7×50 мм. Интерактивные SVG чертежи доступны в режиме редактора модуля.
+          </div>
+        </div>
+      </div>
+
       <div className="menu-sec-title">{t.settings.cutting}</div>
       <div className="set-group">
         <label className="set-field">

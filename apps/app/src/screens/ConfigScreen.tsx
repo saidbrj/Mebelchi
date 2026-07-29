@@ -15,6 +15,7 @@ import { ConstructorPlan, type PlanEdit } from "../components/ConstructorPlan";
 import { ElevationGrid, type EditDim } from "../components/ElevationGrid";
 import { locate, rowEdges, ROW_MIN, type CellRef, type RowKind } from "../model/grid";
 import { FurnitureEditor, emptyCfg, type PartCfg } from "../components/FurnitureEditor";
+import { V21Cabinet3DStudio } from "../components/V21Cabinet3DStudio";
 import { FillEditor } from "../components/FillEditor";
 import { planRuns } from "../model/runPlan";
 import { fillGapSpan } from "../model/fill";
@@ -123,6 +124,11 @@ const GlyphCabinets = () => (
     <path d="M8 6V27H25V6H8ZM9.7 7.75H23.3V12.125H9.7V7.75ZM14.8 9.5V11.25H18.2V9.5H14.8ZM9.7 13.875H23.3V19.125H9.7V13.875ZM14.8 15.625V17.375H18.2V15.625H14.8ZM9.7 20.875H23.3V25.25H9.7V20.875ZM14.8 21.75V23.5H18.2V21.75H14.8Z" />
   </svg>
 );
+const GlyphEdit = () => (
+  <svg width="24" height="24" viewBox="0 0 33 33" fill="currentColor" aria-hidden>
+    <path d="M22.4 6.6c-.8 0-1.5.3-2.1.9l-1.4 1.4 4.2 4.2 1.4-1.4c1.2-1.2 1.2-3 0-4.2-.6-.6-1.3-.9-2.1-.9zM17.5 10.3l-9.9 9.9-.5 2.3-1.1 5 5-1.1 2.3-.5 9.9-9.9-5.7-5.7zM9.1 21.6l-.7-.7 8.4-8.4 1.4 1.4-8.4 8.4-.7-.7z" />
+  </svg>
+);
 // resize-panel dimension glyphs
 const GlyphW = () => (<svg width="20" height="20" viewBox="0 0 30 30" fill="currentColor" aria-hidden><path d="M6 15L6.44494 15.4534L11.6225 20.5L12.5528 19.5932L8.48764 15.6308L21.5124 15.6308L17.4472 19.5932L18.3775 20.5L23.5551 15.4534L24 15L23.5551 14.5466L18.3775 9.5L17.4472 10.4068L21.5124 14.3692L8.48764 14.3692L12.5528 10.4068L11.6225 9.5L6.44494 14.5466L6 15Z" /></svg>);
 const GlyphH = () => (<svg width="20" height="20" viewBox="0 0 30 30" fill="currentColor" aria-hidden><path d="M14.5 6L14.0466 6.44494L9 11.6225L9.90681 12.5528L13.8692 8.48764L13.8692 21.5124L9.90681 17.4472L9 18.3775L14.0466 23.5551L14.5 24L14.9534 23.5551L20 18.3775L19.0932 17.4472L15.1308 21.5124L15.1308 8.48764L19.0932 12.5528L20 11.6225L14.9534 6.44494L14.5 6Z" /></svg>);
@@ -207,9 +213,10 @@ const FREE_GROUPS = [
 export function ConfigScreen() {
   const t = useT();
   const money = useMoney();
-  const showPricing = useStore((s) => s.settings.showPricing);
+  const settings = useStore((s) => s.settings);
+  const showPricing = settings.showPricing;
   const openMenu = useStore((s) => s.openMenu);
-  const quality = useStore((s) => s.settings.quality);
+  const quality = settings.quality;
   const cabs = useStore((s) => s.cabs);
   const price = useDesignPrice(cabs); // USD, per the active pricing mode
   const selIdx = useStore((s) => s.selIdx);
@@ -382,7 +389,7 @@ export function ConfigScreen() {
   }, [cabs, healRows]);
   // an edit panel belongs to a selection — when nothing is selected, close it so no empty sheet lingers
   useEffect(() => {
-    if (selIds.length === 0 && (sheet === "resize" || sheet === "style" || sheet === "cabinets")) setSheet(null);
+    if (selIds.length === 0 && (sheet === "resize" || sheet === "style")) setSheet(null);
   }, [selIds.length, sheet]);
 
   const closeSheet = () => {
@@ -463,7 +470,7 @@ export function ConfigScreen() {
   const floorId = FLOOR_COVERINGS[floorCovering]?.id;
   // the edit panels (from the left stack) are NON-MODAL: no backdrop, so the 3D keeps rotating and
   // the left buttons stay tappable to switch panels. The catalog / full editor stay modal.
-  const panelOpen = sheet === "resize" || sheet === "style" || sheet === "cabinets";
+  const panelOpen = sheet === "resize" || sheet === "style";
   // tapping a left-stack button opens its panel, or closes it if already open (a toggle)
   const openPanel = (k: Sheet) => setSheet((cur) => (cur === k ? null : k));
   // a convertible VOID band on the selected module's wall (dead wall tall enough to become another
@@ -1132,21 +1139,18 @@ export function ConfigScreen() {
               <button type="button" className={`left-btn${sheet === "style" ? " on" : ""}`} onClick={() => openPanel("style")} aria-label="Стиль">
                 <GlyphStyle />
               </button>
-              <button type="button" className={`left-btn${sheet === "cabinets" ? " on" : ""}`} onClick={() => openPanel("cabinets")} aria-label="Шкафы">
-                <GlyphCabinets />
+              <button type="button" className={`left-btn${sheet === "editor" ? " on" : ""}`} onClick={() => setSheet("editor")} aria-label="Редактор">
+                <GlyphEdit />
               </button>
             </div>
           </div>
         )}
 
-        {/* RIGHT stack — what to DO with the selection: edit module · open/close doors · duplicate · delete. Acts
+        {/* RIGHT stack — what to DO with the selection: open/close doors · duplicate · delete. Acts
             on every selected module. Delete is separate and red so it can't be a slip of the thumb. */}
         {selIds.length >= 1 && (
           <div className={`scene-ctl item-stack${panelOpen ? " raised" : ""}`}>
             <div className="item-group">
-              <button type="button" onClick={editSel} aria-label={t.config.edit} title={t.config.edit}>
-                <IconEditItem />
-              </button>
               <button type="button" onClick={openSel} aria-label={t.config.open} title={t.config.open}>
                 <IconOpenItem />
               </button>
@@ -1290,6 +1294,15 @@ export function ConfigScreen() {
                 </button>
               );
             })}
+            <button
+              key="__more__"
+              className="swap-chip swap-more"
+              onClick={() => openSheet("cabinets")}
+              type="button"
+            >
+              <span className="swap-more-icon">⋯</span>
+              <span className="swap-name">Ещё</span>
+            </button>
           </div>
         )}
         {/* The hint text is gone (asked for), but its BOX stays. It fills the space the swap strip
@@ -1307,7 +1320,7 @@ export function ConfigScreen() {
           {/* NON-modal edit panels (resize/style/cabinets) get NO backdrop — the 3D above stays live
               and the left buttons stay tappable. The catalog / full editor keep their dimming backdrop. */}
           {!panelOpen && <div className={`sheet-backdrop dim${sheetClosing ? " closing" : ""}`} onClick={closeSheet} />}
-          <div className={`bottom-sheet${panelOpen ? " panel" : ""}${sheet === "pickCab" || sheet === "pickAppl" || sheet === "dining" || sheet === "extra" || sheet === "editor" || sheet === "style" || sheet === "cabinets" ? " tall" : ""}${sheetClosing ? " closing" : ""}`}>
+          <div className={`bottom-sheet${panelOpen ? " panel" : ""}${sheet === "pickCab" || sheet === "pickAppl" || sheet === "dining" || sheet === "extra" || sheet === "editor" || sheet === "style" || sheet === "cabinets" || sheet === "resize" ? " tall" : ""}${sheetClosing ? " closing" : ""}`}>
             {/* the edit panels are attached (non-modal) — no drag-grip; the catalog/editor keep theirs */}
             {!panelOpen && <div className="sheet-grip" />}
 
@@ -1359,26 +1372,12 @@ export function ConfigScreen() {
               );
             })()}
 
-            {sheet === "editor" && cabs[i] && (
-              <FurnitureEditor
-                cab={cabs[i]}
-                index={i}
-                name={labelFor(cabs[i])}
-                sub={subFor(cabs[i])}
-                patchCab={patchCab}
-                onResizeWidth={resizeCab}
-                applyFinishToAll={applyFinishToAll}
-                applyToAll={patchAllCabs}
-                style={runStyle}
-                cfg={curCfg}
-                onCfg={updateCfg}
+            {sheet === "editor" && sel && (
+              <V21Cabinet3DStudio
+                cab={sel}
+                patchCab={(patch) => patchCab(selIndex, patch)}
                 onClose={closeSheet}
-                onOpenFill={() => setFillOpen(true)}
-                onReplace={onReplaceCab}
-                onSaveCab={cabs[i].furniture ? undefined : (nm) => { saveCab(cabs[i].id, nm); flash(t.fe.savedCab); }}
-                onDims={patchCabDims}
-                ceiling={ceiling}
-                flash={flash}
+                settings={settings}
               />
             )}
 
@@ -1430,9 +1429,58 @@ export function ConfigScreen() {
                           Заполнить пространство
                         </button>
                       )}
-                      <button className="dim-fill" style={{ marginTop: 8, background: "#f0f4f2", color: "#1b4d3e", border: "1px solid #cce3d8" }} onClick={() => setSheet("editor")} type="button">
-                        ⚙ Конструкция и фальш-панели (Паз, Доборы, ЛДСП)
+
+                      <button
+                        className="dim-fill"
+                        style={{ marginTop: 10, background: "#e8effc", color: "#2f6fe4", border: "1px solid #c0d3f8", fontWeight: 650 }}
+                        onClick={() => setSheet("editor")}
+                        type="button"
+                      >
+                        📐 Живой чертёж и узлы V21
                       </button>
+
+                      {/* FULL INLINE CONSTRUCTION SETTINGS */}
+                      <div style={{ borderTop: "1px solid #eee", marginTop: 14, paddingTop: 12, marginBottom: 8 }}>
+                        <div className="cfg-field-lbl" style={{ fontWeight: 600, color: "#333", fontSize: 13 }}>Конструкция и фальш-панели:</div>
+                        
+                        {/* Board Thickness */}
+                        <div style={{ marginTop: 8 }}>
+                          <span style={{ fontSize: 12, color: "#666" }}>Толщина корпуса (ЛДСП):</span>
+                          <div className="pillrow" style={{ marginTop: 4 }}>
+                            <button className={`chip${(sel.boardThickness ?? 16) === 16 ? " sel" : ""}`} onClick={() => patchCab(selIndex, { boardThickness: 16 })} type="button">16 мм (Стандарт)</button>
+                            <button className={`chip${(sel.boardThickness ?? 16) === 18 ? " sel" : ""}`} onClick={() => patchCab(selIndex, { boardThickness: 18 })} type="button">18 мм (Усиленный)</button>
+                          </div>
+                        </div>
+
+                        {/* Back Panel Mounting */}
+                        <div style={{ marginTop: 10 }}>
+                          <span style={{ fontSize: 12, color: "#666" }}>Задняя стенка (ХДФ):</span>
+                          <div className="pillrow" style={{ marginTop: 4 }}>
+                            <button className={`chip${(sel.hasBack ?? true) && (sel.backMount ?? "groove") === "groove" ? " sel" : ""}`} onClick={() => patchCab(selIndex, { hasBack: true, backMount: "groove" })} type="button">В паз (4×8 мм)</button>
+                            <button className={`chip${(sel.hasBack ?? true) && sel.backMount === "overlay" ? " sel" : ""}`} onClick={() => patchCab(selIndex, { hasBack: true, backMount: "overlay" })} type="button">Внахлёст (16 мм)</button>
+                            <button className={`chip${sel.hasBack === false || sel.backMount === "none" ? " sel" : ""}`} onClick={() => patchCab(selIndex, { hasBack: false, backMount: "none" })} type="button">Без задника</button>
+                          </div>
+                        </div>
+
+                        {/* Scribe / Filler Panels */}
+                        <div style={{ marginTop: 10 }}>
+                          <span style={{ fontSize: 12, color: "#666" }}>Доборные фальш-панели (мм):</span>
+                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginTop: 4 }}>
+                            <label style={{ fontSize: 11, color: "#666", display: "flex", flexDirection: "column" }}>
+                              Слева:
+                              <input type="number" className="set-input" style={{ padding: "4px 6px", marginTop: 2, fontSize: 12 }} value={sel.fillerLeft ?? 0} onChange={(e) => patchCab(selIndex, { fillerLeft: Math.max(0, parseInt(e.target.value, 10) || 0) })} />
+                            </label>
+                            <label style={{ fontSize: 11, color: "#666", display: "flex", flexDirection: "column" }}>
+                              Справа:
+                              <input type="number" className="set-input" style={{ padding: "4px 6px", marginTop: 2, fontSize: 12 }} value={sel.fillerRight ?? 0} onChange={(e) => patchCab(selIndex, { fillerRight: Math.max(0, parseInt(e.target.value, 10) || 0) })} />
+                            </label>
+                            <label style={{ fontSize: 11, color: "#666", display: "flex", flexDirection: "column" }}>
+                              Сверху:
+                              <input type="number" className="set-input" style={{ padding: "4px 6px", marginTop: 2, fontSize: 12 }} value={sel.fillerTop ?? 0} onChange={(e) => patchCab(selIndex, { fillerTop: Math.max(0, parseInt(e.target.value, 10) || 0) })} />
+                            </label>
+                          </div>
+                        </div>
+                      </div>
                     </>
                   ) : (
                     // several selected → H / D / shelves apply to ALL; width is NOT a slider (it would
@@ -1542,8 +1590,13 @@ export function ConfigScreen() {
                         const on = curColor != null && hexToInt(m.color) === curColor;
                         return (
                           <button key={m.id} className={`style-cell${on ? " on" : ""}`} onClick={() => applyFinish({ [key]: hexToInt(m.color) })} type="button">
-                            <span className="style-swatch" style={{ background: m.color }} />
+                            <div className="style-swatch-wrap">
+                              <span className="style-swatch" style={{ background: m.color, display: "block", width: "100%", height: "100%" }} />
+                              {m.code && <span className="mat-code-badge">{m.code}</span>}
+                            </div>
                             <span className="style-name">{m.name}</span>
+                            {m.desc && <span className="mat-spec-desc">{m.desc}</span>}
+                            {m.stockSheets != null && <span className="mat-spec-desc" style={{ color: "#00ac7a", fontWeight: 500 }}>склад: {m.stockSheets} л</span>}
                           </button>
                         );
                       })}

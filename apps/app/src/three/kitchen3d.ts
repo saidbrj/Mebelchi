@@ -608,7 +608,7 @@ export function buildKitchen(cabs: Cabinet[], runs: RunRef[], style: KitchenStyl
       const h = carcassTop - carcassBot;
       const bottom = carcassBot;
       const yc = bottom + h / 2;
-      hollowCarcass(add, wM, h, dM, yc, carcassMat, bay);
+      hollowCarcass(add, wM, h, dM, yc, carcassMat, bay, c);
       buildModuleInterior(add, handle, c, wM, h, dM, yc, style, M, true, g);
     // the shade a wall unit throws on the counter — only for a row hanging at the normal height
     // (an antresol sits above a column, and there is no counter under it to darken)
@@ -649,7 +649,7 @@ export function buildKitchen(cabs: Cabinet[], runs: RunRef[], style: KitchenStyl
         add(wM - 0.04, h - 1.18, 0.02, 0, PLINTH + (h - 1.18) / 2, dM + 0.011, facadeMat());
         add(wM - 0.04, 0.32, 0.02, 0, tallTop - 0.2, dM + 0.011, facadeMat());
       } else {
-        hollowCarcass(add, wM, h, dM, yc, carcassMat, bay);
+        hollowCarcass(add, wM, h, dM, yc, carcassMat, bay, c);
         buildModuleInterior(add, handle, c, wM, h, dM, yc, style, M, false, g);
       }
     contactShadow(g, wM, dM); // a column, on the floor
@@ -691,7 +691,7 @@ export function buildKitchen(cabs: Cabinet[], runs: RunRef[], style: KitchenStyl
       }
     }
     add(plinthW, PLINTH, dM * 0.85, plinthLx, PLINTH / 2, dM * 0.55, mat(STEEL_DARK));
-    hollowCarcass(add, wM, h, dM, yc, carcassMat, bay);
+    hollowCarcass(add, wM, h, dM, yc, carcassMat, bay, c);
 
     // worktop with a front overhang (bigger on the seating side of an island)
     const front = freestanding ? 0.26 : 0.03;
@@ -919,16 +919,43 @@ interface Bay {
 // its left side only if it is the first in the box, and its right panel is a shared stile (centred
 // on the boundary) unless it is the last. Four bays → 1 + 4 = 5 verticals, exactly the 5 the cut
 // list bills. Rendering it any other way would put the seller's 3D and the factory's DXF at odds.
-function hollowCarcass(add: AddFn, wM: number, h: number, dM: number, yc: number, m: () => THREE.Material, bay?: Bay) {
-  const t = CARCASS_T;
+function hollowCarcass(add: AddFn, wM: number, h: number, dM: number, yc: number, m: () => THREE.Material, bay?: Bay, cab?: Cabinet) {
+  const t = (cab?.boardThickness ?? 16) / 1000;
   if (!bay || bay.first) add(t, h, dM, -wM / 2 + t / 2, yc, dM / 2, m()); // outer left
   const stile = bay ? !bay.last : false;
   add(t, h, dM, stile ? wM / 2 : wM / 2 - t / 2, yc, dM / 2, m()); // shared stile, or outer right
-  add(wM, t, dM, 0, yc - h / 2 + t / 2, dM / 2, m()); // bottom — butts into the next bay's
-  add(wM, t, dM, 0, yc + h / 2 - t / 2, dM / 2, m()); // top — ditto, so the box reads as one slab
-  // a merged box has ONE back running the whole width; inset each bay's and you'd see gaps of bare
-  // wall at every boundary
-  add(bay ? wM : wM - t * 2, h - t * 2, t, 0, yc, t / 2, m());
+
+  // Bottom board — respect vkladnoe (inset between sides) vs nakladnoe (full width)
+  const bMode = cab?.bottomMode ?? "nakladnoe";
+  const btmW = bMode === "vkladnoe" ? wM - 2 * t : wM;
+  add(btmW, t, dM, 0, yc - h / 2 + t / 2, dM / 2, m());
+
+  // Top board — respect topMode: "full" lid, "stretchers" (two 80mm rails), or "none"
+  const topMode = cab?.topMode ?? "full";
+  if (topMode === "stretchers") {
+    // Two stretcher rails (80mm deep) at front and back
+    const stD = 0.08;
+    const stW = wM - 2 * t;
+    add(stW, t, stD, 0, yc + h / 2 - t / 2, dM - stD / 2, m()); // front stretcher
+    add(stW, t, stD, 0, yc + h / 2 - t / 2, stD / 2, m()); // back stretcher
+  } else if (topMode !== "none") {
+    add(wM, t, dM, 0, yc + h / 2 - t / 2, dM / 2, m()); // full top lid
+  }
+
+  // Real Back Panel Rendering (groove vs overlay vs none)
+  const hasBack = cab?.hasBack ?? (cab?.backMount !== "none");
+  if (hasBack) {
+    if (cab?.backMount === "overlay") {
+      // 16mm solid LDSP back panel
+      add(wM, h, t, 0, yc, t / 2, m());
+    } else {
+      // 3mm HDF in 12mm Groove
+      const grooveOff = (cab?.grooveSetback ?? 12) / 1000;
+      const bw = bay ? wM : wM - t * 2;
+      const bh = h - t * 2;
+      add(bw, bh, 0.003, 0, yc, grooveOff + 0.0015, m());
+    }
+  }
 }
 
 // ── HYBRID INTERIOR (cell tree) ────────────────────────────────────────────────
