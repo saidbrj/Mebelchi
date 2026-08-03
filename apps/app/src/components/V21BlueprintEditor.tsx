@@ -1,6 +1,7 @@
 import React, { useState } from "react";
 import type { Cabinet, BackPanelMethod } from "../model/cabinet";
 import type { Settings } from "../model/settings";
+import { GolaSidePanel } from "./GolaSidePanel";
 
 export interface V21State {
   // Tab 1: Constr
@@ -151,7 +152,8 @@ export function V21BlueprintEditor({
       cabPatch.grooveSetback = patch.grooveOff;
     }
     if (patch.bottomT !== undefined) {
-      cabPatch.boardThickness = patch.bottomT;
+      // the UI only ever offers 16 or 18 — narrow to the model's literal type
+      cabPatch.boardThickness = patch.bottomT === 18 ? 18 : 16;
     }
     if (patch.bottomMode !== undefined) {
       cabPatch.bottomMode = patch.bottomMode;
@@ -218,8 +220,319 @@ export function V21BlueprintEditor({
     }));
   };
 
+  // SVG Hardware Technical Illustration Helpers
+  const renderFastenerSVG = (type: "confirmat" | "minifix" | "dowel") => (
+    <svg viewBox="0 0 340 160" style={{ width: "100%", height: "auto", display: "block", borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0", marginTop: 10 }}>
+      {/* Side board (Vertical) */}
+      <rect x="30" y="20" width="50" height="120" fill="#e2e8f0" stroke="#1e293b" strokeWidth="1.5" />
+      <text x="55" y="45" fontSize="11" fontWeight="600" fill="#64748b" textAnchor="middle">Бок 16мм</text>
+
+      {/* Shelf board (Horizontal) */}
+      <rect x="80" y="55" width="220" height="50" fill="#f1f5f9" stroke="#1e293b" strokeWidth="1.5" />
+      <text x="190" y="85" fontSize="11" fontWeight="600" fill="#64748b" textAnchor="middle">Полка / Дно 16мм</text>
+
+      {/* FASTENER 1: CONFIRMAT (Euro-screw Ø7x50) */}
+      {type === "confirmat" && (
+        <>
+          {/* Screw hole in side board Ø7 */}
+          <rect x="30" y="75" width="50" height="10" fill="#ffffff" stroke="#c2410c" strokeWidth="1" strokeDasharray="3 2" />
+          {/* Hole in shelf board Ø4.5 x 50mm */}
+          <rect x="80" y="76.5" width="110" height="7" fill="#ffffff" stroke="#c2410c" strokeWidth="1" strokeDasharray="3 2" />
+
+          {/* Confirmat Screw Body */}
+          <path d="M22,73 h8 v14 h-8 z" fill="#ea580c" stroke="#1e293b" strokeWidth="1.2" /> {/* Head */}
+          <line x1="26" y1="75" x2="26" y2="85" stroke="#ffffff" strokeWidth="1.5" /> {/* Hex socket */}
+          <rect x="30" y="76" width="50" height="8" fill="#f97316" stroke="#1e293b" strokeWidth="1" /> {/* Smooth shank Ø7 */}
+          <rect x="80" y="77" width="100" height="6" fill="#fb923c" stroke="#1e293b" strokeWidth="1" /> {/* Threaded body Ø5 */}
+
+          {/* Thread ridges */}
+          {[90, 105, 120, 135, 150, 165].map((x) => (
+            <line key={x} x1={x} y1="75" x2={x + 4} y2="85" stroke="#c2410c" strokeWidth="1.2" />
+          ))}
+
+          {/* Technical Callouts & Labels */}
+          <text x="55" y="105" fontSize="10" fontWeight="700" fill="#c2410c" textAnchor="middle">Ø7 мм</text>
+          <text x="130" y="105" fontSize="10" fontWeight="700" fill="#c2410c" textAnchor="middle">Ø4.5×50 мм</text>
+          <text x="210" y="38" fontSize="11" fontWeight="700" fill="#0f172a">Евровинт (Конфирмат 7×50)</text>
+          <text x="210" y="52" fontSize="10" fill="#64748b">Сквозная сверловка, силовой крепёж</text>
+        </>
+      )}
+
+      {/* FASTENER 2: MINIFIX (Eccentric Cam Ø15 + Dowel Ø8) */}
+      {type === "minifix" && (
+        <>
+          {/* Minifix Cam Cylinder Ø15 x 12.5mm */}
+          <circle cx="170" cy="80" r="16" fill="#7c3aed" stroke="#1e293b" strokeWidth="1.5" />
+          <circle cx="170" cy="80" r="12" fill="#a78bfa" stroke="#1e293b" strokeWidth="1" />
+          <path d="M164,80 h12 M170,74 v12" stroke="#ffffff" strokeWidth="2" strokeLinecap="round" /> {/* Cross drive */}
+
+          {/* Connecting Rod Stem */}
+          <rect x="65" y="76" width="90" height="8" fill="#6d28d9" stroke="#1e293b" strokeWidth="1" />
+          {/* Side sleeve */}
+          <rect x="55" y="74" width="10" height="12" fill="#4c1d95" stroke="#1e293b" strokeWidth="1" />
+
+          {/* Wooden Dowel Ø8x30 alongside */}
+          <rect x="65" y="115" width="55" height="10" fill="#d97706" rx="2" stroke="#1e293b" strokeWidth="1" />
+          <line x1="80" y1="115" x2="80" y2="125" stroke="#78350f" strokeWidth="1" strokeDasharray="2 2" />
+
+          {/* Callouts */}
+          <text x="170" y="115" fontSize="10" fontWeight="700" fill="#6d28d9" textAnchor="middle">Ø15×12.5 мм (отступ 34)</text>
+          <text x="92" y="140" fontSize="10" fontWeight="700" fill="#b45309" textAnchor="middle">Шкант Ø8×30 мм</text>
+          <text x="210" y="38" fontSize="11" fontWeight="700" fill="#0f172a">Минификс Ø15 + Шкант</text>
+          <text x="210" y="52" fontSize="10" fill="#64748b">Скрытый разборный крепёж (ЧПУ)</text>
+        </>
+      )}
+
+      {/* FASTENER 3: DOWEL (Wooden Fluted Dowel Ø8x30) */}
+      {type === "dowel" && (
+        <>
+          {/* Dowel pin embedded across joint */}
+          <rect x="55" y="72" width="60" height="16" fill="#b45309" rx="3" stroke="#1e293b" strokeWidth="1.5" />
+
+          {/* Fluting lines */}
+          <line x1="60" y1="76" x2="110" y2="76" stroke="#fbbf24" strokeWidth="1" />
+          <line x1="60" y1="80" x2="110" y2="80" stroke="#fbbf24" strokeWidth="1" />
+          <line x1="60" y1="84" x2="110" y2="84" stroke="#fbbf24" strokeWidth="1" />
+
+          {/* Joint line */}
+          <line x1="80" y1="65" x2="80" y2="95" stroke="#dc2626" strokeWidth="1.5" strokeDasharray="3 2" />
+
+          {/* Callouts */}
+          <text x="80" y="110" fontSize="10" fontWeight="700" fill="#b45309" textAnchor="middle">Ø8×30 мм (15мм в бок / 15мм в полку)</text>
+          <text x="200" y="38" fontSize="11" fontWeight="700" fill="#0f172a">Шкант берёзовый Ø8×30</text>
+          <text x="200" y="52" fontSize="10" fill="#64748b">Клеевое неразборное соединение</text>
+        </>
+      )}
+    </svg>
+  );
+
+  const renderHingeSVG = () => (
+    <svg viewBox="0 0 340 150" style={{ width: "100%", height: "auto", display: "block", borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0", marginTop: 10 }}>
+      {/* Door Front Board (Vertical) */}
+      <rect x="25" y="15" width="40" height="120" fill="#e2e8f0" stroke="#1e293b" strokeWidth="1.5" />
+      <text x="45" y="35" fontSize="10" fontWeight="600" fill="#64748b" textAnchor="middle">Фасад</text>
+
+      {/* Hinge Cup Bore Ø35 x 13mm */}
+      <rect x="25" y="55" width="26" height="40" fill="#38bdf8" stroke="#0284c7" strokeWidth="1.2" />
+      <circle cx="38" cy="75" r="14" fill="#0284c7" stroke="#1e293b" strokeWidth="1" />
+      <text x="38" y="79" fontSize="10" fontWeight="700" fill="#ffffff" textAnchor="middle">Ø35</text>
+
+      {/* Cabinet Side Panel */}
+      <rect x="110" y="15" width="180" height="40" fill="#f1f5f9" stroke="#1e293b" strokeWidth="1.5" />
+      <text x="200" y="32" fontSize="10" fontWeight="600" fill="#64748b" textAnchor="middle">Бок корпуса (планка 37мм)</text>
+
+      {/* Hinge Arm & Mounting Plate */}
+      <path d="M51,65 Q90,65 120,40" fill="none" stroke="#0284c7" strokeWidth="3" />
+      <rect x="125" y="25" width="30" height="12" fill="#0284c7" rx="2" stroke="#1e293b" strokeWidth="1" />
+
+      {/* Dimensions */}
+      <text x="45" y="112" fontSize="10" fontWeight="700" fill="#0284c7" textAnchor="middle">21.5 мм (центр)</text>
+      <text x="140" y="55" fontSize="10" fontWeight="700" fill="#0284c7" textAnchor="middle">37 мм от края</text>
+      <text x="210" y="90" fontSize="11" fontWeight="700" fill="#0f172a">Чашка Ø35×13 мм</text>
+      <text x="210" y="106" fontSize="10" fill="#64748b">Саморезы 45/48 мм, отступ 21.5 мм</text>
+    </svg>
+  );
+
+  const renderSlidesSVG = () => (
+    <svg viewBox="0 0 340 150" style={{ width: "100%", height: "auto", display: "block", borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0", marginTop: 10 }}>
+      {/* Cabinet Side Wall */}
+      <rect x="20" y="15" width="300" height="120" fill="#f8fafc" stroke="#1e293b" strokeWidth="1.5" />
+
+      {/* System-32 Grid Line */}
+      <line x1="20" y1="75" x2="320" y2="75" stroke="#94a3b8" strokeWidth="1" strokeDasharray="4 3" />
+
+      {/* System-32 Holes */}
+      {[60, 100, 140, 180, 220, 260].map((x, i) => (
+        <g key={x}>
+          <circle cx={x} cy="75" r="3.5" fill={i === 0 ? "#00ac7a" : "#cbd5e1"} stroke="#1e293b" strokeWidth="1" />
+          <text x={x} y="63" fontSize="9" fontWeight="600" fill="#64748b" textAnchor="middle">{i === 0 ? "37 мм" : `+${i * 32}`}</text>
+        </g>
+      ))}
+      {/* Slide Rail Representation */}
+      <rect x="55" y="71" width="220" height="8" fill="#00ac7a" opacity="0.8" rx="2" stroke="#1e293b" strokeWidth="1" />
+
+      {/* Dimension Callouts */}
+      <text x="40" y="110" fontSize="10" fontWeight="700" fill="#00ac7a">1-е отв: 37 мм</text>
+      <text x="160" y="110" fontSize="10" fontWeight="700" fill="#00ac7a">Шаг: 32 мм (System-32)</text>
+      <text x="160" y="128" fontSize="10" fill="#64748b">Первый ряд от дна: 91.5 мм</text>
+    </svg>
+  );
+
+  // Technical SVG Illustrations for Construction & Purpose
+  const renderBottomSVG = (mode: "nakladnoe" | "vkladnoe", t: number) => (
+    <svg viewBox="0 0 340 130" style={{ width: "100%", height: "auto", display: "block", borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0", marginTop: 10 }}>
+      {mode === "nakladnoe" ? (
+        <>
+          <rect x="40" y="30" width="40" height="50" fill="#e2e8f0" stroke="#1e293b" strokeWidth="1.5" />
+          <rect x="260" y="30" width="40" height="50" fill="#e2e8f0" stroke="#1e293b" strokeWidth="1.5" />
+          <rect x="40" y="80" width="260" height={t === 18 ? 20 : 16} fill="#00ac7a" stroke="#1e293b" strokeWidth="1.5" />
+          <text x="170" y="94" fontSize="11" fontWeight="700" fill="#ffffff" textAnchor="middle">Накладное дно ({t} мм ЛДСП)</text>
+          <text x="170" y="45" fontSize="11" fontWeight="600" fill="#64748b" textAnchor="middle">Бока опираются на дно</text>
+        </>
+      ) : (
+        <>
+          <rect x="40" y="20" width="40" height="80" fill="#e2e8f0" stroke="#1e293b" strokeWidth="1.5" />
+          <rect x="260" y="20" width="40" height="80" fill="#e2e8f0" stroke="#1e293b" strokeWidth="1.5" />
+          <rect x="80" y={80 - 16} width="180" height={t === 18 ? 20 : 16} fill="#2f6fe4" stroke="#1e293b" strokeWidth="1.5" />
+          <text x="170" y="78" fontSize="11" fontWeight="700" fill="#ffffff" textAnchor="middle">Вкладное дно ({t} мм)</text>
+          <text x="170" y="45" fontSize="11" fontWeight="600" fill="#64748b" textAnchor="middle">Дно между боками</text>
+        </>
+      )}
+    </svg>
+  );
+
+  const renderTopSVG = (mode: "full" | "stretchers" | "none") => (
+    <svg viewBox="0 0 340 130" style={{ width: "100%", height: "auto", display: "block", borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0", marginTop: 10 }}>
+      <rect x="40" y="45" width="40" height="65" fill="#e2e8f0" stroke="#1e293b" strokeWidth="1.5" />
+      <rect x="260" y="45" width="40" height="65" fill="#e2e8f0" stroke="#1e293b" strokeWidth="1.5" />
+
+      {mode === "full" && (
+        <>
+          <rect x="80" y="45" width="180" height="16" fill="#00ac7a" stroke="#1e293b" strokeWidth="1.5" />
+          <text x="170" y="57" fontSize="11" fontWeight="700" fill="#ffffff" textAnchor="middle">Сплошная крышка</text>
+          <text x="170" y="90" fontSize="11" fill="#64748b" textAnchor="middle">Закрытый верх корпуса</text>
+        </>
+      )}
+
+      {mode === "stretchers" && (
+        <>
+          <rect x="80" y="45" width="45" height="16" fill="#2f6fe4" stroke="#1e293b" strokeWidth="1.5" />
+          <rect x="215" y="45" width="45" height="16" fill="#2f6fe4" stroke="#1e293b" strokeWidth="1.5" />
+          <text x="102" y="57" fontSize="9" fontWeight="700" fill="#ffffff" textAnchor="middle">Царга</text>
+          <text x="237" y="57" fontSize="9" fontWeight="700" fill="#ffffff" textAnchor="middle">Царга</text>
+          <text x="170" y="90" fontSize="11" fill="#64748b" textAnchor="middle">2 царги по 80мм (экономия ЛДСП)</text>
+        </>
+      )}
+
+      {mode === "none" && (
+        <>
+          <line x1="80" y1="45" x2="260" y2="45" stroke="#ef4444" strokeWidth="2" strokeDasharray="4 4" />
+          <text x="170" y="75" fontSize="11" fontWeight="600" fill="#ef4444" textAnchor="middle">Без крышки (открытый верх)</text>
+          <text x="170" y="95" fontSize="10" fill="#64748b" textAnchor="middle">Для накладной столешницы или антресоли</text>
+        </>
+      )}
+    </svg>
+  );
+
+  const renderPlinthSVG = (mode: "box" | "sides" | "legs") => (
+    <svg viewBox="0 0 340 140" style={{ width: "100%", height: "auto", display: "block", borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0", marginTop: 10 }}>
+      <rect x="40" y="30" width="260" height="16" fill="#e2e8f0" stroke="#1e293b" strokeWidth="1.5" />
+
+      {mode === "box" && (
+        <>
+          <rect x="60" y="46" width="220" height="55" fill="#475569" stroke="#1e293b" strokeWidth="1.5" />
+          <text x="170" y="78" fontSize="11" fontWeight="700" fill="#ffffff" textAnchor="middle">Цокольная коробка (120 мм)</text>
+          <text x="170" y="120" fontSize="10" fill="#64748b" textAnchor="middle">Замкнутый деревянный цоколь</text>
+        </>
+      )}
+
+      {mode === "sides" && (
+        <>
+          <rect x="40" y="46" width="16" height="65" fill="#e2e8f0" stroke="#1e293b" strokeWidth="1.5" />
+          <rect x="284" y="46" width="16" height="65" fill="#e2e8f0" stroke="#1e293b" strokeWidth="1.5" />
+          <text x="170" y="78" fontSize="11" fontWeight="700" fill="#0f172a" textAnchor="middle">Бока корпуса до пола</text>
+          <text x="170" y="120" fontSize="10" fill="#64748b" textAnchor="middle">Боковые стенки стоят непосредственно на полу</text>
+        </>
+      )}
+
+      {mode === "legs" && (
+        <>
+          <rect x="70" y="46" width="18" height="55" fill="#1e293b" rx="2" />
+          <rect x="252" y="46" width="18" height="55" fill="#1e293b" rx="2" />
+          <circle cx="79" cy="101" r="12" fill="#475569" stroke="#1e293b" strokeWidth="1" />
+          <circle cx="261" cy="101" r="12" fill="#475569" stroke="#1e293b" strokeWidth="1" />
+          <text x="170" y="75" fontSize="11" fontWeight="700" fill="#00ac7a" textAnchor="middle">Регулируемые ножки 100/120 мм</text>
+          <text x="170" y="125" fontSize="10" fill="#64748b" textAnchor="middle">Пластиковые опоры + съёмный цоколь</text>
+        </>
+      )}
+    </svg>
+  );
+
+  const renderShelfDepthSVG = (backMode: string) => (
+    <svg viewBox="0 0 340 140" style={{ width: "100%", height: "auto", display: "block", borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0", marginTop: 10 }}>
+      <rect x="30" y="25" width="280" height="90" fill="#ffffff" stroke="#1e293b" strokeWidth="1.5" strokeDasharray="4 2" />
+
+      {backMode === "groove" && (
+        <rect x="50" y="25" width="6" height="90" fill="#cbd5e1" stroke="#1e293b" strokeWidth="1" />
+      )}
+      {backMode === "overlay" && (
+        <rect x="30" y="25" width="16" height="90" fill="#cbd5e1" stroke="#1e293b" strokeWidth="1" />
+      )}
+
+      <rect x={backMode === "groove" ? 62 : backMode === "overlay" ? 48 : 34} y="65" width={backMode === "groove" ? 230 : backMode === "overlay" ? 245 : 260} height="14" fill="#00ac7a" stroke="#1e293b" strokeWidth="1.2" />
+
+      <text x="170" y="76" fontSize="10" fontWeight="700" fill="#ffffff" textAnchor="middle">
+        {backMode === "groove" ? "Глубина полки (-17 мм)" : backMode === "overlay" ? "Глубина полки (-2 мм)" : "Полная глубина полки"}
+      </text>
+      <text x="170" y="105" fontSize="10" fill="#475569" textAnchor="middle">
+        {backMode === "groove" && "Отступ 12мм + паз 4мм + зазор 1мм = -17мм от глубины корпуса"}
+        {backMode === "overlay" && "Зазор 2мм от переднего края фасада"}
+        {backMode === "none" && "Без задника — полка во всю глубину"}
+      </text>
+    </svg>
+  );
+
+  const renderWorktopSVG = (worktopCorpus: number, worktopProfile: number) => (
+    <svg viewBox="0 0 340 140" style={{ width: "100%", height: "auto", display: "block", borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0", marginTop: 10 }}>
+      <rect x="40" y="55" width="220" height="60" fill="#e2e8f0" stroke="#1e293b" strokeWidth="1.5" />
+      <text x="150" y="90" fontSize="11" fontWeight="600" fill="#64748b" textAnchor="middle">Корпус {worktopCorpus} мм</text>
+
+      <path d="M30,35 H290 Q296,35 296,41 V49 H30 Z" fill="#00ac7a" stroke="#1e293b" strokeWidth="1.5" />
+      <text x="160" y="46" fontSize="11" fontWeight="700" fill="#ffffff" textAnchor="middle">Столешница {worktopProfile} мм (Профиль 600)</text>
+
+      <line x1="260" y1="55" x2="296" y2="55" stroke="#ef4444" strokeWidth="2" />
+      <text x="278" y="75" fontSize="10" fontWeight="700" fill="#ef4444" textAnchor="middle">Свес {worktopProfile - worktopCorpus} мм</text>
+    </svg>
+  );
+
+  const renderPurposeSVG = (type: "wardrobe" | "books" | "shoes" | "boiler") => (
+    <svg viewBox="0 0 340 140" style={{ width: "100%", height: "auto", display: "block", borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0", marginTop: 10 }}>
+      <rect x="30" y="15" width="280" height="110" fill="#ffffff" stroke="#1e293b" strokeWidth="1.5" />
+
+      {type === "wardrobe" && (
+        <>
+          <line x1="50" y1="35" x2="290" y2="35" stroke="#475569" strokeWidth="3" />
+          <circle cx="170" cy="35" r="5" fill="#00ac7a" />
+          <path d="M170,40 L140,65 H200 Z" fill="none" stroke="#00ac7a" strokeWidth="2" />
+          <text x="170" y="85" fontSize="11" fontWeight="700" fill="#0f172a" textAnchor="middle">Штанга Ø25 мм (отступ 250 мм)</text>
+          <text x="170" y="105" fontSize="10" fill="#64748b" textAnchor="middle">Секция: ≥ 1000 мм (короткая) / ≥ 1400 мм (длинная)</text>
+        </>
+      )}
+
+      {type === "books" && (
+        <>
+          <line x1="30" y1="55" x2="310" y2="55" stroke="#2f6fe4" strokeWidth="3" />
+          <line x1="30" y1="95" x2="310" y2="95" stroke="#2f6fe4" strokeWidth="3" />
+          {[60, 75, 90, 105, 200, 215, 230].map((x) => (
+            <rect key={x} x={x} y="25" width="12" height="30" fill="#3b82f6" stroke="#1e293b" strokeWidth="1" />
+          ))}
+          <text x="170" y="80" fontSize="11" fontWeight="700" fill="#2f6fe4" textAnchor="middle">Шаг полок: 280–320 мм</text>
+          <text x="170" y="115" fontSize="10" fill="#64748b" textAnchor="middle">Пролёт полки ≤ 800 мм (без прогиба 16мм)</text>
+        </>
+      )}
+
+      {type === "shoes" && (
+        <>
+          <line x1="50" y1="45" x2="270" y2="65" stroke="#d97706" strokeWidth="3" />
+          <line x1="50" y1="85" x2="270" y2="105" stroke="#d97706" strokeWidth="3" />
+          <text x="170" y="35" fontSize="11" fontWeight="700" fill="#b45309" textAnchor="middle">Полки для обуви (Наклонные / Прямые)</text>
+          <text x="170" y="80" fontSize="10" fontWeight="600" fill="#475569" textAnchor="middle">Шаг полок: 130–180 мм</text>
+        </>
+      )}
+
+      {type === "boiler" && (
+        <>
+          <rect x="100" y="30" width="140" height="80" fill="#f1f5f9" stroke="#059669" strokeWidth="1.5" strokeDasharray="3 2" />
+          <rect x="120" y="40" width="100" height="60" fill="#e2e8f0" stroke="#1e293b" strokeWidth="1" />
+          <text x="170" y="75" fontSize="11" fontWeight="700" fill="#059669" textAnchor="middle">Зазор вентиляции: +50 мм</text>
+          <text x="170" y="100" fontSize="10" fill="#64748b" textAnchor="middle">Оснащение для котла / бойлера / техники</text>
+        </>
+      )}
+    </svg>
+  );
+
   return (
-    <div className="v21-blueprint-sheet" style={{ background: "#f8fafc", borderRadius: hideHeader ? 0 : "24px 24px 0 0", overflow: "hidden", display: "flex", flexDirection: "column", height: "100%", color: "#0f172a", fontFamily: "var(--sans, system-ui, sans-serif)" }}>
+    <div className="v21-blueprint-sheet" style={{ background: "#ffffffff", borderRadius: hideHeader ? 0 : "24px 24px 0 0", overflow: "hidden", display: "flex", flexDirection: "column", height: "100%", color: "#0f172a", fontFamily: "var(--sans, system-ui, sans-serif)" }}>
       {/* Top Header */}
       {!hideHeader && (
         <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "16px 18px 10px", borderBottom: "1px solid #e2e8f0", background: "#ffffff" }}>
@@ -229,19 +542,50 @@ export function V21BlueprintEditor({
         </div>
       )}
 
-      {/* Tabs Switcher */}
-      <div style={{ display: "flex", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 14, padding: 3, margin: "12px 16px 6px" }}>
-        <button className={`v21-tab-btn ${tab === "constr" ? "on" : ""}`} onClick={() => setTab("constr")} type="button" style={{ flex: 1, border: "none", background: tab === "constr" ? "#ffffff" : "transparent", padding: "8px 0", borderRadius: 11, fontWeight: 650, fontSize: 13, color: tab === "constr" ? "#0f172a" : "#64748b", cursor: "pointer", boxShadow: tab === "constr" ? "0 1px 3px rgba(0,0,0,0.08)" : "none", transition: "all 0.15s ease" }}>Конструкция</button>
-        <button className={`v21-tab-btn ${tab === "uzly" ? "on" : ""}`} onClick={() => setTab("uzly")} type="button" style={{ flex: 1, border: "none", background: tab === "uzly" ? "#ffffff" : "transparent", padding: "8px 0", borderRadius: 11, fontWeight: 650, fontSize: 13, color: tab === "uzly" ? "#0f172a" : "#64748b", cursor: "pointer", boxShadow: tab === "uzly" ? "0 1px 3px rgba(0,0,0,0.08)" : "none", transition: "all 0.15s ease" }}>Узлы</button>
-        <button className={`v21-tab-btn ${tab === "krom" ? "on" : ""}`} onClick={() => setTab("krom")} type="button" style={{ flex: 1, border: "none", background: tab === "krom" ? "#ffffff" : "transparent", padding: "8px 0", borderRadius: 11, fontWeight: 650, fontSize: 13, color: tab === "krom" ? "#0f172a" : "#64748b", cursor: "pointer", boxShadow: tab === "krom" ? "0 1px 3px rgba(0,0,0,0.08)" : "none", transition: "all 0.15s ease" }}>Кромка</button>
-        <button className={`v21-tab-btn ${tab === "purp" ? "on" : ""}`} onClick={() => setTab("purp")} type="button" style={{ flex: 1, border: "none", background: tab === "purp" ? "#ffffff" : "transparent", padding: "8px 0", borderRadius: 11, fontWeight: 650, fontSize: 13, color: tab === "purp" ? "#0f172a" : "#64748b", cursor: "pointer", boxShadow: tab === "purp" ? "0 1px 3px rgba(0,0,0,0.08)" : "none", transition: "all 0.15s ease" }}>Назначение</button>
-      </div>
+      {/* Tabs Switcher — like the main «Стиль» tabs: active tab = icon + label, the rest icon-only */}
+      {(() => {
+        const TABS: { id: typeof tab; name: string; icon: React.ReactNode }[] = [
+          { id: "constr", name: "Конструкция", icon: (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden><rect x="4" y="3" width="16" height="18" rx="1.5" /><line x1="4" y1="9" x2="20" y2="9" /><line x1="4" y1="15" x2="20" y2="15" /></svg>) },
+          { id: "uzly", name: "Узлы", icon: (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden><circle cx="12" cy="12" r="7" /><line x1="8.5" y1="12" x2="15.5" y2="12" /></svg>) },
+          { id: "krom", name: "Кромка", icon: (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden><rect x="4" y="4" width="16" height="16" rx="1.5" /><line x1="19.2" y1="4" x2="19.2" y2="20" strokeWidth="3.4" /></svg>) },
+          { id: "purp", name: "Назначение", icon: (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden><rect x="5" y="4" width="14" height="16" rx="1.5" /><line x1="8" y1="9" x2="16" y2="9" /><line x1="8" y1="13" x2="16" y2="13" /><line x1="8" y1="17" x2="13" y2="17" /></svg>) },
+        ];
+        return (
+          <div className="style-tabs" style={{ marginTop: 12 }}>
+            {TABS.map((tb) => (
+              <button key={tb.id} className={`style-tab${tab === tb.id ? " on" : ""}`} onClick={() => setTab(tb.id)} type="button" aria-label={tb.name} aria-pressed={tab === tb.id}>
+                {tb.icon}
+                {tab === tb.id && <span className="style-tab-lbl">{tb.name}</span>}
+              </button>
+            ))}
+          </div>
+        );
+      })()}
 
       {/* Sheet Content Body */}
       <div style={{ flex: 1, overflowY: "auto", padding: "10px 16px 40px" }}>
         {/* TAB 1: КОНСТРУКЦИЯ */}
         {tab === "constr" && (
           <>
+            {/* Card 0: Безручковый (GOLA) — a handleless profile system. Presence of cab.gola enables
+                it; model/gola.ts derives the profiles, the side notches + the front grip gaps. */}
+            <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 16, padding: 16, marginBottom: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.03)" }}>
+              <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
+                <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#0f172a" }}>Безручковый (GOLA)</h3>
+                <span style={{ fontSize: 10, fontWeight: 700, color: "#475569", background: "#f1f5f9", border: "1px solid #e2e8f0", padding: "3px 8px", borderRadius: 6 }}>СИСТЕМА</span>
+              </div>
+              <div style={{ display: "flex", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 10, padding: 3, gap: 2, marginBottom: cab.gola ? 14 : 0 }}>
+                <button className={`segbtn ${!cab.gola ? "on" : ""}`} onClick={() => patchCab({ gola: undefined })} type="button" style={{ flex: 1, border: "none", background: !cab.gola ? "#ffffff" : "transparent", color: !cab.gola ? "#0f172a" : "#64748b", boxShadow: !cab.gola ? "0 1px 2px rgba(0,0,0,0.06)" : "none", padding: "7px 0", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>С ручками</button>
+                <button className={`segbtn ${cab.gola ? "on" : ""}`} onClick={() => patchCab({ gola: {} })} type="button" style={{ flex: 1, border: "none", background: cab.gola ? "#ffffff" : "transparent", color: cab.gola ? "#0f172a" : "#64748b", boxShadow: cab.gola ? "0 1px 2px rgba(0,0,0,0.06)" : "none", padding: "7px 0", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>GOLA (профиль)</button>
+              </div>
+              {cab.gola && (
+                <div style={{ borderRadius: 12, background: "#f8fafc", border: "1px solid #e2e8f0", padding: "8px 6px" }}>
+                  <div style={{ fontSize: 11, color: "#64748b", textAlign: "center", marginBottom: 4 }}>Боковина — вырезы под профиль</div>
+                  <GolaSidePanel cab={cab} />
+                </div>
+              )}
+            </div>
+
             {/* Card 1: Задняя стенка */}
             <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 16, padding: 16, marginBottom: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.03)" }}>
               <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 12 }}>
@@ -300,6 +644,7 @@ export function V21BlueprintEditor({
                   <button className={`chip ${s.bottomT === 18 ? "sel" : ""}`} onClick={() => updateS({ bottomT: 18 })} style={{ padding: "5px 12px", borderRadius: 8, border: s.bottomT === 18 ? "1px solid #00ac7a" : "1px solid #cbd5e1", background: s.bottomT === 18 ? "#00ac7a" : "#ffffff", color: s.bottomT === 18 ? "#fff" : "#334155", fontSize: 12, fontWeight: 600, cursor: "pointer" }}>18 мм</button>
                 </div>
               </div>
+              {renderBottomSVG(s.bottomMode, s.bottomT)}
             </div>
 
             {/* Card 3: Верх */}
@@ -313,6 +658,7 @@ export function V21BlueprintEditor({
                 <button className={`segbtn ${s.topMode === "stretchers" ? "on" : ""}`} onClick={() => updateS({ topMode: "stretchers" })} style={{ flex: 1, border: "none", background: s.topMode === "stretchers" ? "#ffffff" : "transparent", color: s.topMode === "stretchers" ? "#0f172a" : "#64748b", boxShadow: s.topMode === "stretchers" ? "0 1px 2px rgba(0,0,0,0.06)" : "none", padding: "7px 0", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>2 царги (80мм)</button>
                 <button className={`segbtn ${s.topMode === "none" ? "on" : ""}`} onClick={() => updateS({ topMode: "none" })} style={{ flex: 1, border: "none", background: s.topMode === "none" ? "#ffffff" : "transparent", color: s.topMode === "none" ? "#0f172a" : "#64748b", boxShadow: s.topMode === "none" ? "0 1px 2px rgba(0,0,0,0.06)" : "none", padding: "7px 0", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Нет</button>
               </div>
+              {renderTopSVG(s.topMode)}
             </div>
 
             {/* Card 4: Цоколь */}
@@ -326,6 +672,7 @@ export function V21BlueprintEditor({
                 <button className={`segbtn ${s.plinthMode === "sides" ? "on" : ""}`} onClick={() => updateS({ plinthMode: "sides" })} style={{ flex: 1, border: "none", background: s.plinthMode === "sides" ? "#ffffff" : "transparent", color: s.plinthMode === "sides" ? "#0f172a" : "#64748b", boxShadow: s.plinthMode === "sides" ? "0 1px 2px rgba(0,0,0,0.06)" : "none", padding: "7px 0", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Боки до пола</button>
                 <button className={`segbtn ${s.plinthMode === "legs" ? "on" : ""}`} onClick={() => updateS({ plinthMode: "legs" })} style={{ flex: 1, border: "none", background: s.plinthMode === "legs" ? "#ffffff" : "transparent", color: s.plinthMode === "legs" ? "#0f172a" : "#64748b", boxShadow: s.plinthMode === "legs" ? "0 1px 2px rgba(0,0,0,0.06)" : "none", padding: "7px 0", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Ножки</button>
               </div>
+              {renderPlinthSVG(s.plinthMode)}
             </div>
 
             {/* Card 5: Полка */}
@@ -340,6 +687,7 @@ export function V21BlueprintEditor({
                 • <b>Внахлёст</b> → <code>-2 мм</code> (зазор от фасада)<br />
                 • <b>Без задника</b> → полная глубина корпуса
               </div>
+              {renderShelfDepthSVG(s.backMode)}
             </div>
 
             {/* Card 6: Столешница */}
@@ -352,6 +700,7 @@ export function V21BlueprintEditor({
                 Профиль покупной (600 мм). Глубина корпуса: <code>{s.worktopCorpus} мм</code>.<br />
                 Передний свес выводится: <code>{s.worktopProfile - s.worktopCorpus} мм</code> (Карасу 80 мм).
               </div>
+              {renderWorktopSVG(s.worktopCorpus, s.worktopProfile)}
             </div>
           </>
         )}
@@ -375,6 +724,7 @@ export function V21BlueprintEditor({
                 {s.jshelfHw === "minifix" && "Минификс Ø15×12.5 мм + Шкант Ø8×30 мм: скрытый крепёж для ЧПУ станка."}
                 {s.jshelfHw === "dowel" && "Шкант Ø8×30 мм: клеевое скрытое соединение."}
               </div>
+              {renderFastenerSVG(s.jshelfHw)}
             </div>
 
             {/* Card 9: Дно ⊥ Бок */}
@@ -383,11 +733,12 @@ export function V21BlueprintEditor({
                 <h3 style={{ margin: 0, fontSize: 15, fontWeight: 700, color: "#0f172a" }}>Узел: Дно ⊥ Бок</h3>
                 <span style={{ fontSize: 10, fontWeight: 700, color: "#475569", background: "#f1f5f9", border: "1px solid #e2e8f0", padding: "3px 8px", borderRadius: 6 }}>КРЕПЁЖ</span>
               </div>
-              <div style={{ display: "flex", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 10, padding: 3, gap: 2 }}>
+              <div style={{ display: "flex", background: "#f1f5f9", border: "1px solid #e2e8f0", borderRadius: 10, padding: 3, gap: 2, marginBottom: 12 }}>
                 <button className={`segbtn ${s.jbottomHw === "confirmat" ? "on" : ""}`} onClick={() => updateS({ jbottomHw: "confirmat" })} style={{ flex: 1, border: "none", background: s.jbottomHw === "confirmat" ? "#ffffff" : "transparent", color: s.jbottomHw === "confirmat" ? "#0f172a" : "#64748b", boxShadow: s.jbottomHw === "confirmat" ? "0 1px 2px rgba(0,0,0,0.06)" : "none", padding: "7px 0", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Конфирмат</button>
                 <button className={`segbtn ${s.jbottomHw === "minifix" ? "on" : ""}`} onClick={() => updateS({ jbottomHw: "minifix" })} style={{ flex: 1, border: "none", background: s.jbottomHw === "minifix" ? "#ffffff" : "transparent", color: s.jbottomHw === "minifix" ? "#0f172a" : "#64748b", boxShadow: s.jbottomHw === "minifix" ? "0 1px 2px rgba(0,0,0,0.06)" : "none", padding: "7px 0", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Минификс</button>
                 <button className={`segbtn ${s.jbottomHw === "dowel" ? "on" : ""}`} onClick={() => updateS({ jbottomHw: "dowel" })} style={{ flex: 1, border: "none", background: s.jbottomHw === "dowel" ? "#ffffff" : "transparent", color: s.jbottomHw === "dowel" ? "#0f172a" : "#64748b", boxShadow: s.jbottomHw === "dowel" ? "0 1px 2px rgba(0,0,0,0.06)" : "none", padding: "7px 0", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Шкант</button>
               </div>
+              {renderFastenerSVG(s.jbottomHw)}
             </div>
 
             {/* Card 10: Петля Ø35 */}
@@ -400,6 +751,7 @@ export function V21BlueprintEditor({
                 Чашка: <code>Ø35×13 мм</code> на отступе <code>21.5 мм</code> от края фасада.<br />
                 Межцентровое саморезов: <code>45/48 мм</code>, накёрнивание <code>±26 мм</code>.
               </div>
+              {renderHingeSVG()}
             </div>
 
             {/* Card 11: Направляющие System-32 */}
@@ -412,6 +764,7 @@ export function V21BlueprintEditor({
                 Первое отверстие: <code>37 мм</code> от переднего края бока.<br />
                 Шаг отверстий: <code>32 мм</code>. Первый ряд от дна: <code>91.5 мм</code>.
               </div>
+              {renderSlidesSVG()}
             </div>
 
             {/* Card 14: Перегородка */}
@@ -541,11 +894,7 @@ export function V21BlueprintEditor({
           <>
             <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 16, padding: 16, marginBottom: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.03)" }}>
               <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 700, color: "#0f172a" }}>Одежда (Штанга)</h3>
-              <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.6 }}>
-                • Высота секции: <code>≥ 1000 мм</code> (короткая) / <code>≥ 1400 мм</code> (длинная)<br />
-                • Глубина корпуса: <code>≥ 500 мм</code> (плечики 450мм + запас)<br />
-                • Диаметр штанги: <code>Ø25 мм</code>, отступ от переднего края <code>250 мм</code>
-              </div>
+              {renderPurposeSVG("wardrobe")}
             </div>
             <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 16, padding: 16, marginBottom: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.03)" }}>
               <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 700, color: "#0f172a" }}>Книги (Полки)</h3>
@@ -553,18 +902,21 @@ export function V21BlueprintEditor({
                 • Шаг полок: <code>280–320 мм</code><br />
                 • Пролёт полки: <code>≤ 800 мм</code> во избежание прогиба ЛДСП 16мм
               </div>
+              {renderPurposeSVG("books")}
             </div>
             <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 16, padding: 16, marginBottom: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.03)" }}>
               <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 700, color: "#0f172a" }}>Обувь (Полки)</h3>
               <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.6 }}>
                 • Шаг полок: <code>130–180 мм</code> (наклонные/прямые)
               </div>
+              {renderPurposeSVG("shoes")}
             </div>
             <div style={{ background: "#ffffff", border: "1px solid #e2e8f0", borderRadius: 16, padding: 16, marginBottom: 12, boxShadow: "0 1px 3px rgba(0,0,0,0.03)" }}>
               <h3 style={{ margin: "0 0 10px", fontSize: 15, fontWeight: 700, color: "#0f172a" }}>Бойлер / Техника</h3>
               <div style={{ fontSize: 12, color: "#475569", lineHeight: 1.6 }}>
                 • Зазоры вентиляции: <code>+50 мм</code> по ширине и высоте от габаритов прибора
               </div>
+              {renderPurposeSVG("boiler")}
             </div>
           </>
         )}

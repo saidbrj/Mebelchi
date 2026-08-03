@@ -60,6 +60,8 @@ export interface SceneApi {
   setLampCount: (n: number) => void;
   /** turn the reflective floor on/off (rebuilds the room's mirror) */
   setReflect: (v: boolean) => void;
+  /** render style changed («Линии» ⇄ realistic): re-skin the room + flip the paper background */
+  setMode: () => void;
   syncGizmo: () => void;
   /** redraw next frame; `scene = false` = the camera moved and nothing else (shadows still hold) */
   invalidate: (scene?: boolean) => void;
@@ -108,28 +110,88 @@ function disposeGroup(gr: THREE.Object3D) {
 /** Camera framing for the kitchen stage. */
 export type KitchenView = "3d" | "plan";
 
-/** Render style for the kitchen group:
- *  - real  → freshly built materials, unchanged.
- *  - xray  → translucent facades (see the carcass / interior through them).
- *  - wire  → edges only (wireframe).
- *  Both are GPU rasterisation flags — no extra geometry/RAM, cheap to toggle. */
 export type RenderMode = "real" | "xray" | "wire";
+
+// «ЛИНИИ» — a professional black-and-white technical drawing (Bazis-style hidden-line outline).
+//
+// The old `wire` was `material.wireframe = true`, which slashes every quad with its mesh diagonal and
+// leaves the cabinets as a triangulated cage floating in a photoreal room — the "messy" look. A real
+// CAD outline view is the opposite: solids stay OPAQUE but are painted flat, unlit paper-white, and
+// only the true feature edges are drawn on top. The white fill hides the lines behind it (hidden-line
+// removal), so what's left reads as a clean line drawing rather than a see-through net of triangles.
+const PAPER = "#ffffff"; // the sheet the drawing sits on (canvas background in wire mode)
+const EDGE_CAB = 0x1a1a1a; // cabinet outlines — near-black, the subject of the drawing
+const EDGE_ROOM = 0x9a9a9a; // room outlines (floor / walls / window) — grey, a secondary reference frame
+// EdgesGeometry threshold°: draw an edge only where two faces meet at a sharper angle than this. Box
+// corners (90°) always qualify; the fine facets of a rounded knob/handle (a few ° apart) never do, so
+// curved parts show only their silhouette instead of the fur of lines a 1° default would draw.
+const EDGE_ANGLE = 32;
+
+/** Paint one group as a flat black-and-white technical drawing: unlit paper-white fills + crisp
+ *  `edgeColor` feature edges laid on top. Used for the kitchen (near-black edges) and, lighter, for
+ *  the room (grey). Nothing to undo — every group is rebuilt from scratch on a mode switch. */
+function technicalize(group: THREE.Object3D, edgeColor: number): void {
+  const edgeMat = new THREE.LineBasicMaterial({ color: edgeColor, toneMapped: false });
+  group.traverse((o) => {
+    const mesh = o as THREE.Mesh;
+    if (!mesh.isMesh || !mesh.geometry || mesh.userData.decal) return; // a contact shadow isn't a surface
+    const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    for (const mm of mats) {
+      const m = mm as THREE.MeshStandardMaterial;
+      m.wireframe = false;
+      m.map = null; // drop the wood / paint / marble texture — a line drawing has no material colour
+      m.toneMapped = false; // 1.0 must land as pure paper-white, not the ~0.8 grey ACES rolls it off to
+      if ("emissiveMap" in m) m.emissiveMap = null;
+      if ("emissive" in m && m.emissive) {
+        // flat & UNLIT: colour black kills the lit term (and any warm cast off the daylight rig),
+        // emissive white is the paper. Cast shadows only darken the lit term, so they leave no smudge.
+        m.color.set(0x000000);
+        m.emissive.set(0xffffff);
+        m.emissiveIntensity = 1;
+        m.roughness = 1;
+        m.metalness = 0;
+        if ("envMapIntensity" in m) m.envMapIntensity = 0;
+      } else {
+        (m as THREE.Material & { color?: THREE.Color }).color?.set?.(0xffffff);
+      }
+      // opaque white so it HIDES the edges behind it; nudged a hair back in depth so the coincident
+      // edge lines stay crisp instead of z-fighting into dashes.
+      m.transparent = false;
+      m.opacity = 1;
+      m.depthWrite = true;
+      m.polygonOffset = true;
+      m.polygonOffsetFactor = 1;
+      m.polygonOffsetUnits = 1;
+      m.needsUpdate = true;
+    }
+    const edges = new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry, EDGE_ANGLE), edgeMat);
+    // The outlines are decoration, never a tap target. Left pickable they'd wreck selection: the
+    // raycaster tests a Line against `params.Line.threshold` (default 1 — and this scene is in METRES),
+    // so each edge becomes a ~1 m-thick ribbon and a neighbour's line can out-distance the surface you
+    // actually tapped. Opt them out of raycasting entirely.
+    edges.raycast = () => {};
+    mesh.add(edges);
+  });
+}
+
+/** Render style for the kitchen group:
+ *  - real → freshly built materials, unchanged.
+ *  - xray → translucent facades (see the carcass / interior through them).
+ *  - wire → «Линии», a flat black-and-white technical drawing (see `technicalize`).
+ *  real/xray are GPU rasterisation flags — cheap; wire adds edge geometry, rebuilt on each switch. */
 function applyMode(group: THREE.Object3D, mode: RenderMode) {
   if (mode === "real") return; // materials are rebuilt each swap, so nothing to undo
+  if (mode === "wire") { technicalize(group, EDGE_CAB); return; }
   group.traverse((o) => {
     const mesh = o as THREE.Mesh;
     if (!mesh.isMesh || mesh.userData.decal) return; // a contact shadow is not a surface — see three/contact.ts
     const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
     for (const mm of mats) {
       const m = mm as THREE.MeshStandardMaterial;
-      if (mode === "wire") {
-        m.wireframe = true;
-      } else {
-        // xray: keep already-glassy parts as-is, frost the solids
-        if (!m.transparent) {
-          m.transparent = true;
-          m.opacity = 0.42;
-        }
+      // xray: keep already-glassy parts as-is, frost the solids
+      if (!m.transparent) {
+        m.transparent = true;
+        m.opacity = 0.42;
       }
       m.needsUpdate = true;
     }
@@ -1339,7 +1401,7 @@ export function VariantScene({
     // available — the `low` tier, which has no depth pass and no AO — and that is the one place a phone
     // needs them.
     const syncDecals = () => {
-      const needFake = !wantAO && tierRef.current === "low";
+      const needFake = !wantAO && tierRef.current === "low" && propsRef.current.mode !== "wire"; // «Линии» draws no shadows
       kitchen?.traverse((o) => {
         if (o.userData.decal) o.visible = needFake;
       });
@@ -1446,10 +1508,11 @@ export function VariantScene({
 
       // THE FLOOR REFLECTS. A planar mirror, built from the floor's own geometry — so it shows the real
       // cabinets from the real angle, including ones off the edge of the screen. It stays hidden until
-      // the view settles, because it costs a second render of the scene.
+      // the view settles, because it costs a second render of the scene. A technical drawing has no
+      // reflections, so «Линии» skips it entirely.
       mirror?.dispose();
       mirror = null;
-      if (reflectRef.current) {
+      if (reflectRef.current && propsRef.current.mode !== "wire") {
         let floorMesh: THREE.Mesh | null = null;
         room.traverse((o) => {
           if (o.userData.floor && (o as THREE.Mesh).isMesh) floorMesh = o as THREE.Mesh;
@@ -1459,6 +1522,12 @@ export function VariantScene({
           if (mirror) room.add(mirror.mesh);
         }
       }
+
+      // «Линии»: turn the whole room into grey line-art on a white sheet, so the black-outlined
+      // cabinets read as the subject against it. Grey (not black) keeps the room a quiet backdrop; the
+      // near walls self-cull toward the camera (updateCull), so their edges never clutter the front.
+      if (s.mode === "wire") technicalize(room, EDGE_ROOM);
+      renderer.domElement.style.background = s.mode === "wire" ? PAPER : ""; // paper for the drawing, else the CSS default
 
       scene.add(room);
       // the daylight comes through the window the seller actually drew, and the shadow frustum is cut
@@ -1471,8 +1540,13 @@ export function VariantScene({
     const REDC = new THREE.Color(RED);
     const SELC = new THREE.Color(SEL);
     const BLACKC = new THREE.Color(0, 0, 0);
+    const WHITEC = new THREE.Color(0xffffff);
     const tintCab = (id: string, color: number | null) => {
       if (!kitchen) return;
+      // In «Линии» the fill IS emissive white (see technicalize), so "clear" can't drop emissive to 0 —
+      // that would paint the module solid black. Clearing there restores the paper-white; select/clash
+      // still tint on top of it, so a module reads green/red exactly as in the realistic modes.
+      const wire = propsRef.current.mode === "wire";
       for (const child of kitchen.children) {
         if (child.userData.cabId !== id) continue;
         child.traverse((o) => {
@@ -1482,8 +1556,8 @@ export function VariantScene({
           for (const mm of mats) {
             const m = mm as THREE.MeshStandardMaterial;
             if ("emissive" in m) {
-              m.emissive = color === RED ? REDC : color === SEL ? SELC : BLACKC;
-              m.emissiveIntensity = color == null ? 0 : 0.5;
+              m.emissive = color === RED ? REDC : color === SEL ? SELC : wire ? WHITEC : BLACKC;
+              m.emissiveIntensity = color == null ? (wire ? 1 : 0) : 0.5;
               m.needsUpdate = true;
             }
           }
@@ -2948,6 +3022,12 @@ export function VariantScene({
         buildRoom(); // the mirror is created/destroyed IN buildRoom — a toggle has to rebuild it
         invalidate();
       },
+      // «Линии» ⇄ «Реалистичный» / «Прозрачный»: the KITCHEN is rebuilt by its own effect, but the
+      // ROOM's line-art, the skipped mirror and the paper background all live in buildRoom.
+      setMode: () => {
+        buildRoom();
+        invalidate();
+      },
       setAO: (v) => {
         wantAO = v && tierSpec(tierRef.current).ao;
         post.setEnabled(false); // the next settled frame turns it back on, if it is wanted
@@ -3123,6 +3203,12 @@ export function VariantScene({
   useEffect(() => {
     apiRef.current?.setKitchen(cabs, style);
   }, [cabs, style, layout, mode]);
+
+  // The render style also re-skins the ROOM (line-art vs photoreal) and flips the paper background —
+  // both live in buildRoom, which the kitchen rebuild above doesn't touch.
+  useEffect(() => {
+    apiRef.current?.setMode();
+  }, [mode]);
 
   // Selection is a TINT, not a rebuild — `selectedId` used to sit in the dependency list above, so
   // every tap on a cabinet tore the whole kitchen down and built it again. A non-empty `selectedIds`

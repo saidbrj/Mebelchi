@@ -8,7 +8,7 @@ import { fillGapSpan, firstFitX, parkX } from "./model/fill";
 import { dockAll, cabFootprints, footsClash } from "./model/footprint";
 import { generateVariants as solveVariants, type GenVariant, type KitchenStyle, type Zone, type FridgeType, type OvenType, type HoodType, type WallBand } from "./model/layout";
 import { isTiled, runFloor, resolveLayout, wallRows } from "./model/resolve";
-import { maxCabH, cabDepth, isOuterCorner, FOOT_DEPTH_MM, MIN_H, D_MIN, D_MAX } from "./model/bands";
+import { maxCabH, cabDepth, isOuterCorner, bandsOverlap, FOOT_DEPTH_MM, MIN_H, D_MIN, D_MAX } from "./model/bands";
 import { resizeCabs, setBasesH, editRows, seatCorner, seatOuterCorner, healRunStarts, healCornerUnits, type ResizeBounds, type RowEdit } from "./model/rowOps";
 import { mergeRow, unmergeRow, healCarcassGroups, joinSeam, splitSeam, boxMates, hangersOn } from "./model/carcassGroups";
 import {
@@ -31,7 +31,7 @@ import {
   type CellRef,
   type RowKind,
 } from "./model/grid";
-import { ensureSheet, rehangCorners, openCells, type Grids } from "./model/sheet";
+import { ensureSheet, rehangCorners, openCells, inSheet, type Grids } from "./model/sheet";
 import { completeCornerL, reanchorAfterCorner } from "./model/cornerEdit";
 import { GEOM } from "./model/layout";
 
@@ -41,10 +41,13 @@ const WORKTOP = GEOM.worktop;
 /** The kitchen's default finish — a warm light oak. The initial run wears it, and so does a
  *  from-scratch start, so a blank kitchen isn't a colourless one. */
 const DEFAULT_RUN_STYLE: KitchenStyle = { carcass: 0xefe8da, facade: 0xe7ddc9, worktop: 0x7c756b, handle: 0x6f6a62, glassUppers: false };
-import { planRuns, candidateLayouts, cornerUnits, cornerSideFor, interiorWallCabs, DEFAULT_REVEAL, type KitchenLayout } from "./model/runPlan";
+import { planRuns, candidateLayouts, cornerUnits, cornerSideFor, interiorWallCabs, type KitchenLayout } from "./model/runPlan";
 import { roomOutlineMm, defaultOpenings, defaultOpeningHeight, fittingKind, wallSegments, interiorSegRef, polygonBoundsMm, type Pt, type Opening, type OpeningKind, type Fitting, type FittingCategory } from "./model/room";
 import { defaultSurface, splitLeaf, colorLeaf, type Surface, type SurfPath } from "./model/walls";
-import { PERSIST_KEYS, loadProjectState, upsertProject, deleteProject, updateProjectMeta, newProjectId, allProjects, replaceAllProjects, type DesignState } from "./model/projects";
+import { PERSIST_KEYS, loadProjectState, upsertProject, deleteProject, updateProjectMeta, newProjectId, allProjects, replaceAllProjects, type DesignState, type MetaPatch, type ProjectBucket } from "./model/projects";
+import { toProject } from "./model/toProject";
+import { ratesToTable } from "./model/rates";
+import { priceProject } from "@mebelchi/pricing";
 import { runExport } from "./lib/handoffExport";
 import { loadSettings, saveSettings, type Settings } from "./model/settings";
 import { supabase, isSupabaseConfigured } from "./lib/supabase";
@@ -157,6 +160,19 @@ function resumeScreen(state: Partial<AppState>): Screen {
   return "details"; // nothing designed yet → start where a design starts: the room editor
 }
 
+/** The quote total in USD (the base currency) for the live design, for the project-card snapshot.
+ *  Same call the Смета ticker makes (pricing/usePrice.ts) so a card can never disagree with the
+ *  screen. Pure and cheap. Wrapped because a save must never fail over a price: saveCurrent runs
+ *  on auto-save and on every navigation, so a throw here would strand the user mid-journey. */
+function projectTotalUSD(s: AppState): number {
+  if (!s.cabs.length) return 0;
+  try {
+    return priceProject(toProject(s), ratesToTable(s.settings.rates, s.hwGrade)).total;
+  } catch {
+    return 0;
+  }
+}
+
 /** Hardware grade picked in the Инженерия step (фаза Г). */
 export type HwGrade = "eco" | "std" | "premium";
 
@@ -220,6 +236,9 @@ export interface AppState {
   // persistence — the project this session is editing + a bump to refresh lists
   currentProjectId: string | null;
   projectsRev: number;
+  /** Which deal-stage chip the Projects list is filtered by. Lives in the store, not in the
+   *  screen, so Home's "Ждут ответа" banner can hand the list a filter on the way in. */
+  projectBucket: ProjectBucket;
   // "My cabinets" reusable library — a bump to refresh the saved-cabinet list
   savedCabsRev: number;
   // global user/app settings (profile · company · preferences), Supabase-ready
@@ -284,6 +303,7 @@ export interface AppState {
   toggleConstraint: (c: string) => void;
   setWall: (d: number) => void;
   setCeiling: (d: number) => void;
+  setCeilingValue: (val: number) => void;
   /** Set the filler «добор» width (mm, absolute), clamped [0,120]. 0 removes the fillers. Rebuilds
    *  the wall sheets so the reserved dead zones move with it. */
   setReveal: (mm: number) => void;
@@ -299,6 +319,10 @@ export interface AppState {
   moveCorner: (i: number, x: number, y: number) => void;
   setWallEndpoints: (i: number, a: Pt, b: Pt) => void;
   setWallLength: (i: number, length: number, endpoint: "a" | "b") => void;
+  /** resize a RECTANGULAR room (4 corners) by width / depth, keeping it rectangular (moves the far
+   *  edge's BOTH corners, unlike setWallLength which skews it by dragging one). No-op if not a rect. */
+  setRoomWidth: (mm: number) => void;
+  setRoomDepth: (mm: number) => void;
   moveOpening: (id: string, t: number) => void;
   dragOpeningTo: (id: string, x: number, y: number) => void; // hop to the nearest wall
   setOpeningWidth: (id: string, width: number) => void;
@@ -526,7 +550,8 @@ export interface AppState {
   openProject: (id: string) => void;
   newProject: () => void;
   removeProject: (id: string) => void;
-  renameProject: (id: string, patch: { name?: string; client?: string }) => void;
+  renameProject: (id: string, patch: MetaPatch) => void;
+  setProjectBucket: (b: ProjectBucket) => void;
   // settings
   updateSettings: (patch: Partial<Settings>) => void;
   // auth
@@ -559,7 +584,8 @@ function freshDesign() {
     future: [] as RoomSnapshot[],
     wallLen: 2400,
     ceiling: 2700,
-    reveal: DEFAULT_REVEAL,
+    reveal: 0, // «Добор у стен» OFF by default — most kitchens tile wall-to-wall; the seller opts in
+
     water: "left" as AppState["water"],
     waterWall: null as number | null,
     constraints: [] as string[],
@@ -612,6 +638,7 @@ export const useStore = create<AppState>((set, get) => ({
   pendingWater: false,
   currentProjectId: null,
   projectsRev: 0,
+  projectBucket: "all",
   savedCabsRev: 0,
   settings: loadSettings(),
   // if Supabase isn't configured, auth is skipped (app runs on localStorage)
@@ -755,7 +782,9 @@ export const useStore = create<AppState>((set, get) => ({
   setWall: (d) =>
     set((s) => ({ wallLen: Math.min(4000, Math.max(1200, s.wallLen + d)) })),
   setCeiling: (d) =>
-    set((s) => ({ ceiling: Math.min(3300, Math.max(2400, s.ceiling + d)) })),
+    set((s) => ({ ceiling: Math.min(4000, Math.max(2000, s.ceiling + d)) })),
+  setCeilingValue: (val) =>
+    set({ ceiling: Math.min(4000, Math.max(2000, Math.round(val))) }),
   // clear the sheets so the reserved dead zones (which now include the reveal) rebuild against the
   // new width; the 3D/front views re-read `reveal` from the room and redraw the panels.
   setReveal: (mm) => set({ reveal: Math.max(0, Math.min(120, Math.round(mm))), grids: {} }),
@@ -815,6 +844,34 @@ export const useStore = create<AppState>((set, get) => ({
         p[i] = { x: snap100(b.x - ux * length), y: snap100(b.y - uy * length) };
       }
       return { roomPoints: p }; // history handled by the caller (beginEdit)
+    }),
+
+  // WIDTH = the length of edge 0 (p0→p1); DEPTH = the length of edge 1 (p1→p2). Both slide the FAR edge
+  // (its two corners together) along that edge's direction, so a rectangle stays a rectangle — the near
+  // corners (p0, and its neighbour on that axis) hold still. Only meaningful for a 4-corner room.
+  setRoomWidth: (mm) =>
+    set((s) => {
+      const p = s.roomPoints;
+      if (p.length !== 4) return {};
+      const len = Math.hypot(p[1].x - p[0].x, p[1].y - p[0].y) || 1;
+      const ux = (p[1].x - p[0].x) / len, uy = (p[1].y - p[0].y) / len;
+      const w = Math.max(1000, Math.round(mm));
+      const np = p.slice();
+      np[1] = { x: Math.round(p[0].x + ux * w), y: Math.round(p[0].y + uy * w) };
+      np[2] = { x: Math.round(p[3].x + ux * w), y: Math.round(p[3].y + uy * w) };
+      return { roomPoints: np };
+    }),
+  setRoomDepth: (mm) =>
+    set((s) => {
+      const p = s.roomPoints;
+      if (p.length !== 4) return {};
+      const len = Math.hypot(p[2].x - p[1].x, p[2].y - p[1].y) || 1;
+      const vx = (p[2].x - p[1].x) / len, vy = (p[2].y - p[1].y) / len;
+      const d = Math.max(1000, Math.round(mm));
+      const np = p.slice();
+      np[3] = { x: Math.round(p[0].x + vx * d), y: Math.round(p[0].y + vy * d) };
+      np[2] = { x: Math.round(p[1].x + vx * d), y: Math.round(p[1].y + vy * d) };
+      return { roomPoints: np };
     }),
 
   // slide an opening along its wall segment (clamped so it stays on the wall)
@@ -1419,43 +1476,43 @@ export const useStore = create<AppState>((set, get) => ({
   // THE DIMENSION EDIT — every height/depth change goes through here (the 3D arrows, the plan's
   // dimension lines, the module editor's fields), so «Применить ко всему ряду» works the same way
   // whichever view you happen to be in.
-  //
-  // Width is deliberately NOT here: resizing a width re-tiles the row (the neighbour absorbs it —
-  // resizeCabs), which is a different operation from "make every cabinet in this row 400mm deep".
-  //
-  // A BASE's height is the counter height and is applied to every base regardless of the mode —
-  // the worktop has to stay level. That's physics, not a preference (see rowOps.setBasesH).
   patchCabDims: (id, patch, live = false) =>
     set((s) => {
       const ref = s.cabs.find((c) => c.id === id);
       if (!ref) return {};
-      // NO ROW SCOPE. «Применить ко всему ряду» is gone: the GRID owns rows now. A row's height is
-      // the row's height — every module in it follows because they all reference the same line — and
-      // a row's depth is a property of the row. A per-module toggle that sometimes fanned an edit out
-      // to its neighbours was a second, weaker version of that, and with the grid in place it could
-      // only disagree with it.
-      const ids = new Set([ref.id]);
+      const d = patch.depth != null ? Math.max(D_MIN, Math.min(D_MAX, Math.round(patch.depth))) : null;
+
+      // DEPTH IS TIER-OWNED: when depth changes, all cabinets of the same tier/kind and all corner
+      // units in that tier adapt to the new depth in lock-step so corner squares + seats stay aligned
+      // and never overlap or leave gaps.
+      const tierEdit = d != null;
+      const depthCabs = tierEdit
+        ? new Set(s.cabs.filter((c) => c.kind === ref.kind && inSheet(c) && bandsOverlap(c, ref)).map((c) => c.id))
+        : null;
+      const tierCorners = tierEdit
+        ? new Set(s.cabs.filter((c) => c.corner && c.kind === ref.kind && bandsOverlap(c, ref)).map((c) => c.id))
+        : null;
+
+      // re-arm a corner to depth `d` and re-seat it (its square + seat both follow the arm)
+      const reseat = (c: Cabinet): Cabinet => {
+        const withArm = { ...c, armDepth: d! };
+        if (c.cornerShape === "outer") return seatOuterCorner(withArm, s.roomPoints, s.waterWall, s.runLayout, s.openings, s.cabs);
+        return seatCorner(withArm, s.roomPoints, s.waterWall, s.runLayout, s.openings);
+      };
 
       const next = s.cabs.map((c) => {
-        if (!ids.has(c.id)) return c;
-        const d = patch.depth != null ? Math.max(D_MIN, Math.min(D_MAX, Math.round(patch.depth))) : null;
+        const isRef = c.id === ref.id;
         const p: Partial<Cabinet> = {};
-        if (patch.h != null && c.kind !== "base") p.h = Math.max(MIN_H, Math.min(maxCabH(c, s.ceiling), Math.round(patch.h)));
+        if (isRef && patch.h != null && c.kind !== "base") p.h = Math.max(MIN_H, Math.min(maxCabH(c, s.ceiling), Math.round(patch.h)));
 
-        // A CORNER's own depth is the side of the square it fills, and that is STRUCTURAL — both
-        // walls clear exactly that much, and the seat is offset from the vertex by side/√2. So a
-        // corner cannot be resized directly. What "depth" means for a corner is how deep the RUNS it
-        // butts into are; the square and the seat then follow (rowOps.seatCorner).
         if (c.corner) {
-          if (d == null) return Object.keys(p).length ? { ...c, ...p } : c;
-          const withArm = { ...c, ...p, armDepth: d };
-          // an OUTER corner is a reverse-L at the run depth — re-seat it as one, not as the big inner
-          // square (that is what silently turned it into an "Угловой 880" stuck on a wall vertex).
-          if (c.cornerShape === "outer") return seatOuterCorner(withArm, s.roomPoints, s.waterWall, s.runLayout, s.openings, s.cabs);
-          return seatCorner(withArm, s.roomPoints, s.waterWall, s.runLayout, s.openings);
+          if (d != null && (isRef || (tierCorners?.has(c.id) ?? false))) return reseat({ ...c, ...p });
+          return Object.keys(p).length ? { ...c, ...p } : c;
         }
 
-        if (d != null) p.depth = d;
+        const setDepth = d != null && (depthCabs?.has(c.id) ?? isRef);
+        if (!isRef && !setDepth) return c;
+        if (setDepth) p.depth = d;
         return Object.keys(p).length ? { ...c, ...p } : c;
       });
 
@@ -1555,14 +1612,10 @@ export const useStore = create<AppState>((set, get) => ({
     set((s) => {
       const i = s.cabs.findIndex((c) => c.id === id);
       if (i < 0) return {};
-      // DOCK every free module first, so the gap math sees free-placed neighbours too —
-      // otherwise fill would grow right over a cabinet that was dragged in beside this one.
-      // (A module dragged onto a wall also gets re-tiled here so it can then grow.)
-      const docked = dockAll(s.cabs, s.roomPoints, s.waterWall, s.runLayout, s.openings, s.reveal);
-      const cab = docked[i];
-      if (cab.x == null || cab.px != null) return {}; // this module isn't on a wall run
-      const runLen = planRuns(s.roomPoints, s.waterWall, s.runLayout, s.openings, s.cabs, s.reveal).runs[cab.run ?? 0]?.len ?? Infinity;
-      const span = fillGapSpan(docked, cab, runLen);
+      const room = { points: s.roomPoints, waterWall: s.waterWall, layout: s.runLayout, openings: s.openings, reveal: s.reveal };
+      const cab = s.cabs[i];
+      if (!cab) return {};
+      const span = fillGapSpan(s.cabs, cab, room, cab.run ?? 0);
       if (!span) return {}; // nothing to fill (already snug)
       const filled = { ...cab, x: span.x, w: span.w }; // only the selected module is re-tiled/grown
       return { ...cabHist(s), cabs: s.cabs.map((c, j) => (j === i ? filled : c)) };
@@ -1905,6 +1958,8 @@ export const useStore = create<AppState>((set, get) => ({
         const cab = mk({ ...look, ...tpl, run, cell: { c: cell.c, r: rowId, cs: cell.cs }, px: undefined, pz: undefined, rot: undefined });
         const res = editSheet([...cabs, cab], g);
         if (!res) break; // couldn't place there — stop rather than loop forever
+        const LNext = resolveLayout(res.cabs, room);
+        if (LNext.clashing.has(cab.id)) break; // stop if placed module clashes with a corner/other module
         cabs = res.cabs;
         grids = { ...grids, [run]: res.grid };
       }
@@ -2168,9 +2223,13 @@ export const useStore = create<AppState>((set, get) => ({
           { ...next, ...seed, cell: undefined, x: undefined, run: 0, armDepth: old.armDepth ?? base.armDepth },
           s.roomPoints, s.waterWall, s.runLayout, s.openings,
         );
-        // that corner already holds a same-kind corner unit → a second one just goes red. Refuse.
+        // that corner already holds a same-kind corner unit AT THIS HEIGHT → a second one just goes red.
+        // Refuse. The `mountY` guard is what lets a corner stack: an antresol (3rd-row) corner sits at
+        // the same wall corner as the upper corner below it, so without it the height check reads the
+        // lower corner as "occupied" and blocked every corner in the 3rd row (matches addCornerCab).
         const occupied = s.cabs.some(
           (c) => c.id !== id && c.corner && c.kind === seated.kind &&
+            Math.abs((c.mountY ?? 0) - (seated.mountY ?? 0)) < 20 &&
             Math.hypot((c.px ?? 0) - (seated.px ?? 0), (c.pz ?? 0) - (seated.pz ?? 0)) < 60,
         );
         if (occupied) return { toast: "У этого угла уже есть угловой шкаф" };
@@ -2235,7 +2294,12 @@ export const useStore = create<AppState>((set, get) => ({
     // Only (re)capture the thumbnail when asked (constructor entry). Otherwise pass null so
     // upsertProject KEEPS the existing image — the auto-save / leave-flush persist data
     // without disturbing the one consistent thumbnail captured on entry.
-    upsertProject(id, design, undefined, withThumb ? captureThumbnail() : null);
+    //
+    // The quote total is snapshotted on EVERY save, regardless of settings.showPricing: the
+    // number costs one pure BOM×rates pass (the same one the ticker runs at 60fps), and storing
+    // it unconditionally means the project list is already correct the moment a seller turns
+    // pricing on. Only its DISPLAY is gated by the flag.
+    upsertProject(id, design, undefined, withThumb ? captureThumbnail() : null, projectTotalUSD(s));
     if (created) set({ currentProjectId: id });
     if (withThumb) set((st) => ({ projectsRev: st.projectsRev + 1 })); // refresh any open list
     if (s.authUser) {
@@ -2283,6 +2347,7 @@ export const useStore = create<AppState>((set, get) => ({
     }
     set(() => ({ projectsRev: s.projectsRev + 1 }));
   },
+  setProjectBucket: (b) => set({ projectBucket: b }),
   updateSettings: (patch) =>
     set((s) => {
       const settings = { ...s.settings, ...patch };

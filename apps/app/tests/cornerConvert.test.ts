@@ -25,7 +25,7 @@ import { planRuns } from "../src/model/runPlan";
 import { resolveLayout, wallRows, type Room } from "../src/model/resolve";
 
 const ROOM = [ { x: 0, y: 0 }, { x: 4000, y: 0 }, { x: 4000, y: 3000 }, { x: 0, y: 3000 } ];
-const room: Room = { points: ROOM, waterWall: null, layout: "all", openings: [] };
+const room: Room = { points: ROOM, waterWall: null, layout: "all", openings: [], reveal: 0 };
 
 /** fill a run with base+upper pairs up to `upto` mm */
 function fill(cabs: Cabinet[], run: number, upto: number) {

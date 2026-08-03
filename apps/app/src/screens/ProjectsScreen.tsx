@@ -1,9 +1,14 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useStore } from "../store";
 import { useT } from "../i18n/useT";
-import { listProjects, type ProjectMeta } from "../model/projects";
+import { listProjects, inBucket, PROJECT_BUCKETS, phoneDigits, type MetaPatch, type ProjectMeta } from "../model/projects";
 import { ProjectCard, RenameModal, DeleteModal } from "../components/ProjectCard";
 import { IconSearch } from "../components/icons";
+
+const BUCKET_LABEL = {
+  all: "filterAll", active: "filterActive", quoted: "filterQuoted",
+  won: "filterWon", archive: "filterArchive",
+} as const;
 
 export function ProjectsScreen() {
   const t = useT();
@@ -14,24 +19,40 @@ export function ProjectsScreen() {
   const authUser = useStore((s) => s.authUser);
   const syncBusy = useStore((s) => s.syncBusy);
   const syncError = useStore((s) => s.syncError);
-  useStore((s) => s.projectsRev); // re-render after save/delete/rename
 
   const [renaming, setRenaming] = useState<ProjectMeta | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
   const [query, setQuery] = useState("");
-  const [sortBy, setSortBy] = useState<"date" | "name">("date");
+  const [sortBy, setSortBy] = useState<"date" | "name" | "sum">("date");
   const [asc, setAsc] = useState(false); // default: newest / A→Z-reversed first (descending)
+  // Home's "Ждут ответа" banner hands us a bucket on the way in; otherwise show everything.
+  // Defaulting to a filter would hide projects on arrival, which reads as data loss.
+  const bucket = useStore((s) => s.projectBucket);
+  const setBucket = useStore((s) => s.setProjectBucket);
+  const showPricing = useStore((s) => s.settings.showPricing);
+  const rev = useStore((s) => s.projectsRev);
+
+  const all = useMemo(() => listProjects(), [rev]);
 
   const q = query.trim().toLowerCase();
-  const projects = listProjects()
-    .filter((p) => !q || p.name.toLowerCase().includes(q) || (p.client ?? "").toLowerCase().includes(q))
+  // digits-only so "901234567" finds a client saved as "+998 (90) 123-45-67"
+  const qDigits = phoneDigits(query.trim()).replace(/^\+/, "");
+  const projects = all
+    .filter((p) => inBucket(p, bucket))
+    .filter((p) => !q
+      || p.name.toLowerCase().includes(q)
+      || (p.client ?? "").toLowerCase().includes(q)
+      || (p.address ?? "").toLowerCase().includes(q)
+      || (qDigits.length >= 3 && phoneDigits(p.clientPhone ?? "").includes(qDigits)))
     .sort((a, b) => {
-      const cmp = sortBy === "name" ? a.name.localeCompare(b.name) : a.updatedAt - b.updatedAt;
+      const cmp = sortBy === "name" ? a.name.localeCompare(b.name)
+        : sortBy === "sum" ? (a.totalUSD ?? 0) - (b.totalUSD ?? 0)
+        : a.updatedAt - b.updatedAt;
       return asc ? cmp : -cmp;
     });
 
   const handleSaveRename = useCallback(
-    (id: string, patch: { name: string; client: string }) => {
+    (id: string, patch: MetaPatch) => {
       renameProject(id, patch);
       setRenaming(null);
     },
@@ -62,13 +83,31 @@ export function ProjectsScreen() {
         <input className="search-input" placeholder={t.projects.search} value={query} onChange={(e) => setQuery(e.target.value)} />
         <span className="search-ic"><IconSearch /></span>
       </div>
+      {/* deal-stage buckets — what to DO with a project, not which screen it's on */}
+      <div className="proj-buckets">
+        {PROJECT_BUCKETS.map((b) => (
+          <button
+            key={b}
+            className={`hc-filter-pill${b === bucket ? " on" : ""}`}
+            type="button"
+            onClick={() => setBucket(b)}
+          >
+            {t.projects[BUCKET_LABEL[b]]}
+          </button>
+        ))}
+      </div>
+
       <div className="proj-sort">
         <button className={`hc-filter-pill${sortBy === "date" ? " on" : ""}`} type="button" onClick={() => setSortBy("date")}>{t.projects.byDate}</button>
         <button className={`hc-filter-pill${sortBy === "name" ? " on" : ""}`} type="button" onClick={() => setSortBy("name")}>{t.projects.byName}</button>
+        {/* sorting by deal size is meaningless with pricing switched off — no card shows a sum */}
+        {showPricing && (
+          <button className={`hc-filter-pill${sortBy === "sum" ? " on" : ""}`} type="button" onClick={() => setSortBy("sum")}>{t.projects.bySum}</button>
+        )}
         <button className="hc-filter-pill proj-dir" type="button" onClick={() => setAsc((v) => !v)} aria-label="asc/desc">{asc ? "↑" : "↓"}</button>
       </div>
 
-      {listProjects().length === 0 ? (
+      {all.length === 0 ? (
         <p className="sub" style={{ marginTop: 16 }}>
           {t.projects.empty}
         </p>
@@ -88,13 +127,6 @@ export function ProjectsScreen() {
           ))}
         </div>
       )}
-
-      {/* sticky create new project button container at the bottom */}
-      <div className="hc-bottom">
-        <button className="hc-new-btn" type="button" onClick={newProject}>
-          {t.projects.new}
-        </button>
-      </div>
 
       {renaming && (
         <RenameModal

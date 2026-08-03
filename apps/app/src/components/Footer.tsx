@@ -43,21 +43,17 @@ export function Footer() {
   const exported = useStore((s) => s.exported);
   const hasVariant = useStore((s) => s.genVariants.length > 0);
   const next = useStore((s) => s.next);
-  const back = useStore((s) => s.back);
   const showPricing = useStore((s) => s.settings.showPricing);
 
-  // the quiz is the first journey screen → single forward button; the rest pair Back + Next
-  const showBack = screen !== "quiz";
   const cta = ctaFor(t.footer, screen, quiz, exported, hasVariant, showPricing);
 
+  // Back USED to sit here beside Next. Every journey screen now carries <JourneyBar>, which has
+  // its own ← in the top-left — so keeping this one meant two identical back buttons on the same
+  // screen calling the same action. The footer is the primary CTA alone; .btn is flex:1, so it
+  // simply fills the row.
   return (
     <footer className="footer">
       <div className="footrow">
-        {showBack && (
-          <button className="btn btn-back" onClick={back} type="button">
-            {t.footer.back}
-          </button>
-        )}
         <button className="btn btn-next" disabled={cta.disabled} onClick={next} type="button">
           {cta.label}
         </button>

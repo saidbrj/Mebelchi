@@ -1,6 +1,15 @@
+// The project card — a DEAL, not a file. Beyond the design thumbnail it carries who the client
+// is, how to reach them, where the flat is, what stage the deal is at and what it's worth, so a
+// seller standing in a stairwell can act on the list without opening a single project.
 import { useState, useRef, useEffect } from "react";
-import { type ProjectMeta } from "../model/projects";
+import {
+  DEAL_STATUSES, statusOf, telHref, tgHref, mapHref,
+  type DealStatus, type MetaPatch, type ProjectMeta,
+} from "../model/projects";
+import { useStore } from "../store";
+import { useMoney } from "../useMoney";
 import { useT } from "../i18n/useT";
+import { IconPhone, IconPin, IconTelegram } from "./icons";
 
 /* ── 3-dot dropdown menu ────────────────────────────────────── */
 function CardMenu({
@@ -71,6 +80,11 @@ function CardMenu({
   );
 }
 
+/* ── deal-status pill ───────────────────────────────────────── */
+export function StatusPill({ status, t }: { status: DealStatus; t: ReturnType<typeof useT> }) {
+  return <span className={`hc-status hc-status--${status}`}>{t.projects.statusShort[status]}</span>;
+}
+
 /* ── project card ───────────────────────────────────────────── */
 export function ProjectCard({
   p,
@@ -85,6 +99,24 @@ export function ProjectCard({
   onRename: () => void;
   onDelete: () => void;
 }) {
+  // Pricing is opt-in (Настройки → Цены). The total is snapshotted on every save regardless,
+  // so flipping the switch on fills the whole list in at once — but a seller who keeps pricing
+  // off must never see a sum leak onto a card in front of a client.
+  const showPricing = useStore((s) => s.settings.showPricing);
+  const money = useMoney();
+
+  // Every action inside the card must stop the click reaching the card's own open handler.
+  const act = (fn: () => void) => (e: React.MouseEvent) => { e.stopPropagation(); fn(); };
+  const open = (href: string) => () => { window.open(href, "_blank"); };
+  // Telegram first, `tel:` if nothing handles the scheme — Telegram is how UZ/KZ sellers
+  // actually reach clients, but a WebView with no Telegram installed must still do something.
+  const openChat = (phone: string) => () => {
+    window.location.href = tgHref(phone);
+    setTimeout(() => { if (!document.hidden) window.location.href = telHref(phone); }, 700);
+  };
+
+  const sub = [p.client, p.address].filter(Boolean).join(" · ");
+
   return (
     <div className="hc-card" onClick={onOpen}>
       {/* thumbnail – 3D screenshot or fallback icon */}
@@ -105,17 +137,54 @@ export function ProjectCard({
       <div className="hc-card-body">
         <div className="hc-card-info">
           <span className="hc-card-name">{p.name}</span>
+          {sub && <span className="hc-card-client">{sub}</span>}
           <span className="hc-card-date">
             {new Date(p.updatedAt).toLocaleDateString("ru-RU")}
           </span>
         </div>
         <CardMenu onRename={onRename} onDelete={onDelete} t={t} />
       </div>
+
+      <div className="hc-card-foot">
+        <StatusPill status={statusOf(p)} t={t} />
+        {/* no snapshot yet (nothing designed, or saved before totals existed) → show nothing
+            rather than a "$0" that reads as a free kitchen */}
+        {showPricing && p.totalUSD ? <span className="hc-card-sum">{money(p.totalUSD)}</span> : null}
+      </div>
+
+      {/* Icon-only on purpose: two cards share a 393px screen, so ~180px of card can't hold
+          three labelled buttons — labelled, they'd force the grid wider than the viewport.
+          The label lives in aria-label/title instead. */}
+      {(p.clientPhone || p.address) && (
+        <div className="hc-quick">
+          {p.clientPhone && (
+            <>
+              <button className="hc-quick-btn" type="button" title={t.projects.call} aria-label={t.projects.call}
+                onClick={act(open(telHref(p.clientPhone)))}>
+                <IconPhone />
+              </button>
+              <button className="hc-quick-btn" type="button" title="Telegram" aria-label="Telegram"
+                onClick={act(openChat(p.clientPhone))}>
+                <IconTelegram />
+              </button>
+            </>
+          )}
+          {p.address && (
+            <button className="hc-quick-btn" type="button" title={t.projects.route} aria-label={t.projects.route}
+              onClick={act(open(mapHref(p)))}>
+              <IconPin />
+            </button>
+          )}
+        </div>
+      )}
     </div>
   );
 }
 
-/* ── inline rename modal ────────────────────────────────────── */
+/* ── project details sheet ──────────────────────────────────── */
+// Grew out of the old rename modal: it still renames, but it's now where all the client
+// bookkeeping happens — so a seller can fix a phone number or move a deal to «Согласовано»
+// straight from the list, without loading the 3D scene.
 export function RenameModal({
   p,
   t,
@@ -124,11 +193,14 @@ export function RenameModal({
 }: {
   p: ProjectMeta;
   t: ReturnType<typeof useT>;
-  onSave: (patch: { name: string; client: string }) => void;
+  onSave: (patch: MetaPatch) => void;
   onCancel: () => void;
 }) {
   const [name, setName] = useState(p.name);
   const [client, setClient] = useState(p.client ?? "");
+  const [clientPhone, setPhone] = useState(p.clientPhone ?? "");
+  const [address, setAddress] = useState(p.address ?? "");
+  const [status, setStatus] = useState<DealStatus>(statusOf(p));
 
   return (
     <div className="hc-rename-backdrop" onClick={onCancel}>
@@ -147,6 +219,35 @@ export function RenameModal({
           placeholder={t.projects.client}
           onChange={(e) => setClient(e.target.value)}
         />
+        <input
+          className="set-input hc-rename-input"
+          value={clientPhone}
+          placeholder={t.projects.clientPhone}
+          inputMode="tel"
+          autoComplete="tel"
+          onChange={(e) => setPhone(e.target.value)}
+        />
+        <input
+          className="set-input hc-rename-input"
+          value={address}
+          placeholder={t.projects.address}
+          onChange={(e) => setAddress(e.target.value)}
+        />
+
+        <span className="hc-rename-label">{t.projects.status}</span>
+        <div className="hc-status-pick">
+          {DEAL_STATUSES.map((s) => (
+            <button
+              key={s}
+              type="button"
+              className={`hc-filter-pill${s === status ? " on" : ""}`}
+              onClick={() => setStatus(s)}
+            >
+              {t.projects.statusLabel[s]}
+            </button>
+          ))}
+        </div>
+
         <div className="hc-rename-actions">
           <button className="hc-rename-cancel" type="button" onClick={onCancel}>
             {t.projects.cancel}
@@ -154,7 +255,7 @@ export function RenameModal({
           <button
             className="hc-rename-save"
             type="button"
-            onClick={() => onSave({ name, client })}
+            onClick={() => onSave({ name, client, clientPhone, address, status })}
           >
             {t.projects.save}
           </button>

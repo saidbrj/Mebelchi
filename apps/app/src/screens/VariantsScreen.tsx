@@ -13,6 +13,7 @@ import { VariantScene } from "../three/VariantScene";
 import { QuizScreen } from "./QuizScreen";
 import { FLOOR_COVERINGS } from "../model/floors";
 import { IconTabSettings } from "../components/icons";
+import { JourneyBar } from "../components/JourneyBar";
 
 export function VariantsScreen() {
   const t = useT();
@@ -36,8 +37,8 @@ export function VariantsScreen() {
   const generateVariants = useStore((s) => s.generateVariants);
   const selectVariant = useStore((s) => s.selectVariant);
   const startBlank = useStore((s) => s.startBlank);
+  const next = useStore((s) => s.next);
   const requestWater = useStore((s) => s.requestWater);
-  const openMenu = useStore((s) => s.openMenu);
 
   const [loading, setLoading] = useState(false);
   // ask about water ONCE on entry if none was placed (non-blocking — you can continue)
@@ -85,39 +86,31 @@ export function VariantsScreen() {
 
   return (
     <section className="var-screen-3d">
-      <div className="var-bar cfg-bar">
-        <div className="cfg-bar-l">
-          <button className="cfg-burger" onClick={openMenu} type="button" aria-label={t.menu.menu}>
-            <span /><span />
-          </button>
-        </div>
-        {/* the layout TYPE («П-образная» / «Угловая» / …) is the heading — when the room supports one
-            shape this is the strategy name instead (generateVariants sets `name` accordingly) */}
-        <div className="cfg-title">{cur.name}</div>
-        {/* the same settings gear the home hub uses — icon only, no label */}
-        <button className="var-settings" onClick={() => setOpts(true)} type="button" aria-label={t.variants.options}>
-          <IconTabSettings />
-        </button>
-      </div>
+      {/* the same bar as every other journey step, carrying this step's forward CTA */}
+      <JourneyBar
+        className="var-bar"
+        right={<button className="step-next" onClick={next} type="button">{t.footer.toConstructor}</button>}
+      />
 
-      {/* just the price under the bar (the strategy name is the blurb under the stage) */}
-      {showPricing && (
-        <div className="var-caption">
+      {/* The layout TYPE («П-образная» / «Угловая» / …) used to be the bar's heading — the bar says
+          whose kitchen this is now, so the type moved down here beside the price, where it reads as
+          a caption for the kitchen on the stage. (When the room supports one shape this is the
+          strategy name instead — generateVariants sets `name` accordingly.) */}
+      <div className="var-caption">
+        <span className="var-kind">{cur.name}</span>
+        {showPricing && (
           <span className="var-price">
             {money(pricingItems || !pricingSqm ? priceCabs(cur.cabs, rates) : sqmPrice(cur.cabs, sqmRate))}
           </span>
-        </div>
-      )}
+        )}
+      </div>
 
       {/* the questions, in a sheet over the kitchen they change. Closing regenerates. */}
       {opts && (
         <div className="var-opts-sheet" onClick={() => { setOpts(false); run(); }}>
           <div className="var-opts-card" onClick={(e) => e.stopPropagation()}>
-            {/* «↻ Заново» lives up here now (it used to sit in the top bar): regenerate with the
-                current answers, then drop back to the kitchen to look at the result. */}
-            <button className="gen-btn var-opts-again" onClick={() => { setOpts(false); run(); }} type="button">
-              {t.variants.again}
-            </button>
+            {/* No «↻ Заново» in here: the stage carries one, and closing this sheet regenerates
+                anyway — three buttons for one action was two too many. */}
             <button className="sheet-x" onClick={() => { setOpts(false); run(); }} type="button" aria-label={t.fe.close}>✕</button>
             <QuizScreen />
             <button className="btn btn-next var-opts-apply" onClick={() => { setOpts(false); run(); }} type="button">
@@ -143,7 +136,11 @@ export function VariantsScreen() {
           style={cur.style}
           cabs={cur.cabs}
         />
-        {/* regenerate the 4 layouts, right on the scene (it used to sit in the top bar) */}
+        {/* the two things you do TO the layouts sit on the stage itself, one in each top corner:
+            the questions that drive the generator on the left, regenerate on the right */}
+        <button className="var-gear" onClick={() => setOpts(true)} type="button">
+          <IconTabSettings /> {t.variants.options}
+        </button>
         <button className="var-regen" onClick={run} type="button">{t.variants.again}</button>
         <span className="var-hint">{t.variants.rotate}</span>
       </div>

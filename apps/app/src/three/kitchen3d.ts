@@ -11,9 +11,11 @@ import type { Placement } from "../model/runPlan";
 import type { KitchenStyle } from "../model/layout";
 import { cabinetLayout, cellSizes, isLeaf, frontOf, type Cabinet, type Cell, type HandlePos, type DoorOpening, type FrontProfile } from "../model/cabinet";
 import { cabBand, cabDepth } from "../model/resolve";
+import { golaSpec } from "../model/gola";
 import { cornerShapeOf, cornerArm } from "../model/bands";
 import { chamferRing } from "../model/outerCorner";
 import { frontFace, hasBody, makeGlassMat } from "./frontFace";
+import { addCabinetHardware, type HardwareOverlayOpts } from "./cabinetHardware";
 import { contactShadow } from "./contact";
 import { PBR, texturedMaterial, planarUV } from "./pbr";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
@@ -642,12 +644,22 @@ export function buildKitchen(cabs: Cabinet[], runs: RunRef[], style: KitchenStyl
         bar(h * 0.22, true, wM / 2 - 0.06, botY, dM + 0.02);
       } else if (c.appliance === "oven") {
         add(wM, h, dM, 0, yc, dM / 2, carcassMat());
-        const ovY = 1.55;
-        add(wM - 0.04, 0.58, 0.02, 0, ovY, dM + 0.011, steelMat());
-        add(wM - 0.16, 0.34, 0.012, 0, ovY + 0.02, dM + 0.02, mat(STEEL_DARK));
-        bar(wM - 0.18, false, 0, ovY + 0.32, dM + 0.02);
-        add(wM - 0.04, h - 1.18, 0.02, 0, PLINTH + (h - 1.18) / 2, dM + 0.011, facadeMat());
-        add(wM - 0.04, 0.32, 0.02, 0, tallTop - 0.2, dM + 0.011, facadeMat());
+        const ovH = (c.applianceH ?? 580) / 1000;
+        const ovY0 = (c.applianceY ?? 850) / 1000;
+        const ovYCenter = ovY0 + ovH / 2;
+
+        add(wM - 0.04, ovH, 0.02, 0, ovYCenter, dM + 0.011, steelMat());
+        add(wM - 0.16, Math.max(0.1, ovH - 0.24), 0.012, 0, ovYCenter, dM + 0.02, mat(STEEL_DARK));
+        bar(wM - 0.18, false, 0, ovYCenter + ovH / 2 - 0.06, dM + 0.02);
+
+        const botH = ovY0 - PLINTH;
+        if (botH > 0.05) {
+          add(wM - 0.04, botH, 0.02, 0, PLINTH + botH / 2, dM + 0.011, facadeMat());
+        }
+        const topH = tallTop - (ovY0 + ovH);
+        if (topH > 0.05) {
+          add(wM - 0.04, topH, 0.02, 0, ovY0 + ovH + topH / 2, dM + 0.011, facadeMat());
+        }
       } else {
         hollowCarcass(add, wM, h, dM, yc, carcassMat, bay, c);
         buildModuleInterior(add, handle, c, wM, h, dM, yc, style, M, false, g);
@@ -880,6 +892,141 @@ export function buildKitchen(cabs: Cabinet[], runs: RunRef[], style: KitchenStyl
   return root;
 }
 
+/** Options for the isolated single-cabinet build (the furniture editor / V21 studio). */
+export interface CabinetSoloOpts {
+  /** «Сетка» view — translucent body + wireframe edges so the interior reads through. */
+  outline?: boolean;
+  /** draw the Bazis-style joint hardware overlay (confirmat/minifix/dowel + Ø35 hinge cups).
+   *  Default true. The family + setback come from `hardware`. */
+  hardware?: boolean;
+  /** hardware family + shelf-pin/cam setback for the overlay (from Settings). */
+  hardwareOpts?: HardwareOverlayOpts;
+}
+
+/**
+ * Build ONE cabinet in isolation, floor-standing and centred on the origin, using the SAME
+ * carcass / interior (cell-tree) / front generators as `buildKitchen`. This is what the furniture
+ * editor renders, so the editor can never drift from the real 3D or the cut list — the old studio
+ * had its own box builder (`createIsolatedCabinetMesh`) that ignored the cell tree, the real front
+ * profiles and the finish, showing a different cabinet than the kitchen. This does not.
+ *
+ * Front faces +z. Width along x (centred), height along y from the floor (y=0). Corner units and
+ * built-in appliances fall back to their plain carcass here (the studio edits construction, not the
+ * appliance chrome) — a known Phase-1 simplification, still strictly richer than the box it replaces.
+ */
+export function buildCabinetSolo(c: Cabinet, style: KitchenStyle, opts: CabinetSoloOpts = {}): THREE.Group {
+  const g = new THREE.Group();
+  g.userData.cabId = c.id;
+
+  const wM = c.w / 1000;
+  const dM = cabDepth(c) / 1000;
+  const t = (c.boardThickness ?? 16) / 1000;
+  const band = cabBand(c);
+
+  const M = makeMats(c.finish, style);
+  const carcassMat = M.carcass;
+  const worktopMat = M.worktop;
+  const handleMat = M.handle;
+  const mat = M.flat;
+
+  const add: AddFn = (w, h, d, lx, ly, lz, m, target = g) => {
+    const mesh = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), m);
+    mesh.position.set(lx, ly, lz);
+    mesh.castShadow = mesh.receiveShadow = true;
+    target.add(mesh);
+  };
+  const bar: BarFn = (length, vertical, lx, ly, lz, target = g) => {
+    const m = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.011, length, 10), handleMat());
+    m.position.set(lx, ly, lz);
+    if (!vertical) m.rotation.z = Math.PI / 2;
+    target.add(m);
+  };
+  // handle by TYPE — mirrors buildKitchen's per-module `handle` closure so a knob/profile/bar/none
+  // reads the same in the editor as in the room.
+  const handle: BarFn = (length, vertical, lx, ly, lz, target = g) => {
+    const type = c.handle ?? 0;
+    if (type === 3) return; // none
+    if (type === 2) {
+      const stem = new THREE.Mesh(new THREE.CylinderGeometry(0.007, 0.009, 0.02, 10), handleMat());
+      stem.rotation.x = Math.PI / 2;
+      stem.position.set(lx, ly, lz + 0.01);
+      target.add(stem);
+      const cap = new THREE.Mesh(new THREE.SphereGeometry(0.014, 14, 10), handleMat());
+      cap.position.set(lx, ly, lz + 0.024);
+      target.add(cap);
+      return;
+    }
+    if (type === 1) {
+      const strip = new THREE.Mesh(new THREE.BoxGeometry(vertical ? 0.014 : length, vertical ? length : 0.014, 0.008), handleMat());
+      strip.position.set(lx, ly, lz - 0.004);
+      target.add(strip);
+      return;
+    }
+    bar(length, vertical, lx, ly, lz, target);
+  };
+
+  // carcass extents in LOCAL space (bottom on the floor). Only the SIZE comes from the band — the
+  // vertical position is re-based to y=0 so an upper unit stands on the studio floor like the rest.
+  let yBottom: number, yTop: number, yc: number, h: number;
+  if (c.kind === "upper") {
+    h = (band.carcass1 - band.carcass0) / 1000;
+    yc = h / 2;
+    yBottom = 0;
+    yTop = h;
+    hollowCarcass(add, wM, h, dM, yc, carcassMat, undefined, c);
+    buildModuleInterior(add, handle, c, wM, h, dM, yc, style, M, true, g);
+  } else {
+    // base + tall: a plinth carries the carcass; a base also gets a worktop slab on top.
+    const bodyTop = band.carcass1 / 1000; // band.carcass0 = PLINTH for base/tall → carcass sits on the plinth
+    h = bodyTop - PLINTH;
+    yc = (bodyTop + PLINTH) / 2;
+    yBottom = PLINTH;
+    yTop = bodyTop;
+    add(wM, PLINTH, dM * 0.85, 0, PLINTH / 2, dM * 0.55, mat(STEEL_DARK)); // recessed toe-kick
+    hollowCarcass(add, wM, h, dM, yc, carcassMat, undefined, c);
+    if (c.kind === "base") {
+      const front = 0.03; // worktop front overhang (no seating side in the isolated view)
+      add(wM, WORKTOP, dM + 0.02 + front, 0, bodyTop + WORKTOP / 2, dM / 2 - 0.01 + front / 2, worktopMat());
+    }
+    buildModuleInterior(add, handle, c, wM, h, dM, yc, style, M, false, g);
+  }
+
+  // Bazis-style joint hardware — an opt-in OVERLAY on the shared geometry (was baked into the old
+  // rival builder). Carcass-shell joints only for now; per-shelf/per-cell holes wait on the drilling
+  // solver learning the cell tree (model/machining.ts `canDrill` is false for custom interiors).
+  if (opts.hardware !== false) {
+    const hasDoor = c.fill !== "drawers" && c.fill !== "open" && c.door !== 3 && !c.layout;
+    addCabinetHardware(g, { wM, dM, t, yBottom, yTop, hasDoor }, opts.hardwareOpts);
+  }
+
+  // «Сетка»: translucent body + wireframe so the interior reads through. Mutates THIS build's
+  // materials only (makeMats caches per call), so it can't bleed into the kitchen.
+  if (opts.outline) applyOutline(g);
+  else mergeIn(g); // perf: collapse the static shell to one mesh per material (skipped in outline —
+                   // it needs per-mesh edge geometry)
+
+  // kitchen builds z 0..dM (back→front); straddle the origin so OrbitControls frames it centred.
+  g.position.set(0, 0, -dM / 2);
+  return g;
+}
+
+/** Translucent body + per-mesh wireframe overlay for the studio's «Сетка» mode. */
+function applyOutline(g: THREE.Object3D): void {
+  const edgeMat = new THREE.LineBasicMaterial({ color: 0x2f6fe4 });
+  g.traverse((obj) => {
+    const mesh = obj as THREE.Mesh;
+    if (!mesh.isMesh || !mesh.geometry) return;
+    const mArr = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+    for (const m of mArr) {
+      const sm = m as THREE.MeshStandardMaterial;
+      sm.transparent = true;
+      sm.opacity = 0.28;
+      sm.depthWrite = false;
+    }
+    mesh.add(new THREE.LineSegments(new THREE.EdgesGeometry(mesh.geometry), edgeMat));
+  });
+}
+
 type AddFn = (w: number, h: number, d: number, lx: number, ly: number, lz: number, m: THREE.Material, target?: THREE.Object3D) => void;
 type BarFn = (length: number, vertical: boolean, lx: number, ly: number, lz: number, target?: THREE.Object3D) => void;
 
@@ -921,9 +1068,40 @@ interface Bay {
 // list bills. Rendering it any other way would put the seller's 3D and the factory's DXF at odds.
 function hollowCarcass(add: AddFn, wM: number, h: number, dM: number, yc: number, m: () => THREE.Material, bay?: Bay, cab?: Cabinet) {
   const t = (cab?.boardThickness ?? 16) / 1000;
-  if (!bay || bay.first) add(t, h, dM, -wM / 2 + t / 2, yc, dM / 2, m()); // outer left
-  const stile = bay ? !bay.last : false;
-  add(t, h, dM, stile ? wM / 2 : wM / 2 - t / 2, yc, dM / 2, m()); // shared stile, or outer right
+  // GOLA (handleless): the outer sides are NOTCHED at the front edge where each horizontal profile
+  // runs, and a metal profile sits in the notch. Merged bays keep plain sides for now (v1). A plain
+  // side is a full-depth box; a notched side is the same box with a shallower slice at each profile.
+  const gola = cab && !bay ? golaSpec(cab) : null;
+  if (gola) {
+    const nd = gola.depthMm / 1000, nh = gola.heightMm / 1000;
+    const y0 = yc - h / 2, y1 = yc + h / 2;
+    const bands = gola.profileFractions
+      .map((f) => { const cyf = y0 + f * h; return { lo: Math.max(y0, cyf - nh / 2), hi: Math.min(y1, cyf + nh / 2) }; })
+      .sort((a, b) => a.lo - b.lo);
+    // one side as a bottom→top stack of boxes: full depth between profiles, `dM−nd` across each notch
+    const side = (x: number) => {
+      const seg = (lo: number, hi: number, depth: number) => { if (hi - lo > 1e-4) add(t, hi - lo, depth, x, (lo + hi) / 2, depth / 2, m()); };
+      let cur = y0;
+      for (const b of bands) {
+        if (b.lo > cur) seg(cur, b.lo, dM);
+        seg(Math.max(cur, b.lo), b.hi, dM - nd);
+        cur = Math.max(cur, b.hi);
+      }
+      if (cur < y1) seg(cur, y1, dM);
+    };
+    side(-wM / 2 + t / 2);
+    side(wM / 2 - t / 2);
+    // the aluminium profile bars sitting in the notches, running the interior width at the front
+    const profMat = new THREE.MeshStandardMaterial({ color: 0xb9c0c6, metalness: 0.85, roughness: 0.25 });
+    for (const f of gola.profileFractions) {
+      const cyf = y0 + f * h;
+      add(wM - 2 * t, nh, nd, 0, cyf, dM - nd / 2, profMat);
+    }
+  } else {
+    if (!bay || bay.first) add(t, h, dM, -wM / 2 + t / 2, yc, dM / 2, m()); // outer left
+    const stile = bay ? !bay.last : false;
+    add(t, h, dM, stile ? wM / 2 : wM / 2 - t / 2, yc, dM / 2, m()); // shared stile, or outer right
+  }
 
   // Bottom board — respect vkladnoe (inset between sides) vs nakladnoe (full width)
   const bMode = cab?.bottomMode ?? "nakladnoe";
@@ -1000,7 +1178,7 @@ function addOrganizer(add: AddFn, cell: Cell, xC: number, fwInner: number, floor
 
 // a door / drawer front covering a sub-rect (door: opening side + handle placement). Used
 // for both a cell's own front and a combined-door overlay (any rectangle of cells).
-function buildFront(add: AddFn, handle: BarFn, kind: "door" | "drawer", opening: DoorOpening | undefined, handlePos: HandlePos | undefined, organizer: Cell | undefined, wM: number, h: number, dM: number, yc: number, style: KitchenStyle, M: Mats, isUpper: boolean, profile: FrontProfile, g: THREE.Group, r: Rect) {
+function buildFront(add: AddFn, handle: BarFn, kind: "door" | "drawer", opening: DoorOpening | undefined, handlePos: HandlePos | undefined, organizer: Cell | undefined, wM: number, h: number, dM: number, yc: number, style: KitchenStyle, M: Mats, isUpper: boolean, profile: FrontProfile, g: THREE.Group, r: Rect, golaGapM = 0) {
   const t = CARCASS_T, iw = wM - 2 * t, ih = h - 2 * t;
   const REVEAL = 0.0025; // ~2.5 mm gap between adjacent overlay fronts
   // OVERLAY extent: cover the carcass out to the MODULE edge at an outer boundary, and meet
@@ -1010,7 +1188,10 @@ function buildFront(add: AddFn, handle: BarFn, kind: "door" | "drawer", opening:
   const xL = (outerL ? -wM / 2 : -wM / 2 + t + iw * r.fx0) + (outerL ? REVEAL : REVEAL / 2);
   const xR = (outerR ? wM / 2 : -wM / 2 + t + iw * r.fx1) - (outerR ? REVEAL : REVEAL / 2);
   const yB = (outerB ? yc - h / 2 : yc - h / 2 + t + ih * r.fy0) + (outerB ? REVEAL : REVEAL / 2);
-  const yT = (outerT ? yc + h / 2 : yc - h / 2 + t + ih * r.fy1) - (outerT ? REVEAL : REVEAL / 2);
+  // GOLA opens a finger-grip gap ABOVE the front — shorten its top edge by the gap; the aluminium
+  // profile lives in that gap. `gola` also means handleless, so no pull is placed.
+  const gola = golaGapM > 0;
+  const yT = (outerT ? yc + h / 2 : yc - h / 2 + t + ih * r.fy1) - (outerT ? REVEAL : REVEAL / 2) - golaGapM;
   const xC = (xL + xR) / 2, yC2 = (yB + yT) / 2, z = dM + 0.01;
   const fw = xR - xL, fh = yT - yB;
 
@@ -1023,7 +1204,7 @@ function buildFront(add: AddFn, handle: BarFn, kind: "door" | "drawer", opening:
     // a drawer face is a front like any other — it gets the module's profile, which is exactly how
     // the fluted kitchens in the photos are built (ribbed drawer banks under a ribbed door)
     frontFace(profile, fw, fh, xC, yC2, z, fmat, drw, M.glass());
-    if (hasBody(profile)) placeHandle(handle, handlePos ?? "top", xL, xR, yB, yT, z, drw);
+    if (hasBody(profile) && !gola) placeHandle(handle, handlePos ?? "top", xL, xR, yB, yT, z, drw);
     const boxMat = M.box();
     const boxD = dM * 0.85, sideH = Math.min(fh * 0.5, 0.12), bt = 0.012, cz = z - boxD / 2 - 0.006, fy0 = yB + 0.02;
     add(fw - 0.04, bt, boxD, xC, fy0 + 0.02, cz, boxMat, drw);
@@ -1050,7 +1231,7 @@ function buildFront(add: AddFn, handle: BarFn, kind: "door" | "drawer", opening:
   frontFace(profile, fw, fh, xC, yC2, z, fmat, door, M.glass());
   const opn = opening ?? "left";
   const hpos: HandlePos = handlePos ?? (opn === "left" ? "right" : opn === "right" ? "left" : opn === "top" ? "bottom" : "top");
-  placeHandle(handle, hpos, xL, xR, yB, yT, z, door);
+  if (!gola) placeHandle(handle, hpos, xL, xR, yB, yT, z, door);
   // hinge on the DOOR's own edge (xL/xR/yB/yT) at the carcass front (hz=dM), NOT proud of
   // the box — otherwise an open door floats with a gap. top/bottom rotate on X and must
   // swing OUT (+z): top lifts up (−rad), bottom flaps down (+rad).
@@ -1084,9 +1265,9 @@ function buildInterior(add: AddFn, cell: Cell, wM: number, h: number, dM: number
 
 // recurse the cell tree: a node with a `front` gets ONE front over its whole rect (+ its
 // children rendered as the interior behind it); an un-fronted split recurses into cells.
-function buildCells(add: AddFn, handle: BarFn, cell: Cell, wM: number, h: number, dM: number, yc: number, style: KitchenStyle, M: Mats, isUpper: boolean, profile: FrontProfile, g: THREE.Group, r: Rect = { fx0: 0, fy0: 0, fx1: 1, fy1: 1 }) {
+function buildCells(add: AddFn, handle: BarFn, cell: Cell, wM: number, h: number, dM: number, yc: number, style: KitchenStyle, M: Mats, isUpper: boolean, profile: FrontProfile, g: THREE.Group, r: Rect = { fx0: 0, fy0: 0, fx1: 1, fy1: 1 }, golaGapM = 0) {
   if (cell.front) {
-    buildFront(add, handle, cell.front, cell.opening, cell.handle, cell.organizer, wM, h, dM, yc, style, M, isUpper, profile, g, r);
+    buildFront(add, handle, cell.front, cell.opening, cell.handle, cell.organizer, wM, h, dM, yc, style, M, isUpper, profile, g, r, golaGapM);
     if (cell.children && cell.children.length) buildInterior(add, cell, wM, h, dM, yc, M.carcass, r);
     return;
   }
@@ -1099,7 +1280,7 @@ function buildCells(add: AddFn, handle: BarFn, cell: Cell, wM: number, h: number
     const sub: Rect = cell.split === "rows"
       ? { fx0: r.fx0, fy0: r.fy0 + (r.fy1 - r.fy0) * acc, fx1: r.fx1, fy1: r.fy0 + (r.fy1 - r.fy0) * (acc + f) }
       : { fx0: r.fx0 + (r.fx1 - r.fx0) * acc, fy0: r.fy0, fx1: r.fx0 + (r.fx1 - r.fx0) * (acc + f), fy1: r.fy1 };
-    buildCells(add, handle, cell.children![i], wM, h, dM, yc, style, M, isUpper, profile, g, sub);
+    buildCells(add, handle, cell.children![i], wM, h, dM, yc, style, M, isUpper, profile, g, sub, golaGapM);
     acc += f;
     if (i < cell.children!.length - 1) {
       if (cell.split === "rows") add(iw * (r.fx1 - r.fx0), t, zd, x0 + iw * (r.fx0 + r.fx1) / 2, yb + ih * (r.fy0 + (r.fy1 - r.fy0) * acc), zc, M.carcass());
@@ -1112,9 +1293,12 @@ function buildCells(add: AddFn, handle: BarFn, cell: Cell, wM: number, h: number
 // overlays (one door over a rectangle of cells; the cells behind it show as interior shelves)
 function buildModuleInterior(add: AddFn, handle: BarFn, c: Cabinet, wM: number, h: number, dM: number, yc: number, style: KitchenStyle, M: Mats, isUpper: boolean, g: THREE.Group) {
   const profile = frontOf(c); // flat / shaker / raised / fluted / glass / grid / none — per module
-  buildCells(add, handle, cabinetLayout(c), wM, h, dM, yc, style, M, isUpper, profile, g);
+  // GOLA shortens every front by the grip gap + drops its handle (all fronts share the one gap).
+  const gola = golaSpec(c);
+  const golaGapM = gola ? gola.gapMm / 1000 : 0;
+  buildCells(add, handle, cabinetLayout(c), wM, h, dM, yc, style, M, isUpper, profile, g, undefined, golaGapM);
   for (const cd of c.combinedDoors ?? [])
-    buildFront(add, handle, "door", cd.opening, cd.handle, undefined, wM, h, dM, yc, style, M, isUpper, profile, g, { fx0: cd.fx0, fy0: cd.fy0, fx1: cd.fx1, fy1: cd.fy1 });
+    buildFront(add, handle, "door", cd.opening, cd.handle, undefined, wM, h, dM, yc, style, M, isUpper, profile, g, { fx0: cd.fx0, fy0: cd.fy0, fx1: cd.fx1, fy1: cd.fy1 }, golaGapM);
 }
 
 /** Carve a facade onto the front of a carcass: drawers / a (glass) door / open.

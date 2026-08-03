@@ -13,6 +13,9 @@ import { production, productionCSV, cabLabel } from "../model/cncExport";
 import { cabDepth } from "../model/resolve";
 import { nest, nestPanels, type RemainSheet } from "../model/nest";
 import { nestDXF } from "../model/nestDxf";
+import { partsList } from "../model/partsList";
+import { partsXlsx, type PartsXlsxLabels, type PartsXlsxMeta } from "../model/partsXlsx";
+import { drawPartsListPdf, type PartsPdfLabels } from "../model/partsListPdf";
 import { machiningReport, runSWJ008 } from "../model/machining";
 import { CutMap } from "../components/CutMap";
 import { drawCutPdf } from "../model/cutPdf";
@@ -60,6 +63,9 @@ export function HandoffScreen() {
 
   const [allPanels, setAllPanels] = useState(false);
   const [allHw, setAllHw] = useState(false);
+  // Раскрой has two modes: MANUAL (nested plan + saw kerf, our optimisation) and CNC (a flat
+  // finished-size parts list — the router does its own nesting + bit compensation). See partsList.ts.
+  const [cutMode, setCutMode] = useState<"manual" | "cnc">("manual");
   const PREVIEW = 4;
   // the shop's build conventions (hangers per carcass) — the hardware list must show what
   // this workshop actually fits, and a merged row hangs on one set, not one per cabinet
@@ -74,6 +80,8 @@ export function HandoffScreen() {
     () => nest(nestPanels(cabs, respectGrain), { sheetW, sheetH, kerf, respectGrain, remains }),
     [cabs, sheetW, sheetH, kerf, respectGrain, remains],
   );
+  // the CNC parts list — finished sizes, no kerf, no nesting (the router does that itself)
+  const pl = useMemo(() => (prod ? partsList(prod, respectGrain) : null), [prod, respectGrain]);
   const addRemain = () => {
     const w = parseInt(rw, 10);
     const h = parseInt(rh, 10);
@@ -186,15 +194,23 @@ export function HandoffScreen() {
   // the real .xml/.dxf extension the factory needs) and filter to only the files THIS device
   // will accept; anything it won't share is downloaded so nothing is lost.
   const shareFiles = async () => {
-    // the cutting PLAN (PDF) + the DXF go to every workshop; the CNC drilling file + CSV spec
-    // only when "advanced" is on (the ~95% who cut manually don't need them)
+    // The Раскрой files follow the on-screen toggle: CNC → the finished-size parts list (Excel +
+    // PDF, the router nests itself), manual → the nested cut plan (PDF + DXF). The CNC drilling
+    // file + CSV spec ride along only when "advanced" is on (most shops don't need them).
     const adv = settings.advancedExport;
-    const pdfBlob = await buildCutPdf();
-    const dxf = nestDXF(nestResult);
-    const xml = adv ? runSWJ008(cabs) : null; // SWJ008 only if the safety gate passed
     const all: File[] = [];
-    if (pdfBlob) all.push(new File([pdfBlob], "jihozla-раскрой.pdf", { type: "application/pdf" }));
-    if (dxf) all.push(new File([dxf], "jihozla-nesting.dxf", { type: "text/plain" }));
+    if (cutMode === "cnc" && pl) {
+      const partsPdf = await buildPartsPdf();
+      if (partsPdf) all.push(new File([partsPdf], "jihozla-детали.pdf", { type: "application/pdf" }));
+      const buf = partsXlsx(pl, cncMeta, cncLabels).buffer as ArrayBuffer;
+      all.push(new File([buf], "jihozla-детали.xlsx", { type: XLSX_MIME }));
+    } else {
+      const pdfBlob = await buildCutPdf();
+      const dxf = nestDXF(nestResult);
+      if (pdfBlob) all.push(new File([pdfBlob], "jihozla-раскрой.pdf", { type: "application/pdf" }));
+      if (dxf) all.push(new File([dxf], "jihozla-nesting.dxf", { type: "text/plain" }));
+    }
+    const xml = adv ? runSWJ008(cabs) : null; // SWJ008 only if the safety gate passed
     if (xml) all.push(new File([xml], "jihozla-swj008.xml", { type: "text/plain" }));
     if (adv) all.push(new File(["﻿" + specHeader + productionCSV(prod)], "jihozla-spec.csv", { type: "text/csv" }));
     if (!all.length) return;
@@ -357,6 +373,40 @@ export function HandoffScreen() {
     void shareOrDownload(new File([blob], name, { type: "application/pdf" }), t.handoff.tCutPdf);
   };
 
+  // CNC parts list — the same finished-size data as Excel + PDF (no kerf, no nesting; the router
+  // nests and compensates for the bit itself). `pl` is non-null here (past the early return).
+  const cncMeta: PartsXlsxMeta = { project, fromLine, gradeLabel, reinforced: hardened };
+  const th = t.handoff;
+  const cncLabels: PartsXlsxLabels & PartsPdfLabels = {
+    sheetParts: th.plSheetParts, sheetHw: th.plSheetHw, title: th.plTitle, from: th.csvFrom,
+    project: th.dwProject, grade: th.csvGrade, reinforce: th.csvReinforce, yes: th.yes, no: th.no,
+    totalParts: th.plTotalParts, boardM2: th.plBoardM2, note: th.plNote, brand: "Jihozla",
+    colNo: th.plColNo, colModule: th.plColModule, colPart: th.plColPart, colMat: th.plColMat,
+    colThk: th.plColThk, colLen: th.plColLen, colWid: th.plColWid, colQty: th.plColQty,
+    colGrain: th.plColGrain, colEdge: th.plColEdge, colProfile: th.plColProfile,
+    colHwName: th.plColHwName, colHwQty: th.plColHwQty, grainYes: th.plGrainYes,
+  };
+  const cncFileBase = `jihozla-детали-${(project || "проект").replace(/[/\\:*?"<>|]+/g, "-")}`;
+  const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
+  const downloadPartsXlsx = () => {
+    if (!pl) return;
+    // zipSync hands back a full-buffer Uint8Array; use its ArrayBuffer as the BlobPart (the typed
+    // array's generic buffer type isn't accepted as a BlobPart under the DOM lib types)
+    const buf = partsXlsx(pl, cncMeta, cncLabels).buffer as ArrayBuffer;
+    void shareOrDownload(new File([buf], `${cncFileBase}.xlsx`, { type: XLSX_MIME }), th.tXlsx, new Blob([buf], { type: XLSX_MIME }));
+  };
+  const buildPartsPdf = async (): Promise<Blob | null> => {
+    if (!pl) return null;
+    const pdf = await newPdf();
+    drawPartsListPdf(pdf, pl, cncMeta, cncLabels, "PTSans");
+    return pdf.output("blob") as Blob;
+  };
+  const downloadPartsListPDF = async () => {
+    const blob = await buildPartsPdf();
+    if (!blob) return;
+    void shareOrDownload(new File([blob], `${cncFileBase}.pdf`, { type: "application/pdf" }), th.tPartsPdf);
+  };
+
   const downloadPNG = async (svgId: string, file: string) => {
     const dataUrl = await svgToPngUrl(svgId, 1800);
     if (!dataUrl) {
@@ -471,6 +521,30 @@ export function HandoffScreen() {
       {nestResult.sheets.length > 0 && (
         <>
           <div className="cost-sec-title">{t.handoff.nesting}</div>
+          {/* MANUAL (saw) vs CNC (finished-size parts list) — the two paths need different files:
+              manual = our nested plan with kerf; CNC = raw sizes the router nests itself */}
+          <div className="ho-cutmode" role="tablist">
+            <button className={`ho-cutmode-tab${cutMode === "manual" ? " active" : ""}`} onClick={() => setCutMode("manual")} type="button">{t.handoff.modeManual}</button>
+            <button className={`ho-cutmode-tab${cutMode === "cnc" ? " active" : ""}`} onClick={() => setCutMode("cnc")} type="button">{t.handoff.modeCnc}</button>
+          </div>
+          <p className="set-hint ho-cutmode-hint">{cutMode === "manual" ? t.handoff.modeManualHint : t.handoff.modeCncHint}</p>
+
+          {cutMode === "cnc" && pl && (
+            <>
+              <div className="ho-stats">
+                <div className="ho-stat"><span className="ho-stat-n">{pl.totalParts}</span><span className="ho-stat-l">{t.handoff.parts}</span></div>
+                <div className="ho-stat"><span className="ho-stat-n">{pl.distinct}</span><span className="ho-stat-l">{t.handoff.cncDistinct}</span></div>
+                <div className="ho-stat"><span className="ho-stat-n">{pl.boardM2}</span><span className="ho-stat-l">{t.handoff.boardM2}</span></div>
+              </div>
+              <div className="ho-actions">
+                <button className="ho-download" onClick={downloadPartsXlsx} type="button">{t.handoff.xlsxParts}</button>
+                <button className="ho-download ho-download-2" onClick={downloadPartsListPDF} type="button">{t.handoff.pdfParts}</button>
+              </div>
+            </>
+          )}
+
+          {cutMode === "manual" && (
+          <>
           <div className="ho-stats">
             <div className="ho-stat"><span className="ho-stat-n">{nestResult.stats.sheetCount}</span><span className="ho-stat-l">{t.handoff.sheets}</span></div>
             <div className="ho-stat"><span className="ho-stat-n">{nestResult.stats.wastePct}%</span><span className="ho-stat-l">{t.handoff.waste}</span></div>
@@ -515,6 +589,8 @@ export function HandoffScreen() {
             <button className="ho-download" onClick={downloadCutPDF} type="button">{t.handoff.pdfCut}</button>
             <button className="ho-download ho-download-2" onClick={downloadDXF} type="button">{t.handoff.dxfNest}</button>
           </div>
+          </>
+          )}
         </>
       )}
 

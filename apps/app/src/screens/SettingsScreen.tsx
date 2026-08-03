@@ -13,9 +13,6 @@ import { useT } from "../i18n/useT";
 import { Logo } from "../components/logo";
 import type { Settings, Currency, RateOverrides } from "../model/settings";
 
-/** The free-text (string) settings fields the form edits. */
-type TextKey = "name" | "phone" | "email" | "company" | "companyPhone" | "companyAddress";
-
 const CURRENCIES: Currency[] = ["UZS", "KZT", "USD"];
 
 /** The USD price list, grouped for the form (section key → the rate fields it holds). */
@@ -36,19 +33,6 @@ export function SettingsScreen() {
   const authUser = useStore((s) => s.authUser);
   // one field-in-progress so decimal typing (e.g. "7.") isn't clobbered by parse-on-change
   const [editing, setEditing] = useState<{ key: string; val: string } | null>(null);
-
-  const field = (key: TextKey, label: string, type = "text", placeholder = "") => (
-    <label className="set-field">
-      <span className="set-label">{label}</span>
-      <input
-        className="set-input"
-        value={settings[key]}
-        type={type}
-        placeholder={placeholder}
-        onChange={(e) => update({ [key]: e.target.value } as Partial<Settings>)}
-      />
-    </label>
-  );
 
   const symbolOf = (c: Currency) => (c === "USD" ? "$" : c === "KZT" ? "₸" : "сум");
   const currencyLabel = (c: Currency) => (c === "UZS" ? t.settings.uzs : c === "KZT" ? t.settings.kzt : t.settings.usd);
@@ -85,20 +69,6 @@ export function SettingsScreen() {
       <div className="qnum"><Logo height={22} /></div>
       <h1 className="h1">{t.settings.title}</h1>
       <p className="sub">{t.settings.sub}</p>
-
-      <div className="menu-sec-title">{t.settings.profile}</div>
-      <div className="set-group">
-        {field("name", t.settings.name, "text", t.settings.phName)}
-        {field("phone", t.settings.phone, "tel", t.settings.phPhone)}
-        {field("email", t.settings.email, "email", t.settings.phEmail)}
-      </div>
-
-      <div className="menu-sec-title">{t.settings.company}</div>
-      <div className="set-group">
-        {field("company", t.settings.companyName, "text", t.settings.phCompany)}
-        {field("companyPhone", t.settings.companyPhone, "tel", t.settings.phCompanyPhone)}
-        {field("companyAddress", t.settings.companyAddress, "text", t.settings.phAddress)}
-      </div>
 
       <div className="menu-sec-title">{t.settings.prefs}</div>
       <div className="set-group">

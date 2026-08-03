@@ -99,6 +99,10 @@ export interface Cabinet {
   handlePos?: HandlePos;
   /** Built-in appliance this module carries (sink/hob/fridge…), default none. */
   appliance?: ApplianceKind;
+  /** Height of appliance opening (mm, e.g. 580). Default 580. */
+  applianceH?: number;
+  /** Height of bottom edge of appliance above floor (mm, e.g. 850). Default 850. */
+  applianceY?: number;
   /** Integrated appliance behind a matching facade (vs a free-standing steel unit).
    *  Drives whether the fridge/oven renders as a panelled column or bare steel. */
   builtin?: boolean;
@@ -187,6 +191,18 @@ export interface Cabinet {
   backMount?: BackPanelMethod;
   /** Distance from rear edge to HDF groove in mm (default 10mm). */
   grooveSetback?: number;
+  /** Bottom board fit: `nakladnoe` = full-width (sits under the sides), `vkladnoe` = inset between
+   *  the sides. Absent → "nakladnoe". Read by hollowCarcass + the V21 studio. */
+  bottomMode?: "nakladnoe" | "vkladnoe";
+  /** Top of the carcass: `full` lid, `stretchers` (two 80mm rails), or `none`. Absent → "full". */
+  topMode?: "full" | "stretchers" | "none";
+  /** Base support: a `box` plinth, `sides` (the side panels run to the floor), or `legs`.
+   *  Absent → "box". Render-only for now (see the V21 construction editor). */
+  plinthMode?: "box" | "sides" | "legs";
+  /** HANDLELESS / GOLA — an aluminium profile replaces handles. Presence enables it; the object
+   *  tunes the profile geometry (absent fields use GOLA_DEFAULTS). The profiles, the front grip gaps
+   *  and the side-panel notches are all DERIVED from the layout by model/gola.ts. */
+  gola?: { depthMm?: number; heightMm?: number; gapMm?: number };
   /** Width of left scribe/filler panel (фальш-панель) in mm. */
   fillerLeft?: number;
   /** Width of right scribe/filler panel (фальш-панель) in mm. */

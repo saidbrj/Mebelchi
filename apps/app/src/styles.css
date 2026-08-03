@@ -574,10 +574,21 @@ body {
 
 .scene-canvas,
 .floor-plan {
+  position: relative;
   display: block;
   width: 100%;
   height: 100%;
   background: #f5f5f5;
+  touch-action: none;
+}
+
+.scene-dim-overlay {
+  position: absolute;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+  width: 100%;
+  height: 100%;
 }
 
 /* 3D constructor: the canvas + the move/rotate handle overlay share this box.
@@ -1975,6 +1986,19 @@ body {
 .cfg-bar-l {
   display: flex;
   align-items: center;
+  gap: 16px;
+}
+
+/* The trailing slot — Next on the canvas screens, the gear on «Раскладка», empty on the
+   document screens (their primary button is in the footer). The min-width matches the ☰+←
+   block so an empty or narrow slot still leaves the title looking centred; anything wider
+   (a Next button) simply overrides it. */
+.cfg-bar-r {
+  flex: 0 0 auto;
+  min-width: 62px;
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
   gap: 10px;
 }
 
@@ -1984,12 +2008,22 @@ body {
   flex: 0 0 auto;
 }
 
+/* «На главную» on Передача — an EXIT, not the step's action. The primary button on that screen
+   is still «Экспорт на ЧПУ» in the footer, so this one must not wear the accent fill and
+   compete with it. */
+.step-next.step-home {
+  background: none;
+  border: 1px solid var(--line);
+  color: var(--muted);
+  font-weight: 600;
+}
+
 .cfg-burger {
   display: flex;
   flex-direction: column;
   justify-content: center;
   gap: 6px;
-  width: 24px;
+  width: 34px;
   height: 24px;
   padding: 4px 1px;
   background: none;
@@ -2016,6 +2050,71 @@ body {
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+/* The title is a BUTTON now (tap → project details sheet), and unlike .cfg-title it is IN FLOW
+   rather than absolutely centred.
+   Dead-centring can't work here: a project name is arbitrarily long, so the only way to keep an
+   absolutely-positioned title clear of the Next button is a max-width sized to the widest button
+   label — which differs per screen AND per language ("Варианты →" / "Variantlar →"). Getting it
+   wrong overlaps the button. In flow it simply takes the space between the two, in any language;
+   the cost is that it centres within that gap rather than within the whole bar. */
+.cfg-title-btn {
+  position: static;
+  transform: none;
+  flex: 1 1 auto;
+  min-width: 0;
+  /* without this a long name refuses to shrink and pushes Next off the bar */
+  max-width: none;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  padding: 4px 2px;
+  /* a little slop so the tap target clears 30px without moving the text */
+  border: none;
+  background: none;
+  cursor: pointer;
+  margin-left: 20px;
+}
+
+.cfg-title-btn:active {
+  opacity: 0.6;
+}
+
+/* on its own it's the title (17px); with a price under it, it steps back and lets the number lead */
+.cfg-title-name {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 3px;
+  min-width: 0;
+  max-width: 100%;
+  font: 700 17px/1.15 var(--sans);
+  color: #000;
+}
+
+/* the ellipsis has to live on a plain text span — text-overflow does nothing on a flex
+   container, so putting it on .cfg-title-name (which holds the caret too) silently did nothing */
+.cfg-title-text {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cfg-title-btn:has(.cfg-price) .cfg-title-name {
+  font: 600 12px/1.15 var(--sans);
+  color: var(--muted);
+}
+
+/* the only hint that the title opens something — a full chevron button would shout */
+.cfg-title-caret {
+  flex: 0 0 auto;
+  font-size: 11px;
+  line-height: 1;
+  color: var(--muted);
+  transform: translateY(-1px);
 }
 
 .cfg-price {
@@ -2344,7 +2443,7 @@ body {
   font-weight: 700;
   padding: 1px 5px;
   border-radius: 6px;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.2);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.2);
   line-height: 1.2;
 }
 
@@ -2444,10 +2543,10 @@ body {
 
 .cab-filter {
   display: flex;
+  flex-wrap: wrap;
+  /* 6 categories: wrap onto a second row rather than scroll the last ones off-screen */
   gap: 8px;
-  overflow-x: auto;
   padding: 0 18px 12px;
-  -webkit-overflow-scrolling: touch;
 }
 
 .cab-fchip {
@@ -2946,13 +3045,6 @@ body {
 }
 
 /* «↻ Заново» — top-right of the options card, tucked left of the ✕ close */
-.var-opts-again {
-  position: absolute;
-  top: 12px;
-  right: 52px;
-  z-index: 1;
-}
-
 /* the quiz section renders full-height on its own screen; inside the sheet it's just content */
 .var-opts-card .quiz-all {
   min-height: 0;
@@ -3560,7 +3652,10 @@ body {
 
 .hc-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  /* minmax(0,1fr), NOT 1fr: a grid column's default min-width is auto, so any card content that
+     can't wrap (a status pill, a row of action buttons) pushes the column past half the screen
+     and the whole grid collapses to one very wide column with the page scrolling sideways. */
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 12px;
   padding-bottom: 10px;
 }
@@ -3605,7 +3700,6 @@ body {
   align-items: center;
   justify-content: center;
   background: #fff;
-  border: 1px solid var(--line);
 }
 
 .tab-ico svg {
@@ -3618,15 +3712,45 @@ body {
   text-transform: capitalize;
 }
 
-/* hub screens: clear the fixed tab bar; the sticky CTA sits directly above it */
-.body-tabbed {
-  padding-bottom: calc(100px + env(safe-area-inset-bottom));
+/* center CTA "+ Новый" tab button */
+.tab-item-new {
+  margin-top: -10px;
 }
 
-.body-tabbed .hc-bottom-cta,
-.body-tabbed .hc-bottom {
-  bottom: calc(96px + env(safe-area-inset-bottom));
-  padding-bottom: 12px;
+.tab-ico-new {
+  width: 54px;
+  height: 54px;
+  border-radius: 50%;
+  background: var(--accent);
+  border: none;
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(0, 172, 122, 0.4);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.tab-ico-new svg {
+  width: 26px;
+  height: 26px;
+}
+
+.tab-item-new:hover .tab-ico-new {
+  transform: scale(1.08);
+  box-shadow: 0 8px 20px rgba(0, 172, 122, 0.5);
+}
+
+.tab-item-new:active .tab-ico-new {
+  transform: scale(0.94);
+  box-shadow: 0 2px 8px rgba(0, 172, 122, 0.3);
+}
+
+.tab-lbl-new {
+  font-weight: 700;
+  color: var(--accent);
+}
+
+/* hub screens: clear the fixed tab bar */
+.body-tabbed {
+  padding-bottom: calc(90px + env(safe-area-inset-bottom));
 }
 
 /* home: "Recent" section head + "see all" link */
@@ -3655,10 +3779,43 @@ body {
   margin: 8px 0 10px;
 }
 
+/* deal-stage chips — five of them don't fit 393px, so the row scrolls sideways rather
+   than wrapping into a second line that pushes the cards below the fold */
+.proj-buckets {
+  display: flex;
+  gap: 8px;
+  margin-bottom: 10px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.proj-buckets::-webkit-scrollbar {
+  display: none;
+}
+
+.proj-buckets .hc-filter-pill {
+  flex: 0 0 auto;
+}
+
+/* Four sort pills no longer fit 393px — without this they squeeze and each label wraps onto
+   two lines. Same sideways-scroll treatment as the bucket chips above. */
 .proj-sort {
   display: flex;
   gap: 8px;
   margin-bottom: 12px;
+  overflow-x: auto;
+  scrollbar-width: none;
+  -webkit-overflow-scrolling: touch;
+}
+
+.proj-sort::-webkit-scrollbar {
+  display: none;
+}
+
+.proj-sort .hc-filter-pill {
+  flex: 0 0 auto;
+  white-space: nowrap;
 }
 
 .proj-dir {
@@ -3777,9 +3934,111 @@ body {
   white-space: nowrap;
 }
 
+.hc-card-client {
+  font: 500 12px/1.25 var(--sans);
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
 .hc-card-date {
   font: 400 12px/1 var(--sans);
   color: var(--muted);
+}
+
+/* ---- deal stage + value ---------------------------------------------------
+   Two cards side by side at 360px, so the foot has to survive ~155px of width:
+   the status pill may shrink and ellipsise, the sum never does — a truncated
+   price is worse than no price. */
+.hc-card-foot {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 0 10px 10px;
+}
+
+.hc-status {
+  min-width: 0;
+  padding: 4px 8px;
+  border-radius: 999px;
+  font: 600 11px/1.1 var(--sans);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* Muted tints, not a rainbow: a grid of cards should read as a list, with only the two
+   states that need a decision — «Смета отправлена» and «Отказ» — carrying real colour. */
+.hc-status--measure {
+  background: #eef1f4;
+  color: #55606b;
+}
+
+.hc-status--design {
+  background: #eaf0fb;
+  color: #37568f;
+}
+
+.hc-status--quoted {
+  background: #fdf0d9;
+  color: #8a5b12;
+}
+
+.hc-status--won {
+  background: #e4f4ec;
+  color: #1f6b47;
+}
+
+.hc-status--production {
+  background: #efeafa;
+  color: #533e8f;
+}
+
+.hc-status--installed {
+  background: #e9eeea;
+  color: #4a5b51;
+}
+
+.hc-status--lost {
+  background: #f6eaea;
+  color: #8a3a3a;
+}
+
+.hc-card-sum {
+  margin-left: auto;
+  flex: 0 0 auto;
+  font: 700 13px/1 var(--sans);
+  color: #000;
+}
+
+/* ---- call / Telegram / route ---- */
+.hc-quick {
+  display: flex;
+  gap: 6px;
+  padding: 0 10px 10px;
+}
+
+.hc-quick-btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 auto;
+  width: 34px;
+  height: 34px;
+  /* thumb target — this gets tapped in a stairwell */
+  padding: 0;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  color: var(--muted);
+  cursor: pointer;
+}
+
+.hc-quick-btn:active {
+  transform: scale(0.96);
+  border-color: var(--accent);
+  color: var(--accent);
 }
 
 /* 3-dot menu */
@@ -3916,6 +4175,25 @@ body {
   border-radius: 12px !important;
   padding: 12px 14px !important;
   font: 500 15px/1.3 var(--sans) !important;
+}
+
+.hc-rename-label {
+  font: 600 13px/1 var(--sans);
+  color: var(--muted);
+  margin-bottom: -6px;
+  /* the card's 14px gap is too airy between a label and its control */
+}
+
+/* the seven stages wrap — the sheet is a form, not a toolbar, so height is cheap here */
+.hc-status-pick {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+}
+
+.hc-status-pick .hc-filter-pill {
+  padding: 7px 12px;
+  font-size: 12px;
 }
 
 .hc-rename-actions {
@@ -4192,6 +4470,9 @@ body {
 }
 
 .menu-item {
+  display: flex;
+  align-items: center;
+  gap: 12px;
   padding: 14px 0;
   background: none;
   border: none;
@@ -4201,6 +4482,52 @@ body {
   color: #000;
   cursor: pointer;
   width: 100%;
+}
+
+/* the tab-bar glyphs, scaled down from their native 26px to sit beside 16px text */
+.menu-item-ic {
+  flex: 0 0 auto;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 22px;
+  height: 22px;
+  color: var(--muted);
+}
+
+.menu-item-ic svg {
+  width: 22px;
+  height: 22px;
+}
+
+.menu-item:active .menu-item-ic {
+  color: var(--accent);
+}
+
+/* Профиль, pushed to the foot of the drawer and fenced off from the navigation above it.
+   margin-top:auto does the pushing; the drawer is already a flex column. */
+.menu-foot {
+  margin-top: auto;
+  padding-top: 18px;
+}
+
+.menu-foot .menu-item {
+  border-top: 1px solid var(--line);
+  font-weight: 600;
+}
+
+/* the wordmark is a button now — strip the chrome, keep the layout */
+.menu-brand {
+  display: flex;
+  align-items: center;
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: pointer;
+}
+
+.menu-brand:active {
+  opacity: 0.6;
 }
 
 /* toast */
@@ -4309,7 +4636,6 @@ body {
   display: flex;
   flex-direction: column;
   height: 100%;
-  padding: 12px 16px calc(12px + env(safe-area-inset-bottom));
   gap: 10px;
   animation: fade 0.3s;
 }
@@ -4325,27 +4651,8 @@ body {
   padding-bottom: 6px;
 }
 
-/* «⚙ Параметры» is icon-only now — the same settings gear the home hub uses, in a bordered circle */
-.var-settings {
-  flex: 0 0 auto;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  width: 40px;
-  height: 40px;
-  border: 1px solid var(--line);
-  background: var(--bg);
-  color: #000;
-  border-radius: 50%;
-  cursor: pointer;
-}
-
-.var-settings:active {
-  transform: translateY(1px);
-}
-
-/* the price, centred just under the top bar (the bar's title shows the layout type; the strategy
-   name is the blurb under the stage) */
+/* layout type + price, centred just under the top bar (the bar shows the PROJECT name now; the
+   strategy name is the blurb under the stage) */
 .var-caption {
   display: flex;
   align-items: baseline;
@@ -4354,9 +4661,16 @@ body {
   margin-top: -2px;
 }
 
-.var-price {
+/* the layout type («П-образная» / «Угловая» / …) — it was the top bar's heading until the bar
+   became the project's; here it captions the kitchen on the stage instead */
+.var-kind {
   font: 700 15px/1 var(--sans);
   color: #000;
+}
+
+.var-price {
+  font: 700 15px/1 var(--sans);
+  color: var(--muted);
   white-space: nowrap;
 }
 
@@ -4367,6 +4681,7 @@ body {
   background: linear-gradient(#f4f2ec, #e9e6df);
   border-radius: 16px;
   overflow: hidden;
+  margin: 20px;
 }
 
 .var-hint {
@@ -4384,6 +4699,36 @@ body {
 
 /* «↻ Заново» — regenerate, floating on the scene (top-right). A white pill so it reads over the
    render; sits inside the stage the way the constructor's round tools do. */
+/* The questions that drive the generator — top-LEFT of the stage, opposite «↻ Заново». Solid
+   black against the light 3D so it reads as the primary control of the pair: «Заново» reshuffles
+   what you already asked for, this is where you change what you're asking for. */
+.var-gear {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  z-index: 2;
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  padding: 9px 14px 9px 11px;
+  border: none;
+  border-radius: 40px;
+  background: var(--ink);
+  box-shadow: 0 2px 10px rgba(0, 0, 0, 0.28);
+  color: #fff;
+  font: 600 13px/1 var(--sans);
+  cursor: pointer;
+}
+
+.var-gear svg {
+  width: 18px;
+  height: 18px;
+}
+
+.var-gear:active {
+  transform: translateY(1px);
+}
+
 .var-regen {
   position: absolute;
   top: 12px;
@@ -4454,6 +4799,7 @@ body {
   background: transparent;
   cursor: pointer;
   transition: 0.14s;
+  margin-bottom: 20px;
 }
 
 .var-scratch:hover {
@@ -4763,7 +5109,7 @@ body {
 }
 
 .cost-sec-title {
-  font: 700 15px/1.2 var(--sans);
+  font: 700 18px/1.2 var(--sans);
   color: #000;
   margin: 26px 0 10px;
 }
@@ -4989,6 +5335,38 @@ body {
 .ho-download:disabled {
   opacity: 0.45;
   cursor: not-allowed;
+}
+
+/* Раскрой mode switch — Ручная резка (пила) ↔ ЧПУ станок */
+.ho-cutmode {
+  display: flex;
+  gap: 4px;
+  margin-top: 12px;
+  padding: 4px;
+  background: var(--line2);
+  border-radius: 12px;
+}
+
+.ho-cutmode-tab {
+  flex: 1 1 0;
+  padding: 10px 8px;
+  border: none;
+  border-radius: 9px;
+  background: none;
+  color: var(--muted);
+  font: 600 13px/1 var(--sans);
+  cursor: pointer;
+  transition: background 0.12s, color 0.12s;
+}
+
+.ho-cutmode-tab.active {
+  background: var(--bg);
+  color: var(--accent);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.12);
+}
+
+.ho-cutmode-hint {
+  margin-top: 8px;
 }
 
 .ho-share {
@@ -5486,6 +5864,27 @@ body {
   color: var(--muted);
 }
 
+/* "Ждут ответа" — the same shape as the profile nudge, but amber to match the «Смета
+   отправлена» pill it filters to, so the banner and its destination read as one thing. */
+.home-attention {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  text-align: left;
+  padding: 13px 15px;
+  margin-top: 10px;
+  border-radius: 12px;
+  border: 1px solid #e3b96a;
+  background: #fdf7ec;
+  color: #000;
+  font: 600 14px/1.2 var(--sans);
+  cursor: pointer;
+}
+
+.home-attention:active {
+  transform: scale(0.99);
+}
+
 .home-recent-head {
   display: flex;
   align-items: baseline;
@@ -5677,6 +6076,7 @@ body {
 .set-hint {
   font: 400 12px/1.4 var(--sans);
   color: var(--muted);
+  padding: 0 14px;
 }
 
 /* a hint that sits directly in a .set-group (not inside a field) — pad it to align with rows */
@@ -5779,6 +6179,7 @@ body {
 
 .auth-screen {
   display: flex;
+  padding: 0;
 }
 
 .auth-box {
@@ -6055,6 +6456,279 @@ body {
   flex-direction: column;
   padding-top: env(safe-area-inset-top);
   animation: fill-in 0.2s ease-out;
+}
+
+/* EMBEDDED in the V21 studio viewport: fill the wrapper instead of covering the screen. */
+.fill-editor.embedded {
+  position: absolute;
+  inset: 0;
+  z-index: auto;
+  height: 100%;
+  width: 100%;
+  background: transparent;
+  padding-top: 0;
+  animation: none;
+}
+
+.fill-editor.embedded .fill-stage {
+  flex: 1 1 auto;
+  min-height: 0;
+}
+
+.fill-editor.embedded .fill-svg {
+  max-height: 100%;
+  padding: 10px 16px;
+}
+
+/* the studio viewport slot that hosts the editable 2D canvas */
+.studio-fillwrap {
+  position: absolute;
+  inset: 0;
+  background: #f8fafc;
+}
+
+/* a contextual delete that floats over the embedded canvas (top-right) when something's selected */
+.fill-del-float {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 12;
+  width: 40px;
+  height: 40px;
+  border-radius: 20px;
+  border: 1px solid #f0c9c9;
+  background: #fff;
+  color: #c0392b;
+  font-size: 17px;
+  font-weight: 700;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
+}
+
+/* vertical tool rail on the studio viewport (bottom-right), like the main construction scene */
+.studio-rail {
+  position: absolute;
+  right: 12px;
+  bottom: 12px;
+  z-index: 11;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  align-items: stretch;
+}
+
+.studio-rail-ur {
+  display: flex;
+  gap: 6px;
+  justify-content: center;
+  margin-bottom: 2px;
+}
+
+.studio-rail-ur button {
+  width: 34px;
+  height: 34px;
+  border-radius: 17px;
+  border: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.95);
+  color: #475569;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+}
+
+.studio-rail-ur button:disabled {
+  opacity: 0.4;
+  cursor: default;
+}
+
+.studio-tool {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 2px;
+  width: 66px;
+  padding: 8px 4px;
+  border-radius: 14px;
+  border: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  color: #475569;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+  transition: background 0.12s, color 0.12s, border-color 0.12s;
+}
+
+.studio-tool.sel {
+  background: #00ac7a;
+  border-color: #00ac7a;
+  color: #fff;
+}
+
+.studio-tool-ic {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.studio-tool-ic svg {
+  width: 24px;
+  height: 24px;
+}
+
+.studio-tool-lbl {
+  font: 600 10.5px/1.1 var(--sans);
+  text-align: center;
+}
+
+/* bottom-LEFT: vertical view switch (3D/2D/Сетка) + the «Глубина» button that slides a slider out */
+.studio-views {
+  position: absolute;
+  left: 12px;
+  bottom: 12px;
+  z-index: 13;
+  /* above the centred undo/redo so the depth slider stays usable if they overlap */
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+}
+
+.studio-viewcol {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 4px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+}
+
+.studio-viewcol svg {
+  width: 24px;
+  height: 24px;
+}
+
+/* the «Глубина» button — a SEPARATE pill below the view pill; opens the depth slider to its right */
+.studio-depth-pill {
+  width: 42px;
+  height: 42px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid #e2e8f0;
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.95);
+  backdrop-filter: blur(10px);
+  color: #475569;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+}
+
+.studio-depth-pill.on {
+  background: #00ac7a;
+  border-color: #00ac7a;
+  color: #fff;
+}
+
+.studio-depth-pill svg {
+  width: 24px;
+  height: 24px;
+}
+
+.studio-depth {
+  display: flex;
+  align-items: flex-end;
+  gap: 8px;
+}
+
+.studio-depth-btn {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 42px;
+  height: 42px;
+  padding: 0;
+  border-radius: 12px;
+  border: 1px solid #e2e8f0;
+  background: rgba(255, 255, 255, 0.95);
+  color: #475569;
+  cursor: pointer;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+}
+
+.studio-depth-btn.on {
+  background: #00ac7a;
+  border-color: #00ac7a;
+  color: #fff;
+}
+
+.studio-depth-btn svg {
+  width: 18px;
+  height: 18px;
+}
+
+.studio-depth-slider {
+  position: absolute;
+  left: 100%;
+  /* just to the right of the vertical pill */
+  bottom: 0;
+  margin-left: 8px;
+  background: rgba(255, 255, 255, 0.97);
+  border: 1px solid #e2e8f0;
+  border-radius: 12px;
+  padding: 4px 12px;
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+}
+
+/* bottom-CENTER: undo/redo (mirrors the main construction scene) + a delete above it when selected */
+.studio-undoredo {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 12px;
+  z-index: 11;
+  display: flex;
+  gap: 20px;
+  align-items: center;
+  padding: 8px 14px;
+  border: 1px solid #e2e8f0;
+  border-radius: 30px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 3px 10px rgba(0, 0, 0, 0.08);
+}
+
+.studio-undoredo button {
+  background: none;
+  border: none;
+  padding: 0;
+  cursor: pointer;
+  display: flex;
+  color: #334155;
+}
+
+.studio-undoredo button:disabled {
+  opacity: 0.3;
+  cursor: default;
+}
+
+.studio-del {
+  position: absolute;
+  left: 50%;
+  transform: translateX(-50%);
+  bottom: 58px;
+  z-index: 12;
+  border: 1px solid #f0c9c9;
+  background: #fff;
+  color: #c0392b;
+  font: 700 12px/1 var(--sans);
+  padding: 8px 14px;
+  border-radius: 999px;
+  cursor: pointer;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, 0.1);
 }
 
 @keyframes fill-in {
@@ -6673,9 +7347,11 @@ body {
   background: #e8f0fe;
   border-color: #c2d7f7;
 }
+
 .swap-more:active {
   background: #d0e3fc;
 }
+
 .swap-more-icon {
   font-size: 22px;
   line-height: 46px;
@@ -6812,7 +7488,7 @@ body {
 
 .left-stack.raised,
 .item-stack.raised {
-  bottom: 40vh;
+  bottom: 44vh;
   z-index: 30;
 }
 
@@ -6913,59 +7589,15 @@ body {
   stroke-width: 1.5;
 }
 
-/* the fold-away control panel */
-.rnd-fab {
-  position: absolute;
-  top: 12px;
-  z-index: 6;
-  width: 44px;
-  height: 44px;
-  border-radius: 50%;
-  border: 1px solid var(--line);
-  background: #fff;
-  font-size: 19px;
-  line-height: 1;
-  box-shadow: 0 2px 10px #0000001f;
-}
-
-.rnd-fab-l {
-  left: 12px;
-}
-
-.rnd-fab.on {
-  background: var(--ink);
-  color: #fff;
-  border-color: var(--ink);
-}
-
-/* the AI pass — top right, where a "do the clever thing" button belongs. Disabled until the key can
-   live server-side, so it is a promise with a badge on it rather than a dead button. */
-.rnd-ai-fab {
-  position: absolute;
-  top: 12px;
-  right: 12px;
-  z-index: 6;
-  display: flex;
-  align-items: center;
-  gap: 6px;
-  padding: 10px 12px;
-  border-radius: 22px;
-  border: 1px solid var(--line);
-  background: #fff;
-  font: 600 13px/1 var(--sans);
-  color: var(--muted);
-  box-shadow: 0 2px 10px #0000001f;
-}
-
-.rnd-ai-fab .soon-tag {
-  margin-left: 0;
-}
-
+/* Opens UPWARD from the bottom edge now: its toggle moved out of the scene's top-left corner
+   and down into the action bar, and a panel has to grow from the control that opened it. */
 .rnd-panel {
   position: absolute;
-  top: 64px;
+  bottom: 12px;
   z-index: 6;
   width: 210px;
+  max-height: calc(100% - 24px);
+  overflow-y: auto;
   padding: 12px 14px 14px;
   border-radius: 16px;
   background: #fff;
@@ -7111,17 +7743,37 @@ body {
   pointer-events: none;
 }
 
-.lb-save {
+/* Save + Share, side by side at the foot of the viewer. The pair is centred as a group — the
+   buttons were absolutely centred individually before there was more than one. */
+.lb-actions {
   position: absolute;
   z-index: 2;
   bottom: calc(26px + env(safe-area-inset-bottom));
   left: 50%;
   transform: translateX(-50%);
-  padding: 13px 26px;
+  display: flex;
+  gap: 10px;
+}
+
+.lb-save,
+.lb-share {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  padding: 13px 22px;
   border-radius: 24px;
+  border: none;
   background: #fff;
   color: var(--ink);
   font: 600 15px/1 var(--sans);
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.lb-save:active,
+.lb-share:active {
+  transform: translateY(1px);
 }
 
 /* «Закрыть все» — the escape hatch once you have opened a few doors by tapping them */
@@ -7145,7 +7797,6 @@ body {
   flex: 0 0 auto;
   background: #fff;
   border-top: 1px solid var(--line);
-  padding: 10px 12px calc(10px + env(safe-area-inset-bottom));
 }
 
 .rnd-strip {
@@ -7182,48 +7833,120 @@ body {
   display: block;
 }
 
-.rnd-actions {
+/* THE ACTION BAR — laid out like the hub's tab bar (icon over label, raised green primary in the
+   middle). Five buttons of mixed widths across two rows read as clutter; equal columns read as a
+   toolbar, and it's a shape the seller already knows from the home screen. Not `position: fixed`
+   like .tabbar — this one sits in the Рендер screen's own flex column. */
+.rnd-tabbar {
   display: flex;
-  gap: 8px;
+  background: #f5f5f5;
+  border-radius: 22px 22px 0 0;
+  margin: 0 -12px calc(-10px - env(safe-area-inset-bottom));
+  padding: 14px;
 }
 
-.rnd-actions button {
+.rnd-tab {
   flex: 1 1 0;
   min-width: 0;
-  padding: 13px 8px;
-  border-radius: 12px;
-  font: 600 14px/1 var(--sans);
-  white-space: nowrap;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 2px 12px;
+  background: none;
+  border: none;
+  color: #000;
+  cursor: pointer;
+  transition: color 0.12s;
 }
 
-.rnd-snap {
+.rnd-tab-ico {
+  width: 42px;
+  height: 42px;
+  border-radius: 40px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: #fff;
+}
+
+.rnd-tab-ico svg {
+  width: 22px;
+  height: 22px;
+}
+
+.rnd-tab-lbl {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font: 500 10px/12px var(--sans);
+  text-transform: capitalize;
+}
+
+/* the light panel is open — the same "current tab" treatment the hub uses */
+.rnd-tab.on {
+  color: var(--accent);
+}
+
+.rnd-tab.on .rnd-tab-ico {
   background: var(--ink);
   color: #fff;
 }
 
-.rnd-save {
-  background: #fff;
-  color: var(--ink);
-  border: 1px solid var(--line);
+.rnd-tab:disabled {
+  color: #bdbdbd;
+  cursor: default;
 }
 
-.rnd-save:disabled {
-  color: #c4c4c4;
-  border-color: var(--line2);
+.rnd-tab:disabled .rnd-tab-ico {
+  color: #c9c9c9;
 }
 
-.rnd-ai {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 6px;
-  background: #f4f2ee;
+/* «Снимок» — the reason this screen exists, so it gets the centre and the green disc */
+.rnd-tab-snap {
+  margin-top: -10px;
+}
+
+.rnd-tab-ico-snap {
+  width: 54px;
+  height: 54px;
+  background: var(--accent);
+  color: #fff;
+  box-shadow: 0 6px 16px rgba(0, 172, 122, 0.4);
+  transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.rnd-tab-ico-snap svg {
+  width: 26px;
+  height: 26px;
+}
+
+.rnd-tab-snap:active .rnd-tab-ico-snap {
+  transform: scale(0.94);
+  box-shadow: 0 2px 8px rgba(0, 172, 122, 0.3);
+}
+
+/* «Скоро» pins to the icon's corner instead of taking a third line. As a flow child it made the
+   AI column taller than the other four and pushed the whole bar down; a badge belongs ON the
+   thing it qualifies anyway. */
+.rnd-tab-ai {
+  position: relative;
   color: var(--muted);
-  border: 1px solid var(--line2);
 }
 
-.rnd-ai .soon-tag {
-  margin-left: 0;
+.rnd-tab-soon {
+  position: absolute;
+  top: 2px;
+  left: 50%;
+  transform: translateX(2px);
+  font: 600 8px/1 var(--mono);
+  letter-spacing: 0.04em;
+  color: #9b9b9b;
+  background: #fff;
+  border: 1px solid #e0e0e0;
+  border-radius: 20px;
+  padding: 3px 5px;
 }
 
 /* ── Фаза Г · Корпуса ── the merged-carcass elevation.

@@ -181,13 +181,15 @@ function withRowCols(g: WallGrid, j: number, cols: GridCol[] | null): WallGrid |
 /** Drag the border to the right of column `i` in row `j`. The band's total length never changes. */
 export function resizeColBorder(g: WallGrid, j: number, i: number, delta: number): WallGrid | null {
   const row = g.rows[j];
-  if (!row || row.cols[i]?.lock) return null;
+  if (!row) return null;
+  const isLocked = (col: GridCol) => col.dead || (col.lock && !col.tall);
+  if (isLocked(row.cols[i])) return null;
   const next = dragBorder(
     row.cols.map((c) => c.w),
     i,
     delta,
-    (k) => (row.cols[k].lock ? row.cols[k].w : COL_MIN),
-    (k) => (row.cols[k].lock ? row.cols[k].w : COL_MAX),
+    (k) => (isLocked(row.cols[k]) ? row.cols[k].w : COL_MIN),
+    (k) => (isLocked(row.cols[k]) ? row.cols[k].w : COL_MAX),
   );
   if (!next) return null;
   return withRowCols(g, j, row.cols.map((c, k) => (c.w === next[k] ? c : { ...c, w: next[k] })));
@@ -846,10 +848,10 @@ export function applyGrid(cabs: Cabinet[], grid: WallGrid): Cabinet[] | null {
     const w = xs[i1] - xs[i];
     const y0 = ys[j];
     const y1 = ys[j + 1];
-    const depth = row.depth;
 
     const onFloor = row.kind === "floor";
     const kind: Cabinet["kind"] = onFloor ? (c.kind === "tall" ? "tall" : "base") : "upper";
+    const depth = kind === "upper" ? row.depth : (c.depth ?? row.depth);
 
     const patch: Partial<Cabinet> =
       kind === "base"

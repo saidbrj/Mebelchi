@@ -5,7 +5,7 @@
 // a drawer). A selected door/drawer shows Opening + Handle options up top; a selected item
 // shows a delete button. 3D/2D toggle (left) + undo/redo (right). Writes the cab's `layout`.
 
-import { useRef, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useT } from "../i18n/useT";
 import { cabinetLayout, cellSizes, isLeaf, type Cabinet, type Cell, type CombinedDoor, type DoorOpening, type HandlePos } from "../model/cabinet";
 import { maxCabH, MIN_H } from "../model/bands";
@@ -29,9 +29,21 @@ interface Props {
   /** room height (mm) — caps how tall the module can be dragged */
   ceiling: number;
   onClose: () => void;
+  /** EMBEDDED in the V21 studio: drop the full-screen chrome (fixed overlay, header, internal
+   *  3D/2D toggle) and just render the tool canvas — the studio owns the header + shows the live
+   *  3D above. Edits still write cab.layout, so that 3D updates on every change. */
+  embedded?: boolean;
+  /** CONTROLLED tool — when the studio's viewport rail owns which tool is active, it passes it here
+   *  (and `onToolChange` to receive taps). Absent → the editor keeps its own tool state + toolbar. */
+  tool?: Tool;
+  onToolChange?: (t: Tool) => void;
+  /** embedded: report whether a divider/cell/front is selected, so the host can show its own delete
+   *  button, and expose the delete action through `deleteRef` for that button to call. */
+  onSelChange?: (hasSel: boolean) => void;
+  deleteRef?: { current: (() => void) | null };
 }
 
-type Tool = "draw" | "move" | "door" | "drawer";
+export type Tool = "draw" | "move" | "door" | "drawer";
 const T = 18, PAD = 110, EDGE_STEP = 10, MIN_CELL = 0.12;
 const LINE = "#c7b593", ACCENT = "#00a961", DOORBG = "#e7ddc9", DRAWBG = "#e4d7bb", OPENBG = "#f6f2e8", HANDLE = "#9a8b6e";
 
@@ -131,21 +143,26 @@ function Dropdown({ label, value, options, optLabel, onPick }: { label: string; 
   );
 }
 
-export function FillEditor({ cab, index, name, style, patchCab, patchCabLive, beginEdit, undo, redo, canUndo, canRedo, ceiling, onClose }: Props) {
+export function FillEditor({ cab, index, name, style, patchCab, patchCabLive, beginEdit, undo, redo, canUndo, canRedo, ceiling, onClose, embedded, tool: ctrlTool, onToolChange, onSelChange, deleteRef }: Props) {
   const t = useT();
   const [view3d, setView3d] = useState(false);
-  const [tool, setTool] = useState<Tool>("draw");
+  const show3d = view3d && !embedded; // the studio shows its own live 3D above — force the 2D canvas here
+  // the active tool can be OWNED by the studio (its viewport rail drives it) or, standalone, by us.
+  const [toolInner, setToolInner] = useState<Tool>("draw");
+  const tool = ctrlTool ?? toolInner;
   const [sel, setSel] = useState<Sel>(null);
   const [preview, setPreview] = useState<React.ReactNode>(null);
   const [orgOpen, setOrgOpen] = useState(false);
   const [tip, setTip] = useState<string | null>(null);
   const tipTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const pickTool = (k: Tool) => {
-    setTool(k); setSel(null);
+    (onToolChange ?? setToolInner)(k); setSel(null);
     setTip((t.fe.tip as Record<string, string>)[k]);
     if (tipTimer.current) clearTimeout(tipTimer.current);
     tipTimer.current = setTimeout(() => setTip(null), 3500);
   };
+  // when the studio switches the tool, drop any stale selection so the new tool starts clean
+  useEffect(() => { if (ctrlTool !== undefined) setSel(null); }, [ctrlTool]);
   const svgRef = useRef<SVGSVGElement>(null);
   const dragRef = useRef<Drag | null>(null);
 
@@ -325,6 +342,12 @@ export function FillEditor({ cab, index, name, style, patchCab, patchCabLive, be
     else commit(deleteAt(root, sel.path));
     setSel(null);
   };
+  // let an embedded host (the studio) render its own delete button: expose the action + report state
+  if (deleteRef) deleteRef.current = del;
+  useEffect(() => {
+    onSelChange?.(!!sel);
+    return () => onSelChange?.(false);
+  }, [sel]); // eslint-disable-line react-hooks/exhaustive-deps
   const setOpt = (patch: { opening?: DoorOpening; handle?: HandlePos }) => {
     if (sel?.kind === "cell") commit(replaceCell(root, sel.path, (c) => ({ ...c, ...patch })));
     else if (sel?.kind === "cdoor") patchCab(index, { combinedDoors: cds.map((cd, k) => (k === sel.idx ? { ...cd, ...patch } : cd)) });
@@ -350,12 +373,14 @@ export function FillEditor({ cab, index, name, style, patchCab, patchCabLive, be
   const drawerDepth = Math.round(cab.depth ?? (cab.kind === "upper" ? 350 : 560));
 
   return (
-    <div className="fill-editor">
-      <div className="fill-head">
-        <span className="fill-title">{name}</span>
-        <span className="fill-sub">{t.fe.fillTitle} · {Math.round(W / 10)}×{Math.round(H / 10)} cm</span>
-        <button className="fill-done" onClick={onClose} type="button">{t.fe.done}</button>
-      </div>
+    <div className={embedded ? "fill-editor embedded" : "fill-editor"}>
+      {!embedded && (
+        <div className="fill-head">
+          <span className="fill-title">{name}</span>
+          <span className="fill-sub">{t.fe.fillTitle} · {Math.round(W / 10)}×{Math.round(H / 10)} cm</span>
+          <button className="fill-done" onClick={onClose} type="button">{t.fe.done}</button>
+        </div>
+      )}
 
       {/* door / drawer option bar (a combined door has door options too) */}
       {(doorSel || drawerSel || selCd) && (
@@ -382,7 +407,7 @@ export function FillEditor({ cab, index, name, style, patchCab, patchCabLive, be
       )}
 
       <div className="fill-stage">
-        {view3d ? (
+        {show3d ? (
           <CabinetPreview3D cab={cab} style={style} />
         ) : (
           <svg ref={svgRef} className="fill-svg" viewBox={`0 0 ${vbW} ${vbH}`} xmlns="http://www.w3.org/2000/svg">
@@ -444,20 +469,24 @@ export function FillEditor({ cab, index, name, style, patchCab, patchCabLive, be
         )}
       </div>
 
-      {/* 3D/2D (left) · delete (centre, when selected) · undo/redo (right) */}
-      <div className="fill-bar">
-        <div className="fill-vtog2">
-          <button className={view3d ? "sel" : ""} onClick={() => setView3d(true)} type="button">3D</button>
-          <button className={!view3d ? "sel" : ""} onClick={() => setView3d(false)} type="button">2D</button>
+      {/* embedded: no chrome here — the studio's viewport owns the tools, undo/redo, delete and the
+          3D/2D/Сетка toggle. standalone: the full control bar. */}
+      {embedded ? null : (
+        <div className="fill-bar">
+          <div className="fill-vtog2">
+            <button className={view3d ? "sel" : ""} onClick={() => setView3d(true)} type="button">3D</button>
+            <button className={!view3d ? "sel" : ""} onClick={() => setView3d(false)} type="button">2D</button>
+          </div>
+          <button className="fill-del2" onClick={del} type="button" aria-label="delete" style={{ visibility: sel ? "visible" : "hidden" }}>✕</button>
+          <div className="fill-ur">
+            <button onClick={undo} disabled={!canUndo} type="button" aria-label={t.config.undo}><IconUndo /></button>
+            <button onClick={redo} disabled={!canRedo} type="button" aria-label={t.config.redo}><IconRedo /></button>
+          </div>
         </div>
-        <button className="fill-del2" onClick={del} type="button" aria-label="delete" style={{ visibility: sel ? "visible" : "hidden" }}>✕</button>
-        <div className="fill-ur">
-          <button onClick={undo} disabled={!canUndo} type="button" aria-label={t.config.undo}><IconUndo /></button>
-          <button onClick={redo} disabled={!canRedo} type="button" aria-label={t.config.redo}><IconRedo /></button>
-        </div>
-      </div>
+      )}
 
-      {/* 4-tool toolbar (tapping a tool flashes a 3.5s how-to tip) */}
+      {/* 4-tool toolbar (tapping a tool flashes a 3.5s how-to tip) — standalone only */}
+      {!embedded && (
       <div className="fill-toolbar">
         {tip && <div className="fe-tip">{tip}</div>}
         {([["draw", D_DRAW, t.fe.drawLines], ["move", D_MOVE, t.fe.moveResize], ["door", D_DOOR, t.fe.addDoors], ["drawer", D_DRAWER, t.fe.addDrawers]] as [Tool, string, string][]).map(([k, d, lbl]) => (
@@ -467,6 +496,22 @@ export function FillEditor({ cab, index, name, style, patchCab, patchCabLive, be
           </button>
         ))}
       </div>
+      )}
     </div>
   );
+}
+
+/** The four interior tools, exported so the studio's viewport rail can render them (icon + label)
+ *  and drive the controlled FillEditor. Keep in sync with the toolbar above. */
+export const FILL_TOOLS: { key: Tool; d: string; labelKey: "drawLines" | "moveResize" | "addDoors" | "addDrawers" }[] = [
+  { key: "draw", d: D_DRAW, labelKey: "drawLines" },
+  { key: "move", d: D_MOVE, labelKey: "moveResize" },
+  { key: "door", d: D_DOOR, labelKey: "addDoors" },
+  { key: "drawer", d: D_DRAWER, labelKey: "addDrawers" },
+];
+
+/** The tool icon glyph (shared with the studio rail). */
+export function ToolIcon({ tool }: { tool: Tool }) {
+  const d = FILL_TOOLS.find((x) => x.key === tool)?.d ?? "";
+  return <Ico d={d} />;
 }

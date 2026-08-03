@@ -2,10 +2,10 @@
 // render-on-demand, OrbitControls, explicit dispose). Wood floor + light walls,
 // with WALL CULLING — walls between the camera and the interior are hidden so you
 // can see inside; they reappear as the camera orbits past them.
-import { useEffect, useRef } from "react";
+import { useEffect, useRef, useState, useCallback } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { polygonBoundsMm, offsetPolygon, defaultOpeningSill, openingFinish, type Pt, type Opening, type Fitting } from "../model/room";
+import { polygonBoundsMm, offsetPolygon, defaultOpeningSill, defaultOpeningHeight, openingSpan, wallSegments, openingFinish, type Pt, type Opening, type Fitting } from "../model/room";
 import { leafRects, coveringColor, defaultSurface, type Surface } from "../model/walls";
 import { PBR, applyPbrFloor, onTexturesReady, texturedMaterial } from "./pbr";
 import { buildRig } from "./lighting";
@@ -26,6 +26,17 @@ function darken(hex: string, f: number, a = 1): string {
   const g = Math.round(parseInt(h.slice(2, 4), 16) * f);
   const b = Math.round(parseInt(h.slice(4, 6), 16) * f);
   return `rgba(${r},${g},${b},${a})`;
+}
+
+function segAngle(x0: number, y0: number, x1: number, y1: number): number {
+  let a = (Math.atan2(y1 - y0, x1 - x0) * 180) / Math.PI;
+  if (a > 90) a -= 180;
+  if (a < -90) a += 180;
+  return a;
+}
+
+function arrowScale(spanPx: number): number {
+  return Math.max(0.45, Math.min(1.15, spanPx / 170));
 }
 
 export function makeWoodTexture(base: string): THREE.Texture {
@@ -547,7 +558,58 @@ export function makeRoom(
 interface Api {
   setView: (v: SceneView) => void;
   rebuild: (points: Pt[], ceilingMm: number, openings: Opening[], color: string, floor: string | undefined, interior: Pt[][], fittings: Fitting[], wallSurfaces: Record<number, Surface>, selected: number | null, selectedFit: string | null, selectedOpen: string | null, floorSel: boolean) => void;
+  /** room-mm point under a screen pointer, on the floor plane (null if the ray misses it). Lets the
+   *  resizer drag a corner/wall 1:1 with the finger instead of guessing from a screen-space delta. */
+  floorMm: (clientX: number, clientY: number) => { x: number; y: number } | null;
+  /** freeze the room's auto-centring during a drag. Without it, moving a corner shifts the polygon's
+   *  bounds centre, the whole room re-centres in view and slides out from under the grab — which is
+   *  what made resizing feel like it moved the wrong thing. */
+  lockCenter: (on: boolean) => void;
+  /** zoom the scene by a wheel delta — lets a pinch that lands on the measurement overlay zoom the 3D
+   *  (like pinching bare canvas would) instead of doing nothing, now that page-zoom is blocked. */
+  zoomBy: (deltaY: number, clientX: number, clientY: number) => void;
+  /** the WALL point under a pointer: room-mm floor x/y + world-height (mm). Drives the opening gizmo's
+   *  move/resize handles the way `floorMm` drives the room resizer. Null if the ray misses a wall. */
+  wallHit: (clientX: number, clientY: number) => { x: number; y: number; height: number } | null;
+  /** the point under a pointer on the VERTICAL PLANE through wall segment a→b — used by the opening
+   *  gizmo so a drag reads the opening's own wall, not the glass/door-leaf/far wall a mesh ray would
+   *  pass through. Returns room-mm floor x/y + world-height (mm). */
+  wallPlaneHit: (clientX: number, clientY: number, ax: number, ay: number, bx: number, by: number) => { x: number; y: number; height: number } | null;
   dispose: () => void;
+}
+
+interface ProjectedDim {
+  id: string;
+  wallIndex: number;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  length: number;
+  label: string;
+  type: "wall" | "height";
+}
+
+/** The selected door/window's transform gizmo, projected to screen: the four face corners + centre,
+ *  plus its live dimensions for the labels. Screen px unless noted. */
+interface ItemGizmo {
+  id: string;
+  bl: { x: number; y: number };
+  br: { x: number; y: number };
+  tl: { x: number; y: number };
+  tr: { x: number; y: number };
+  cx: number;
+  cy: number;
+  width: number; // mm
+  height: number; // mm
+  isDoor: boolean; // a door sits on the floor → no bottom (sill) handle
+  // POSITION dims: where it sits — gap to the left/right wall ends, and the sill above the floor
+  wallA: { x: number; y: number }; // left wall corner, at sill height (screen)
+  wallB: { x: number; y: number }; // right wall corner, at sill height
+  blFloor: { x: number; y: number }; // the left jamb dropped to the floor (screen)
+  leftGap: number; // mm
+  rightGap: number; // mm
+  sill: number; // mm
 }
 
 export function ThreeScene({
@@ -569,6 +631,16 @@ export function ThreeScene({
   onFittingDrag,
   onOpeningClick,
   onFloorClick,
+  onSetWallLength,
+  onSetCeilingValue,
+  onEditNumber,
+  onMoveCorner,
+  onMoveWall,
+  onBeginEdit,
+  onOpeningDrag,
+  onSetOpeningWidth,
+  onSetOpeningHeight,
+  onSetOpeningSill,
 }: {
   points: Pt[];
   ceiling: number;
@@ -588,11 +660,164 @@ export function ThreeScene({
   onFittingDrag: (id: string, x: number, y: number, heightMm: number) => void;
   onOpeningClick: (id: string) => void;
   onFloorClick: () => void;
+  onSetWallLength?: (i: number, len: number, endpoint: "a" | "b") => void;
+  onSetCeilingValue?: (val: number) => void;
+  onEditNumber?: (x: number, y: number, value: number, apply: (v: number) => void) => void;
+  /** drag a corner (point `i`) to an exact room-mm position — the two walls sharing it follow */
+  onMoveCorner?: (i: number, x: number, y: number) => void;
+  /** slide a whole wall (both endpoints of wall `i`) — used when the wall LINE is dragged */
+  onMoveWall?: (i: number, a: Pt, b: Pt) => void;
+  /** snapshot for undo before a drag gesture starts */
+  onBeginEdit?: () => void;
+  /** drag a door/window/opening to a room-mm point — it hops to the nearest wall there (like fittings) */
+  onOpeningDrag?: (id: string, x: number, y: number) => void;
+  /** resize handles on the opening gizmo */
+  onSetOpeningWidth?: (id: string, width: number) => void;
+  onSetOpeningHeight?: (id: string, height: number) => void;
+  onSetOpeningSill?: (id: string, sill: number) => void;
 }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<Api | null>(null);
-  const cbRef = useRef({ onWallClick, onFittingClick, onFittingDrag, onOpeningClick, onFloorClick });
-  cbRef.current = { onWallClick, onFittingClick, onFittingDrag, onOpeningClick, onFloorClick };
+  const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
+  const controlsRef = useRef<OrbitControls | null>(null);
+  const cbRef = useRef({ onWallClick, onFittingClick, onFittingDrag, onOpeningClick, onFloorClick, onSetWallLength, onSetCeilingValue, onMoveCorner, onMoveWall, onBeginEdit, onOpeningDrag, onSetOpeningWidth, onSetOpeningHeight, onSetOpeningSill });
+  cbRef.current = { onWallClick, onFittingClick, onFittingDrag, onOpeningClick, onFloorClick, onSetWallLength, onSetCeilingValue, onMoveCorner, onMoveWall, onBeginEdit, onOpeningDrag, onSetOpeningWidth, onSetOpeningHeight, onSetOpeningSill };
+
+  // latest inputs, read by the (stable) projection so it never draws the overlay off STALE points, and
+  // the room CENTRE it is projected against — the same one `rebuild` last used (frozen during a drag).
+  const pointsRef = useRef(points);
+  pointsRef.current = points;
+  const ceilingRef = useRef(ceiling);
+  ceilingRef.current = ceiling;
+  const selWallRef = useRef(selectedWall3D);
+  selWallRef.current = selectedWall3D;
+  const centerRef = useRef({ cx: 0, cy: 0 });
+  // the selected door/window's gizmo reads these live
+  const openingsRef = useRef(openings);
+  openingsRef.current = openings;
+  const interiorWallsRef = useRef(interiorWalls);
+  interiorWallsRef.current = interiorWalls;
+  const selOpenRef = useRef(selectedOpen3D);
+  selOpenRef.current = selectedOpen3D;
+
+  const [dims, setDims] = useState<ProjectedDim[]>([]);
+  const [gizmo, setGizmo] = useState<ItemGizmo | null>(null);
+
+  const updateDims = useCallback(() => {
+    const mount = mountRef.current;
+    const camera = cameraRef.current;
+    const points = pointsRef.current;
+    const ceiling = ceilingRef.current;
+    if (!mount || !camera || !points.length) return;
+    const width = mount.clientWidth || 320;
+    const height = mount.clientHeight || 480;
+    // project against the SAME centre the room was last built with (frozen mid-drag) so the overlay
+    // sits exactly on the walls instead of drifting as the polygon's bounds shift.
+    const cx = centerRef.current.cx;
+    const cy = centerRef.current.cy;
+
+    const result: ProjectedDim[] = [];
+    const n = points.length;
+
+    for (let i = 0; i < n; i++) {
+      const pA = points[i];
+      const pB = points[(i + 1) % n];
+      const len = Math.round(Math.hypot(pB.x - pA.x, pB.y - pA.y));
+      if (len < 400) continue;
+
+      const vecA = new THREE.Vector3((pA.x - cx) / 1000, 0.08, (pA.y - cy) / 1000);
+      const vecB = new THREE.Vector3((pB.x - cx) / 1000, 0.08, (pB.y - cy) / 1000);
+
+      vecA.project(camera);
+      vecB.project(camera);
+
+      if (vecA.z < 1.0 && vecB.z < 1.0) {
+        const x1 = (vecA.x * 0.5 + 0.5) * width;
+        const y1 = (-vecA.y * 0.5 + 0.5) * height;
+        const x2 = (vecB.x * 0.5 + 0.5) * width;
+        const y2 = (-vecB.y * 0.5 + 0.5) * height;
+        const lineLen = Math.hypot(x2 - x1, y2 - y1);
+
+        if (lineLen > 30) {
+          result.push({
+            id: `wall-${i}`,
+            wallIndex: i,
+            x1, y1, x2, y2,
+            length: len,
+            label: `${len} мм`,
+            type: "wall",
+          });
+        }
+      }
+    }
+
+    if (points.length > 0) {
+      const p0 = points[0];
+      const vBtm = new THREE.Vector3((p0.x - cx) / 1000, 0.05, (p0.y - cy) / 1000);
+      const vTop = new THREE.Vector3((p0.x - cx) / 1000, ceiling / 1000, (p0.y - cy) / 1000);
+
+      vBtm.project(camera);
+      vTop.project(camera);
+
+      if (vBtm.z < 1.0 && vTop.z < 1.0) {
+        const x1 = (vBtm.x * 0.5 + 0.5) * width;
+        const y1 = (-vBtm.y * 0.5 + 0.5) * height;
+        const x2 = (vTop.x * 0.5 + 0.5) * width;
+        const y2 = (-vTop.y * 0.5 + 0.5) * height;
+        const lineLen = Math.hypot(x2 - x1, y2 - y1);
+
+        if (lineLen > 30) {
+          result.push({
+            id: "ceiling-h",
+            wallIndex: -1,
+            x1, y1, x2, y2,
+            length: ceiling,
+            label: `${ceiling} мм`,
+            type: "height",
+          });
+        }
+      }
+    }
+
+    setDims(result);
+
+    // ── the selected door/window's transform gizmo: its face corners + centre, projected to screen ──
+    let g: ItemGizmo | null = null;
+    const selId = selOpenRef.current;
+    if (selId) {
+      const o = openingsRef.current.find((x) => x.id === selId);
+      const seg = o ? wallSegments(points, interiorWallsRef.current)[o.wall] : null;
+      if (o && seg) {
+        const sp = openingSpan(seg.a, seg.b, o.t, o.width);
+        const sill = o.sill ?? defaultOpeningSill(o.kind, o.design);
+        const h = o.height ?? defaultOpeningHeight(o.kind);
+        const proj = (fx: number, fy: number, hy: number) => {
+          const v = new THREE.Vector3((fx - cx) / 1000, hy / 1000, (fy - cy) / 1000);
+          v.project(camera);
+          return { x: (v.x * 0.5 + 0.5) * width, y: (-v.y * 0.5 + 0.5) * height, z: v.z };
+        };
+        const bl = proj(sp.p1.x, sp.p1.y, sill);
+        const br = proj(sp.p2.x, sp.p2.y, sill);
+        const tl = proj(sp.p1.x, sp.p1.y, sill + h);
+        const tr = proj(sp.p2.x, sp.p2.y, sill + h);
+        const ctr = proj(sp.cx, sp.cy, sill + h / 2);
+        const wallA = proj(seg.a.x, seg.a.y, sill);
+        const wallB = proj(seg.b.x, seg.b.y, sill);
+        const blFloor = proj(sp.p1.x, sp.p1.y, 0);
+        if (bl.z < 1 && br.z < 1 && tl.z < 1 && tr.z < 1) {
+          g = {
+            id: o.id, bl, br, tl, tr, cx: ctr.x, cy: ctr.y, width: o.width, height: h, isDoor: o.kind !== "window",
+            wallA, wallB, blFloor,
+            leftGap: Math.round(o.t * sp.wl - o.width / 2),
+            rightGap: Math.round(sp.wl - o.t * sp.wl - o.width / 2),
+            sill: Math.round(sill),
+          };
+        }
+      }
+    }
+    setGizmo(g);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   useEffect(() => {
     const mount = mountRef.current;
@@ -609,7 +834,9 @@ export function ThreeScene({
 
     const scene = new THREE.Scene();
     const camera = new THREE.PerspectiveCamera(45, w0 / h0, 0.05, 100);
+    cameraRef.current = camera;
     const controls = new OrbitControls(camera, renderer.domElement);
+    controlsRef.current = controls;
     controls.enableDamping = true;
     controls.dampingFactor = 0.12;
     controls.minDistance = 1.5;
@@ -617,10 +844,6 @@ export function ThreeScene({
     const center = new THREE.Vector3(0, 0, 0);
     controls.target.copy(center);
 
-    // THE SAME LIGHT AS EVERY OTHER SCENE (three/lighting.ts). This used to be its own hemisphere +
-    // directional, tuned separately — so the room the seller drew was lit one way and the kitchen
-    // standing in it another. No shadows here: the room editor has nothing to cast them onto, and the
-    // depth pass is the expensive half of a light.
     const rig = buildRig(scene, renderer, { shadows: false, preset: "day" });
 
     let wood: THREE.Texture | null = null;
@@ -629,13 +852,27 @@ export function ThreeScene({
     const invalidate = () => {
       needs = true;
     };
-    controls.addEventListener("change", invalidate);
-    const offTextures = PBR ? onTexturesReady(invalidate) : null; // redraw when textures load
+    // Re-projecting the overlay on EVERY damped orbit event floods React with setState and janks the
+    // whole scene. Coalesce to one recompute per animation frame instead.
+    let dimsRaf = 0;
+    const scheduleDims = () => {
+      if (dimsRaf) return;
+      dimsRaf = requestAnimationFrame(() => { dimsRaf = 0; updateDims(); });
+    };
+    const onControlsChange = () => {
+      invalidate();
+      scheduleDims();
+    };
+    controls.addEventListener("change", onControlsChange);
+    const offTextures = PBR ? onTexturesReady(invalidate) : null;
 
     let room: THREE.Group | null = null;
     let walls: WallInfo[] = [];
-    let woodColor = ""; // cache the floor texture across rebuilds (drag = many rebuilds)
-    const bounds = { cx: 0, cy: 0 }; // mm origin, for converting 3D hits back to mm
+    let woodColor = "";
+    const bounds = { cx: 0, cy: 0 };
+    // while a resize drag holds this, `rebuild` keeps the room centred where it was when the drag began
+    // (see Api.lockCenter) — otherwise the model slides out from under the grabbed corner.
+    let lockedCenter: { cx: number; cy: number } | null = null;
     const disposeGroup = (gr: THREE.Group) => {
       gr.traverse((o) => {
         const mesh = o as THREE.Mesh;
@@ -655,13 +892,14 @@ export function ThreeScene({
         wood = makeWoodTexture(color);
         woodColor = color;
       }
-      // outer + mitred inner (wall thickness 100mm), both centred on the outer bounds
       const b = polygonBoundsMm(pts);
-      bounds.cx = b.cx;
-      bounds.cy = b.cy;
+      // a drag pins the centre so the room doesn't slide; otherwise track the polygon's bounds centre
+      bounds.cx = lockedCenter ? lockedCenter.cx : b.cx;
+      bounds.cy = lockedCenter ? lockedCenter.cy : b.cy;
+      centerRef.current = { cx: bounds.cx, cy: bounds.cy }; // the overlay projects against this same centre
       const innerMm = offsetPolygon(pts, 100);
-      const toM = (p: Pt) => ({ x: (p.x - b.cx) / 1000, z: (p.y - b.cy) / 1000 });
-      rig.aim({ points: pts, openings: ops, ceiling: ceilMm }); // daylight through this room's window
+      const toM = (p: Pt) => ({ x: (p.x - bounds.cx) / 1000, z: (p.y - bounds.cy) / 1000 });
+      rig.aim({ points: pts, openings: ops, ceiling: ceilMm });
       const built = makeRoom(
         pts.map(toM),
         innerMm.map(toM),
@@ -678,7 +916,7 @@ export function ThreeScene({
       );
       room = built.group;
       walls = built.walls;
-      applyPbrFloor(room, color, floor); // real floor material (same as the constructor)
+      applyPbrFloor(room, color, floor);
       scene.add(room);
       invalidate();
     };
@@ -703,9 +941,9 @@ export function ThreeScene({
       camera.lookAt(center);
       controls.update();
       invalidate();
+      updateDims();
     };
 
-    // hide walls between the camera and the interior
     const updateCull = () => {
       for (const wll of walls) {
         const dot = (camera.position.x - wll.mx) * wll.nx + (camera.position.z - wll.mz) * wll.nz;
@@ -721,6 +959,7 @@ export function ThreeScene({
         camera.updateProjectionMatrix();
         renderer.setSize(w, h);
         invalidate();
+        updateDims();
       }
     });
     ro.observe(mount);
@@ -738,16 +977,33 @@ export function ThreeScene({
     };
     raf = requestAnimationFrame(loop);
 
-    // picking + dragging: a tap selects a wall / fitting; pressing a fitting and
-    // dragging moves it along the wall (and onto other walls), sticking to walls.
     const raycaster = new THREE.Raycaster();
     const downXY = { x: 0, y: 0 };
-    let dragId: string | null = null;
+    // a fitting OR a door/window being dragged along the walls
+    let dragItem: { kind: "fitting" | "opening"; id: string } | null = null;
     const ndcOf = (e: PointerEvent) => {
       const rect = renderer.domElement.getBoundingClientRect();
       return new THREE.Vector2(((e.clientX - rect.left) / rect.width) * 2 - 1, -((e.clientY - rect.top) / rect.height) * 2 + 1);
     };
-    // resolve a hit object (often a nested group child) to its target by walking parents
+
+    // the floor plane (y = 0) the resizer drags against, and the room-mm point under a screen pointer
+    const floorPlane = new THREE.Plane(new THREE.Vector3(0, 1, 0), 0);
+    const hitPt = new THREE.Vector3();
+    const floorMm = (clientX: number, clientY: number): { x: number; y: number } | null => {
+      const rect = renderer.domElement.getBoundingClientRect();
+      const ndc = new THREE.Vector2(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
+      raycaster.setFromCamera(ndc, camera);
+      if (!raycaster.ray.intersectPlane(floorPlane, hitPt)) return null;
+      return { x: hitPt.x * 1000 + bounds.cx, y: hitPt.z * 1000 + bounds.cy };
+    };
+    const lockCenter = (on: boolean) => {
+      lockedCenter = on ? { cx: bounds.cx, cy: bounds.cy } : null;
+    };
+    // re-play a wheel onto the canvas so OrbitControls dollies exactly as if the pinch had landed there
+    const zoomBy = (deltaY: number, clientX: number, clientY: number) => {
+      renderer.domElement.dispatchEvent(new WheelEvent("wheel", { deltaY, clientX, clientY, bubbles: false, cancelable: true }));
+    };
+
     type Target = { kind: "fitting" | "opening" | "wall" | "floor"; id?: string; wall?: number };
     const targetOf = (obj: THREE.Object3D | null): Target | null => {
       let o: THREE.Object3D | null = obj;
@@ -766,30 +1022,57 @@ export function ThreeScene({
       const hits = raycaster.intersectObjects(room.children, true).filter((h) => h.object.visible);
       return hits.length ? targetOf(hits[0].object) : null;
     };
+    // the WALL point (room-mm floor + world height) under a screen pointer — for the opening gizmo
+    const wallHit = (clientX: number, clientY: number): { x: number; y: number; height: number } | null => {
+      if (!room) return null;
+      const rect = renderer.domElement.getBoundingClientRect();
+      const ndc = new THREE.Vector2(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
+      raycaster.setFromCamera(ndc, camera);
+      const hit = raycaster.intersectObjects(room.children, true).filter((h) => h.object.visible && targetOf(h.object)?.kind === "wall")[0];
+      if (!hit) return null;
+      return { x: hit.point.x * 1000 + bounds.cx, y: hit.point.z * 1000 + bounds.cy, height: hit.point.y * 1000 };
+    };
+    // like wallHit, but against the (infinite, vertical) PLANE through a→b — so an opening's drag reads
+    // its OWN wall, never punching through the glass/door-leaf to whatever mesh is behind it.
+    const planePt = new THREE.Vector3();
+    const wallPlaneHit = (clientX: number, clientY: number, ax: number, ay: number, bx: number, by: number) => {
+      const c = centerRef.current;
+      const A = new THREE.Vector3((ax - c.cx) / 1000, 0, (ay - c.cy) / 1000);
+      const dir = new THREE.Vector3(bx - ax, 0, by - ay).normalize(); // wall direction in world x–z
+      const plane = new THREE.Plane().setFromNormalAndCoplanarPoint(new THREE.Vector3(dir.z, 0, -dir.x), A);
+      const rect = renderer.domElement.getBoundingClientRect();
+      const ndc = new THREE.Vector2(((clientX - rect.left) / rect.width) * 2 - 1, -((clientY - rect.top) / rect.height) * 2 + 1);
+      raycaster.setFromCamera(ndc, camera);
+      if (!raycaster.ray.intersectPlane(plane, planePt)) return null;
+      return { x: planePt.x * 1000 + c.cx, y: planePt.z * 1000 + c.cy, height: planePt.y * 1000 };
+    };
     const onDown = (e: PointerEvent) => {
       downXY.x = e.clientX;
       downXY.y = e.clientY;
       const t = nearestTarget(e);
-      if (t?.kind === "fitting") {
-        dragId = t.id!;
-        controls.enabled = false; // don't orbit while moving an item
+      // Fittings drag by their body. A door/window is moved from its GIZMO's centre handle instead
+      // (like a cabinet in the Construction step) — tapping its body just selects it — so grabbing the
+      // opening body here would fight orbit, and we don't.
+      if (t?.kind === "fitting" && t.id) {
+        dragItem = { kind: t.kind, id: t.id };
+        controls.enabled = false;
       }
     };
     const onMove = (e: PointerEvent) => {
-      if (!dragId || !room) return;
+      if (!dragItem || !room) return;
       raycaster.setFromCamera(ndcOf(e), camera);
       const hit = raycaster.intersectObjects(room.children, true).filter((h) => h.object.visible && targetOf(h.object)?.kind === "wall")[0];
       if (!hit) return;
-      const p = hit.point;
-      cbRef.current.onFittingDrag(dragId, p.x * 1000 + bounds.cx, p.z * 1000 + bounds.cy, p.y * 1000);
+      const b = polygonBoundsMm(pointsRef.current);
+      cbRef.current.onFittingDrag(dragItem.id, hit.point.x * 1000 + b.cx, hit.point.z * 1000 + b.cy, hit.point.y * 1000);
     };
     const onPick = (e: PointerEvent) => {
       const moved = Math.hypot(e.clientX - downXY.x, e.clientY - downXY.y);
-      if (dragId) {
-        const id = dragId;
-        dragId = null;
+      if (dragItem) {
+        const it = dragItem;
+        dragItem = null;
         controls.enabled = true;
-        if (moved <= 6) cbRef.current.onFittingClick(id); // press-release = select
+        if (moved <= 6) cbRef.current.onFittingClick(it.id); // a tap is a select, not a move
         return;
       }
       if (moved > 6 || !room) return;
@@ -809,17 +1092,22 @@ export function ThreeScene({
     apiRef.current = {
       setView,
       rebuild,
+      floorMm,
+      lockCenter,
+      zoomBy,
+      wallHit,
+      wallPlaneHit,
       dispose: () => {
         cancelAnimationFrame(raf);
+        if (dimsRaf) cancelAnimationFrame(dimsRaf);
         ro.disconnect();
         renderer.domElement.removeEventListener("pointerdown", onDown);
         renderer.domElement.removeEventListener("pointermove", onMove);
         renderer.domElement.removeEventListener("pointerup", onPick);
-        controls.removeEventListener("change", invalidate);
+        controls.removeEventListener("change", onControlsChange);
         offTextures?.();
         controls.dispose();
         if (room) disposeGroup(room);
-        wood?.dispose();
         rig.dispose();
         renderer.dispose();
         if (renderer.domElement.parentNode === mount) mount.removeChild(renderer.domElement);
@@ -830,17 +1118,368 @@ export function ThreeScene({
       apiRef.current?.dispose();
       apiRef.current = null;
     };
-    // built once; prop changes handled below
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     apiRef.current?.rebuild(points, ceiling, openings, coveringColor, floorId, interiorWalls, fittings, wallSurfaces, selectedWall3D, selectedFit3D, selectedOpen3D, floorSel3D);
-  }, [points, ceiling, openings, coveringColor, floorId, interiorWalls, fittings, wallSurfaces, selectedWall3D, selectedFit3D, selectedOpen3D, floorSel3D]);
+    updateDims();
+  }, [points, ceiling, openings, coveringColor, floorId, interiorWalls, fittings, wallSurfaces, selectedWall3D, selectedFit3D, selectedOpen3D, floorSel3D, updateDims]);
 
   useEffect(() => {
     apiRef.current?.setView(view);
-  }, [view]);
+    updateDims();
+  }, [view, updateDims]);
 
-  return <div ref={mountRef} className="scene-canvas" />;
+  // What the grab does: move ONE corner (1:1 on the floor), slide a whole WALL perpendicular, or pull
+  // the ceiling HEIGHT (vertical — no floor point, so it keeps a screen-space delta).
+  type Grab = { kind: "corner"; corner: number } | { kind: "wall" } | { kind: "height" };
+  const beginDrag = (dim: ProjectedDim, e: React.PointerEvent, grab: Grab) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const api = apiRef.current;
+    const controls = controlsRef.current;
+    if (controls) controls.enabled = false; // don't orbit while dragging a handle
+
+    const startClientX = e.clientX;
+    const startClientY = e.clientY;
+
+    // wall-line geometry (mm), fixed at grab time: the original endpoints + the wall's outward normal
+    const pts = pointsRef.current;
+    const n = pts.length;
+    const a0 = grab.kind === "wall" ? pts[dim.wallIndex] : null;
+    const b0 = grab.kind === "wall" ? pts[(dim.wallIndex + 1) % n] : null;
+    let nx = 0, ny = 0;
+    if (a0 && b0) {
+      const l = Math.hypot(b0.x - a0.x, b0.y - a0.y) || 1;
+      nx = (b0.y - a0.y) / l;
+      ny = -(b0.x - a0.x) / l;
+    }
+    // height keeps the screen-space projection (a vertical line has no floor point)
+    const initLen = dim.length;
+    const ll = Math.hypot(dim.x2 - dim.x1, dim.y2 - dim.y1) || 1;
+    const uxl = (dim.x2 - dim.x1) / ll;
+    const uyl = (dim.y2 - dim.y1) / ll;
+
+    let began = false; // lazy: snapshot for undo + freeze the centre only once the finger MOVES
+    let startMm: { x: number; y: number } | null = null;
+    let grabOff = { x: 0, y: 0 }; // corner − pointer at grab, so the corner tracks the finger with no jump
+    let lastKey = "";
+    const ensureBegin = (ev: PointerEvent) => {
+      if (began) return;
+      began = true;
+      cbRef.current.onBeginEdit?.();
+      api?.lockCenter(true); // pin the room so it can't slide out from under the grab
+      startMm = grab.kind === "height" ? null : api?.floorMm(ev.clientX, ev.clientY) ?? null;
+      if (grab.kind === "corner" && startMm) grabOff = { x: pts[grab.corner].x - startMm.x, y: pts[grab.corner].y - startMm.y };
+      if (grab.kind !== "height") cbRef.current.onWallClick(dim.wallIndex); // light the wall green
+    };
+
+    const onMove = (ev: PointerEvent) => {
+      if (!began && Math.hypot(ev.clientX - startClientX, ev.clientY - startClientY) <= 4) return; // still a tap
+      ensureBegin(ev);
+
+      if (grab.kind === "height") {
+        const projDist = (ev.clientX - startClientX) * uxl + (ev.clientY - startClientY) * uyl;
+        const v = Math.max(2000, Math.min(4000, Math.round((initLen + projDist * (initLen / Math.max(30, ll))) / 50) * 50));
+        if (String(v) !== lastKey) { lastKey = String(v); cbRef.current.onSetCeilingValue?.(v); }
+        return;
+      }
+
+      const mm = api?.floorMm(ev.clientX, ev.clientY);
+      if (!mm) return;
+
+      if (grab.kind === "corner") {
+        // drop the corner under the finger, holding the grab offset (moveCorner snaps to 100mm; only
+        // commit on a change so we don't rebuild the room on every pixel)
+        const tx = mm.x + grabOff.x;
+        const ty = mm.y + grabOff.y;
+        const key = `${Math.round(tx / 100)},${Math.round(ty / 100)}`;
+        if (key !== lastKey) { lastKey = key; cbRef.current.onMoveCorner?.(grab.corner, tx, ty); }
+      } else if (a0 && b0 && startMm) {
+        // slide the whole wall by the finger's travel along the wall's normal
+        const disp = (mm.x - startMm.x) * nx + (mm.y - startMm.y) * ny;
+        const key = String(Math.round(disp / 100));
+        if (key !== lastKey) {
+          lastKey = key;
+          cbRef.current.onMoveWall?.(dim.wallIndex, { x: a0.x + nx * disp, y: a0.y + ny * disp }, { x: b0.x + nx * disp, y: b0.y + ny * disp });
+        }
+      }
+    };
+
+    const onUp = () => {
+      if (controls) controls.enabled = true;
+      api?.lockCenter(false);
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      if (!began && grab.kind !== "height") cbRef.current.onWallClick(dim.wallIndex); // a tap → just select it
+    };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  };
+
+  // The opening gizmo: MOVE the door/window along the walls, or resize its WIDTH (symmetric about its
+  // centre), HEIGHT (top edge, sill held) or SILL (bottom edge, top held — windows only). All 1:1 off a
+  // wall raycast, snapped to 10mm, committed only on a change so the room isn't rebuilt every pixel.
+  const beginItemDrag = (gz: ItemGizmo, e: React.PointerEvent, mode: "move" | "width" | "top" | "bottom") => {
+    e.preventDefault();
+    e.stopPropagation();
+    const api = apiRef.current;
+    const controls = controlsRef.current;
+    if (controls) controls.enabled = false;
+    const o = openings.find((x) => x.id === gz.id);
+    const seg = o ? wallSegments(points, interiorWalls)[o.wall] : null;
+    if (!o || !seg) return;
+    const sp0 = openingSpan(seg.a, seg.b, o.t, o.width);
+    const sill0 = o.sill ?? defaultOpeningSill(o.kind, o.design);
+    const top0 = sill0 + (o.height ?? defaultOpeningHeight(o.kind));
+    const startClientX = e.clientX, startClientY = e.clientY;
+    let began = false, lastKey = "";
+    const ensureBegin = () => { if (began) return; began = true; cbRef.current.onBeginEdit?.(); };
+
+    const onMove = (ev: PointerEvent) => {
+      if (!began && Math.hypot(ev.clientX - startClientX, ev.clientY - startClientY) <= 4) return;
+      ensureBegin();
+      // read against THIS opening's wall plane, so the ray can't punch through the glass/leaf to a
+      // wall behind it (which made the window unresizable and a widened door impossible to grab again)
+      const hit = api?.wallPlaneHit(ev.clientX, ev.clientY, seg.a.x, seg.a.y, seg.b.x, seg.b.y);
+      if (!hit) return;
+      if (mode === "move") {
+        const key = `${Math.round(hit.x / 10)},${Math.round(hit.y / 10)},${Math.round(hit.height / 10)}`;
+        if (key !== lastKey) {
+          lastKey = key;
+          cbRef.current.onOpeningDrag?.(gz.id, hit.x, hit.y); // horizontal: slide along the wall
+          if (!gz.isDoor) {
+            // a window also moves UP/DOWN: keep its height, shift the sill so its centre tracks the finger
+            const h0 = top0 - sill0;
+            const sill = Math.max(0, Math.min(ceiling - h0, Math.round((hit.height - h0 / 2) / 10) * 10));
+            cbRef.current.onSetOpeningSill?.(gz.id, sill);
+          }
+        }
+      } else if (mode === "width") {
+        const along = (hit.x - sp0.cx) * sp0.ux + (hit.y - sp0.cy) * sp0.uy; // signed dist from centre
+        const w = Math.max(200, Math.min(4000, Math.round((Math.abs(along) * 2) / 10) * 10));
+        if (String(w) !== lastKey) { lastKey = String(w); cbRef.current.onSetOpeningWidth?.(gz.id, w); }
+      } else if (mode === "top") {
+        const hgt = Math.max(300, Math.min(3000, Math.round((hit.height - sill0) / 10) * 10)); // sill held
+        if (String(hgt) !== lastKey) { lastKey = String(hgt); cbRef.current.onSetOpeningHeight?.(gz.id, hgt); }
+      } else {
+        const sill = Math.max(0, Math.min(top0 - 300, Math.round(hit.height / 10) * 10)); // top held
+        if (String(sill) !== lastKey) {
+          lastKey = String(sill);
+          cbRef.current.onSetOpeningSill?.(gz.id, sill);
+          cbRef.current.onSetOpeningHeight?.(gz.id, Math.max(300, top0 - sill));
+        }
+      }
+    };
+    const onUp = () => {
+      if (controls) controls.enabled = true;
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  };
+
+  const handleChipClick = (dim: ProjectedDim, e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const midX = (dim.x1 + dim.x2) / 2;
+    const midY = (dim.y1 + dim.y2) / 2;
+    if (cbRef.current.onSetWallLength || cbRef.current.onSetCeilingValue) {
+      onEditNumber?.(midX, midY, dim.length, (v) => {
+        if (dim.type === "wall" && cbRef.current.onSetWallLength) {
+          cbRef.current.onSetWallLength(dim.wallIndex, v, "b");
+        } else if (dim.type === "height" && cbRef.current.onSetCeilingValue) {
+          cbRef.current.onSetCeilingValue(v);
+        }
+      });
+    }
+  };
+
+  return (
+    <div ref={mountRef} className="scene-canvas" style={{ position: "relative" }}>
+      {/* Clean Line + Circle Dot Resizer Overlay */}
+      <svg
+        className="scene-dim-overlay"
+        style={{
+          position: "absolute",
+          inset: 0,
+          pointerEvents: "none",
+          zIndex: 10,
+          width: "100%",
+          height: "100%",
+        }}
+        // a wheel/pinch that lands on a handle or chip bubbles here — forward it so the 3D zooms
+        // instead of being swallowed (page-zoom itself is blocked globally in main.tsx)
+        onWheel={(e) => apiRef.current?.zoomBy(e.deltaY, e.clientX, e.clientY)}
+      >
+        {/* the measurements + resize handles are an EDIT tool, not scene furniture: show them only once
+            the room is being edited — a wall or the floor is selected — and keep the scene clean otherwise */}
+        {(selectedWall3D != null || floorSel3D) && dims.map((dim: ProjectedDim) => {
+          const mx = (dim.x1 + dim.x2) / 2;
+          const my = (dim.y1 + dim.y2) / 2;
+          const angle = segAngle(dim.x1, dim.y1, dim.x2, dim.y2);
+          const linePx = Math.hypot(dim.x2 - dim.x1, dim.y2 - dim.y1);
+          const sc = arrowScale(linePx);
+          const isWall = dim.type === "wall";
+          const n = points.length;
+          const isSel = isWall && selectedWall3D === dim.wallIndex;
+          // black outline by default, green when this wall is selected — the 2D floor plan's look
+          const strokeColor = isSel ? "#00AC7A" : "#1a1a1a";
+          const dotFill = isSel ? "#00AC7A" : "#ffffff";
+          const dotStroke = isSel ? "#ffffff" : "#1a1a1a";
+          const lineGrab: Grab = isWall ? { kind: "wall" } : { kind: "height" };
+
+          const chipTransform = `translate(${mx.toFixed(1)}, ${my.toFixed(1)}) rotate(${angle.toFixed(1)}) scale(${sc.toFixed(2)}) translate(0, -18)`;
+
+          return (
+            <g key={dim.id} className="room-dim-group" style={{ pointerEvents: "all" }}>
+              {/* Hit line for wide grab area — tap selects the wall, drag slides it */}
+              <line
+                x1={dim.x1}
+                y1={dim.y1}
+                x2={dim.x2}
+                y2={dim.y2}
+                stroke="transparent"
+                strokeWidth={Math.max(20, 24 * sc)}
+                style={{ cursor: "grab", pointerEvents: "all" }}
+                onPointerDown={(e) => beginDrag(dim, e, lineGrab)}
+              />
+              {/* Clean dimension line (solid for walls, dashed for height) */}
+              <line
+                x1={dim.x1}
+                y1={dim.y1}
+                x2={dim.x2}
+                y2={dim.y2}
+                stroke={strokeColor}
+                strokeWidth={(isSel ? 3.5 : 2.5) * sc}
+                strokeDasharray={dim.type === "height" ? `${4 * sc} ${3 * sc}` : undefined}
+                style={{ pointerEvents: "none" }}
+              />
+              {/* Endpoint 1 Circle Handle Dot — drags THIS corner */}
+              <circle
+                cx={dim.x1}
+                cy={dim.y1}
+                r={7 * sc}
+                fill={dotFill}
+                stroke={dotStroke}
+                strokeWidth={2 * sc}
+                filter="drop-shadow(0px 2px 4px rgba(0,0,0,0.25))"
+                style={{ cursor: "grab", pointerEvents: "all" }}
+                onPointerDown={(e) => beginDrag(dim, e, isWall ? { kind: "corner", corner: dim.wallIndex } : { kind: "height" })}
+              />
+              {/* Endpoint 2 Circle Handle Dot — drags the NEXT corner */}
+              <circle
+                cx={dim.x2}
+                cy={dim.y2}
+                r={7 * sc}
+                fill={dotFill}
+                stroke={dotStroke}
+                strokeWidth={2 * sc}
+                filter="drop-shadow(0px 2px 4px rgba(0,0,0,0.25))"
+                style={{ cursor: "grab", pointerEvents: "all" }}
+                onPointerDown={(e) => beginDrag(dim, e, isWall ? { kind: "corner", corner: (dim.wallIndex + 1) % n } : { kind: "height" })}
+              />
+              {/* Measurement Chip sitting clear of line, rotated & scaled */}
+              <g
+                transform={chipTransform}
+                style={{ cursor: "pointer", pointerEvents: "all" }}
+                onClick={(e) => handleChipClick(dim, e)}
+              >
+                <rect
+                  x={-34}
+                  y={-13}
+                  width={68}
+                  height={26}
+                  rx={13}
+                  fill="#ffffff"
+                  stroke="#00AC7A"
+                  strokeWidth={1.5}
+                  filter="drop-shadow(0px 2px 4px rgba(0,0,0,0.15))"
+                />
+                <text
+                  x={0}
+                  y={4}
+                  textAnchor="middle"
+                  fill="#000000"
+                  fontSize={11}
+                  fontWeight={700}
+                  fontFamily="var(--sans)"
+                >
+                  {dim.label}
+                </text>
+              </g>
+            </g>
+          );
+        })}
+
+        {/* ── SELECTED DOOR / WINDOW GIZMO ── highlight + side measurement arrows + centre move handle ── */}
+        {gizmo && (() => {
+          const gz = gizmo;
+          const GREEN = "#00AC7A";
+          const mid = (a: { x: number; y: number }, b: { x: number; y: number }) => ({ x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+          const leftMid = mid(gz.bl, gz.tl), rightMid = mid(gz.br, gz.tr), topMid = mid(gz.tl, gz.tr), botMid = mid(gz.bl, gz.br);
+          const away = (p: { x: number; y: number }, amt: number) => {
+            const dx = p.x - gz.cx, dy = p.y - gz.cy, l = Math.hypot(dx, dy) || 1;
+            return { x: p.x + (dx / l) * amt, y: p.y + (dy / l) * amt };
+          };
+          const dot = (p: { x: number; y: number }, mode: "width" | "top" | "bottom", key: string) => (
+            <circle key={key} cx={p.x} cy={p.y} r={8} fill="#fff" stroke={GREEN} strokeWidth={3}
+              filter="drop-shadow(0px 2px 4px rgba(0,0,0,0.25))" style={{ cursor: "grab", pointerEvents: "all" }}
+              onPointerDown={(e) => beginItemDrag(gz, e, mode)} />
+          );
+          const label = (p: { x: number; y: number }, text: string, key: string) => (
+            <g key={key} pointerEvents="none">
+              <rect x={p.x - 28} y={p.y - 12} width={56} height={24} rx={12} fill="#fff" stroke={GREEN} strokeWidth={1.5} filter="drop-shadow(0px 2px 4px rgba(0,0,0,0.15))" />
+              <text x={p.x} y={p.y + 4} textAnchor="middle" fontFamily="Inter, sans-serif" fontSize={12} fontWeight={700} fill={GREEN}>{text}</text>
+            </g>
+          );
+          const wl = away(botMid, 24), hl = away(rightMid, 32);
+          // POSITION dimension: a thin grey line a→b with the distance at its midpoint
+          const GREY = "#8b929c";
+          const posDim = (a: { x: number; y: number }, b: { x: number; y: number }, text: string, key: string) => (
+            <g key={key} pointerEvents="none">
+              <line x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={GREY} strokeWidth={1.5} strokeDasharray="5 4" />
+              <circle cx={a.x} cy={a.y} r={2.5} fill={GREY} />
+              <circle cx={b.x} cy={b.y} r={2.5} fill={GREY} />
+              <g transform={`translate(${(a.x + b.x) / 2} ${(a.y + b.y) / 2})`}>
+                <rect x={-24} y={-10} width={48} height={20} rx={10} fill="#fff" stroke={GREY} strokeWidth={1} />
+                <text x={0} y={4} textAnchor="middle" fontFamily="Inter, sans-serif" fontSize={11} fontWeight={600} fill={GREY}>{text}</text>
+              </g>
+            </g>
+          );
+          return (
+            <g>
+              {/* where it sits: gap to the left/right wall, and sill above the floor */}
+              {posDim(gz.wallA, gz.bl, `${gz.leftGap}`, "pd-l")}
+              {posDim(gz.br, gz.wallB, `${gz.rightGap}`, "pd-r")}
+              {!gz.isDoor && posDim(gz.blFloor, gz.bl, `${gz.sill}`, "pd-s")}
+              <polygon points={`${gz.bl.x},${gz.bl.y} ${gz.br.x},${gz.br.y} ${gz.tr.x},${gz.tr.y} ${gz.tl.x},${gz.tl.y}`}
+                fill="rgba(0,172,122,0.12)" stroke={GREEN} strokeWidth={2.5} strokeLinejoin="round" pointerEvents="none" />
+              {dot(leftMid, "width", "gw-l")}
+              {dot(rightMid, "width", "gw-r")}
+              {dot(topMid, "top", "gh-t")}
+              {!gz.isDoor && dot(botMid, "bottom", "gh-b")}
+              {label(wl, `${gz.width}`, "gw-lbl")}
+              {label(hl, `${gz.height}`, "gh-lbl")}
+              {/* centre free-move handle */}
+              <g style={{ cursor: "grab", pointerEvents: "all" }} onPointerDown={(e) => beginItemDrag(gz, e, "move")}>
+                <circle cx={gz.cx} cy={gz.cy} r={17} fill="#fff" stroke={GREEN} strokeWidth={2.5} filter="drop-shadow(0px 2px 5px rgba(0,0,0,0.3))" />
+                <g stroke={GREEN} strokeWidth={2} strokeLinecap="round" strokeLinejoin="round" fill="none">
+                  <line x1={gz.cx - 9} y1={gz.cy} x2={gz.cx + 9} y2={gz.cy} />
+                  <line x1={gz.cx} y1={gz.cy - 9} x2={gz.cx} y2={gz.cy + 9} />
+                  <path d={`M${gz.cx - 9} ${gz.cy} l3 -3 M${gz.cx - 9} ${gz.cy} l3 3`} />
+                  <path d={`M${gz.cx + 9} ${gz.cy} l-3 -3 M${gz.cx + 9} ${gz.cy} l-3 3`} />
+                  <path d={`M${gz.cx} ${gz.cy - 9} l-3 3 M${gz.cx} ${gz.cy - 9} l3 3`} />
+                  <path d={`M${gz.cx} ${gz.cy + 9} l-3 -3 M${gz.cx} ${gz.cy + 9} l3 -3`} />
+                </g>
+              </g>
+            </g>
+          );
+        })()}
+      </svg>
+    </div>
+  );
 }

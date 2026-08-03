@@ -15,7 +15,7 @@ import {
 } from "../model/room";
 import { cornerUnits, outerEndSeats, pickSeat, planRuns, DEFAULT_REVEAL, type KitchenLayout, type CornerSpec } from "../model/runPlan";
 import type { Cabinet } from "../model/cabinet";
-import { isOuterCorner, cabDepth } from "../model/bands";
+import { isOuterCorner, cabDepth, cabBand } from "../model/bands";
 import { cabFootprints, footsClash, rectCorners, FOOT_DEPTH_MM, type Foot } from "../model/footprint";
 import { outerFacingSigns, chamferRing } from "../model/outerCorner";
 import { useSvgZoom } from "./useSvgZoom";
@@ -136,6 +136,7 @@ export function ConstructorPlan({
   grid = false,
   magnet = true,
   selectedId,
+  selectedIds,
   onSelectCab,
   onMovePlan,
   onBeginEdit,
@@ -155,6 +156,10 @@ export function ConstructorPlan({
   grid?: boolean;
   magnet?: boolean;
   selectedId: string | null;
+  /** the whole selection set — every member is highlighted, so a multi-select reads on the plan
+   *  exactly as it does in the 3D / front view. Falls back to `selectedId` when absent. The single
+   *  drag / rotate / dimension affordances stay keyed on `selectedId` (null in a multi-select). */
+  selectedIds?: string[];
   onSelectCab: (id: string | null) => void;
   onMovePlan?: (id: string, patch: { px?: number; pz?: number; rot?: number; cornerFace?: Pt }) => void;
   /** snapshot for undo before a drag/rotate gesture starts */
@@ -614,12 +619,13 @@ export function ConstructorPlan({
         })}
       </g>
 
-      {/* selection + overlap highlight — drawn over the body, NOT affected by render mode */}
+      {/* selection + overlap highlight — drawn over the body, NOT affected by render mode. Every member
+          of the selection set is tinted + bold-outlined, so a multi-select reads like the 3D. */}
       {foot.map((f) => {
-        const selected = f.id === selectedId;
+        const selected = selectedIds && selectedIds.length ? selectedIds.includes(f.id) : f.id === selectedId;
         const over = overlap.has(f.id);
         if (!selected && !over) return null;
-        return <polygon key={`hl${f.id}`} points={quadPts(f)} pointerEvents="none" fill={over ? "rgba(229,57,53,0.26)" : C.sel} fillOpacity={over ? 1 : 0.16} stroke={over ? "#e53935" : C.sel} strokeWidth={over ? 16 : 22} strokeDasharray={f.upper && !over ? `${70} ${45}` : undefined} />;
+        return <polygon key={`hl${f.id}`} points={quadPts(f)} pointerEvents="none" fill={over ? "rgba(229,57,53,0.26)" : C.sel} fillOpacity={over ? 1 : 0.22} stroke={over ? "#e53935" : C.sel} strokeWidth={over ? 16 : 22} strokeDasharray={f.upper && !over ? `${70} ${45}` : undefined} />;
       })}
 
       {/* selection targets — above the visuals so any footprint can be (re)selected;

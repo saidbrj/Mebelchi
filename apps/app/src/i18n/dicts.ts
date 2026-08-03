@@ -6,6 +6,8 @@
 // journey screens (quiz → handoff) are translated in later phases; until then they stay
 // Russian even in Uzbek mode.
 
+import type { DealStatus } from "../model/projects";
+
 export type Lang = "ru" | "uz";
 
 // Quiz text (structure lives in quiz/questions.ts; text keyed by question id + option v)
@@ -82,7 +84,8 @@ export const ru = {
     save: "Сохранить",
     saved: "Сохранено",
     saveFail: "Не удалось сохранить",
-    ai: "AI-рендер",
+    ai: "AI",
+    share: "Поделиться",
     soon: "Скоро",
   },
   menu: {
@@ -92,6 +95,9 @@ export const ru = {
     home: "На главную",
     projects: "Мои проекты",
     settings: "Настройки",
+    /** One entry for both states — the Профиль screen embeds the sign-in form for guests
+     *  and carries «Выйти» for anyone signed in, so the menu needs no separate auth item. */
+    profile: "Профиль",
     signIn: "Войти / Регистрация",
     signOut: "Выйти",
     phases: {
@@ -111,9 +117,10 @@ export const ru = {
     signin: "Войти",
     later: "Позже",
   },
-  tabs: { home: "Главная", projects: "Проекты", settings: "Настройки", user: "Профиль" },
+  tabs: { home: "Главная", projects: "Проекты", new: "Новый", settings: "Настройки", user: "Профиль" },
   user: {
     title: "Профиль",
+    sub: "Профиль и компания подставляются в смету и передачу. Всё сохраняется автоматически.",
     guestTitle: "Аккаунт",
     guestSub: "Войдите, чтобы сохранять проекты в облаке и открывать их на любом устройстве.",
     projectsCount: (n: number) => `${n} проектов`,
@@ -148,10 +155,48 @@ export const ru = {
     updated: (date: string) => `обновлён ${date}`,
     edit: "Изменить",
     del: "Удалить",
+    // shown in the journey top bar before the first save, when no project record exists yet
+    untitled: "Новый проект",
+    // client details
+    clientPhone: "Телефон клиента",
+    address: "Адрес",
+    call: "Позвонить",
+    route: "Маршрут",
+    // deal status
+    status: "Статус",
+    statusLabel: {
+      measure: "Замер",
+      design: "Дизайн",
+      quoted: "Смета отправлена",
+      won: "Согласовано",
+      production: "В производстве",
+      installed: "Установлено",
+      lost: "Отказ",
+    } as Record<DealStatus, string>,
+    // Card pills live in ~150px next to the sum, where the full wording ellipsises into
+    // "Смета отпр…". Same statuses, shorter words; the sheet keeps the unambiguous labels.
+    statusShort: {
+      measure: "Замер",
+      design: "Дизайн",
+      quoted: "Смета",
+      won: "Согласовано",
+      production: "Производство",
+      installed: "Установлено",
+      lost: "Отказ",
+    } as Record<DealStatus, string>,
+    // list filters + sort
+    bySum: "По сумме",
+    filterAll: "Все",
+    filterActive: "В работе",
+    filterQuoted: "Ждут ответа",
+    filterWon: "Выиграно",
+    filterArchive: "Архив",
+    awaiting: (n: number) => `Ждут ответа · ${n}`,
+    awaitingSub: "Смета отправлена больше 3 дней назад",
   },
   settings: {
     title: "Настройки",
-    sub: "Профиль и компания подставляются в смету и передачу. Всё сохраняется автоматически.",
+    sub: "Предпочтения приложения, валюта и расчёт цен. Всё сохраняется автоматически.",
     profile: "Профиль",
     name: "Имя",
     phone: "Телефон",
@@ -304,7 +349,7 @@ export const ru = {
     intro: "Сгенерируем 4 варианта расстановки кухни под размеры вашей комнаты — в 3D, прямо в вашем помещении. Раковина встанет у водоснабжения, плита — на безопасном расстоянии, холодильник — с краю.",
     generate: "↻ Сгенерировать раскладки",
     again: "↻ Заново",
-    options: "⚙ Параметры",
+    options: "Параметры",
     optionsApply: "Применить",
     scratch: "С нуля",
     scratchSub: "Пустая комната — соберу сам",
@@ -458,6 +503,10 @@ export const ru = {
     toEngineering: "В инженерию →",
     toCost: "В смету →",
     toHandoff: "В передачу →",
+    /** Short forms for the top-bar pill, which is far narrower than the footer button
+     *  (.step-next capitalizes, matching room.toVariants). */
+    toCostShort: "смета →",
+    toHandoffShort: "передача →",
     exportCnc: "Экспорт на ЧПУ →",
     done: "✓ Готово · поделиться",
     toSummary: "К краткому содержанию →",
@@ -477,7 +526,7 @@ export const ru = {
     virtualTour: "Виртуальный визит", soon: "Далее", v3d: "3D-вид", vfront: "Вид спереди", vplan: "План помещения",
     placeWater: "Разместите водоснабжение", cancel: "Отмена", ok: "ОК", approve: "✓ Одобрять",
     duplicate: "Дублировать", del: "Удалить", coverings: "Покрытия", edit: "Изменить", color: "Цвет",
-    roomShape: "Форма комнаты", elements: "Элементы", openings: "Открытия", ceiling: "Высота потолков",
+    roomShape: "Форма", elements: "Элементы", openings: "Открытия", ceiling: "Размер", ceilingHeight: "Высота потолков", wallLen: "Длина стены", wallALen: "Длина стены A", wallBLen: "Длина стены B", roomWidth: "Ширина", roomDepth: "Глубина",
     wallColorTitle: "Изменить Цвет Стен", search: "Поиск", products: (n: number) => `${n} Товаров`,
     allFilters: "Все фильтры", wallPaint: "покраска стен",
     wallModifyTitle: "Изменить стену", currentCovering: "Текущее покрытие", customizeSurface: "Настроить поверхность",
@@ -547,6 +596,19 @@ export const ru = {
     tPopup: "Разрешите всплывающие окна для PDF", tDrawDl: "Чертёж скачан", tImgFail: "Не удалось создать изображение",
     t3dNotReady: "3D ещё не готов", t3dDl: "3D скачан",
     csvSpec: "Спецификация", csvGrade: "Класс фурнитуры", csvReinforce: "Усиление", csvFrom: "От",
+    // Раскрой mode toggle: manual saw plan vs CNC finished-size parts list
+    modeManual: "Ручная резка (пила)", modeCnc: "ЧПУ станок",
+    modeManualHint: "Раскладка деталей на листах с учётом толщины пилы — мастер режет по этому плану.",
+    modeCncHint: "Готовые размеры деталей без раскладки и пропила — станок сам разложит и учтёт фрезу.",
+    cncDistinct: "типоразмеров", xlsxParts: "⤓ Детали (Excel)", pdfParts: "⤓ Детали (PDF)",
+    tXlsx: "Excel с деталями скачан", tPartsPdf: "PDF деталей скачан",
+    plTitle: "Список деталей · ЧПУ", plSheetParts: "Детали", plSheetHw: "Фурнитура",
+    plNote: "Размеры — готовые (чистовые), в мм. Кромка учтена в размере — станок вычтет её сам. Раскладку и пропил выполняет станок.",
+    plTotalParts: "Всего деталей", plBoardM2: "Площадь плиты, м²",
+    plColNo: "№", plColModule: "Модуль", plColPart: "Наименование", plColMat: "Материал",
+    plColThk: "Толщина, мм", plColLen: "Длина, мм", plColWid: "Ширина, мм", plColQty: "Кол-во",
+    plColGrain: "Слой", plColEdge: "Кромка", plColProfile: "Обработка",
+    plColHwName: "Наименование", plColHwQty: "Кол-во", plGrainYes: "Да",
   },
 };
 
@@ -573,7 +635,8 @@ export const uz: typeof ru = {
     save: "Saqlash",
     saved: "Saqlandi",
     saveFail: "Saqlab bo'lmadi",
-    ai: "AI-render",
+    ai: "AI",
+    share: "Ulashish",
     soon: "Tez orada",
   },
   menu: {
@@ -583,6 +646,7 @@ export const uz: typeof ru = {
     home: "Bosh sahifa",
     projects: "Loyihalarim",
     settings: "Sozlamalar",
+    profile: "Profil",
     signIn: "Kirish / Ro'yxatdan o'tish",
     signOut: "Chiqish",
     phases: {
@@ -602,9 +666,10 @@ export const uz: typeof ru = {
     signin: "Kirish",
     later: "Keyinroq",
   },
-  tabs: { home: "Bosh", projects: "Loyihalar", settings: "Sozlamalar", user: "Profil" },
+  tabs: { home: "Bosh", projects: "Loyihalar", new: "Yangi", settings: "Sozlamalar", user: "Profil" },
   user: {
     title: "Profil",
+    sub: "Profil va kompaniya smeta hamda topshiruvga qo'shiladi. Hammasi avtomatik saqlanadi.",
     guestTitle: "Hisob",
     guestSub: "Loyihalarni bulutda saqlash va istalgan qurilmada ochish uchun tizimga kiring.",
     projectsCount: (n: number) => `${n} ta loyiha`,
@@ -639,10 +704,45 @@ export const uz: typeof ru = {
     updated: (date: string) => `yangilangan ${date}`,
     edit: "O'zgartirish",
     del: "O'chirish",
+    untitled: "Yangi loyiha",
+    // mijoz ma'lumotlari
+    clientPhone: "Mijoz telefoni",
+    address: "Manzil",
+    call: "Qo'ng'iroq",
+    route: "Yo'nalish",
+    // bitim bosqichi
+    status: "Holat",
+    statusLabel: {
+      measure: "O'lchov",
+      design: "Dizayn",
+      quoted: "Smeta yuborilgan",
+      won: "Kelishilgan",
+      production: "Ishlab chiqarishda",
+      installed: "O'rnatilgan",
+      lost: "Rad etilgan",
+    } as Record<DealStatus, string>,
+    statusShort: {
+      measure: "O'lchov",
+      design: "Dizayn",
+      quoted: "Smeta",
+      won: "Kelishilgan",
+      production: "Ishlab chiq.",
+      installed: "O'rnatilgan",
+      lost: "Rad etilgan",
+    } as Record<DealStatus, string>,
+    // filtrlar + saralash
+    bySum: "Summa bo'yicha",
+    filterAll: "Barchasi",
+    filterActive: "Ishda",
+    filterQuoted: "Javob kutilmoqda",
+    filterWon: "Yutilgan",
+    filterArchive: "Arxiv",
+    awaiting: (n: number) => `Javob kutilmoqda · ${n}`,
+    awaitingSub: "Smeta 3 kundan ko'proq oldin yuborilgan",
   },
   settings: {
     title: "Sozlamalar",
-    sub: "Profil va kompaniya smeta hamda topshiruvga qo'shiladi. Hammasi avtomatik saqlanadi.",
+    sub: "Ilova afzalliklari, valyuta va narx hisoblash. Hammasi avtomatik saqlanadi.",
     profile: "Profil",
     name: "Ism",
     phone: "Telefon",
@@ -795,7 +895,7 @@ export const uz: typeof ru = {
     intro: "Xonangiz o'lchamiga mos 4 ta oshxona joylashuvini 3D da, to'g'ridan-to'g'ri xonangizda yaratamiz. Lavabo suv ta'minoti yonida, plita xavfsiz masofada, muzlatgich chetda turadi.",
     generate: "↻ Joylashuvlarni yaratish",
     again: "↻ Qaytadan",
-    options: "⚙ Parametrlar",
+    options: "Parametrlar",
     optionsApply: "Qo'llash",
     scratch: "Noldan",
     scratchSub: "Bo'sh xona — o'zim yig'aman",
@@ -939,6 +1039,8 @@ export const uz: typeof ru = {
     toEngineering: "Muhandislikka →",
     toCost: "Smetaga →",
     toHandoff: "Topshirishga →",
+    toCostShort: "smeta →",
+    toHandoffShort: "topshirish →",
     exportCnc: "ChPUga eksport →",
     done: "✓ Tayyor · ulashish",
     toSummary: "Qisqacha mazmunga →",
@@ -958,7 +1060,7 @@ export const uz: typeof ru = {
     virtualTour: "Virtual sayohat", soon: "Keyin", v3d: "3D ko'rinish", vfront: "Old ko'rinish", vplan: "Xona rejasi",
     placeWater: "Suv ta'minotini joylashtiring", cancel: "Bekor qilish", ok: "OK", approve: "✓ Tasdiqlash",
     duplicate: "Nusxalash", del: "O'chirish", coverings: "Qoplamalar", edit: "O'zgartirish", color: "Rang",
-    roomShape: "Xona shakli", elements: "Elementlar", openings: "Ochiqliklar", ceiling: "Shift balandligi",
+    roomShape: "Shakl", elements: "Elementlar", openings: "Ochiqliklar", ceiling: "O'lchamlar", ceilingHeight: "Shift balandligi", wallLen: "Devor uzunligi", wallALen: "A devor uzunligi", wallBLen: "B devor uzunligi", roomWidth: "Kenglik", roomDepth: "Chuqurlik",
     wallColorTitle: "Devor rangini o'zgartirish", search: "Qidirish", products: (n: number) => `${n} ta mahsulot`,
     allFilters: "Barcha filtrlar", wallPaint: "devor bo'yog'i",
     wallModifyTitle: "Devorni o'zgartirish", currentCovering: "Joriy qoplama", customizeSurface: "Sirtni sozlash",
@@ -1028,6 +1130,19 @@ export const uz: typeof ru = {
     tPopup: "PDF uchun qalqib chiquvchi oynalarga ruxsat bering", tDrawDl: "Chizma yuklandi", tImgFail: "Rasm yaratib bo'lmadi",
     t3dNotReady: "3D hali tayyor emas", t3dDl: "3D yuklandi",
     csvSpec: "Spetsifikatsiya", csvGrade: "Furnitura klassi", csvReinforce: "Mustahkamlash", csvFrom: "Kimdan",
+    // Kesish rejimi: qo'lda arra rejasi yoki ChPU tayyor o'lchamli detallar ro'yxati
+    modeManual: "Qo'lda kesish (arra)", modeCnc: "ChPU stanok",
+    modeManualHint: "Detallar listlarga arra qalinligini hisobga olib joylashtiriladi — usta shu reja bo'yicha kesadi.",
+    modeCncHint: "Detallarning tayyor o'lchamlari — joylashtirishsiz va kesuvsiz; stanok o'zi joylaydi va frezani hisobga oladi.",
+    cncDistinct: "o'lcham turi", xlsxParts: "⤓ Detallar (Excel)", pdfParts: "⤓ Detallar (PDF)",
+    tXlsx: "Detallar Excel yuklandi", tPartsPdf: "Detallar PDF yuklandi",
+    plTitle: "Detallar ro'yxati · ChPU", plSheetParts: "Detallar", plSheetHw: "Furnitura",
+    plNote: "O'lchamlar — tayyor (toza), mm da. Kromka o'lchamga kiritilgan — stanok uni o'zi ayiradi. Joylashtirish va kesuvni stanok bajaradi.",
+    plTotalParts: "Jami detallar", plBoardM2: "Plita maydoni, m²",
+    plColNo: "№", plColModule: "Modul", plColPart: "Nomi", plColMat: "Material",
+    plColThk: "Qalinlik, mm", plColLen: "Uzunlik, mm", plColWid: "Kenglik, mm", plColQty: "Soni",
+    plColGrain: "Qatlam", plColEdge: "Kromka", plColProfile: "Ishlov",
+    plColHwName: "Nomi", plColHwQty: "Soni", plGrainYes: "Ha",
   },
 };
 

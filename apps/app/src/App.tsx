@@ -1,5 +1,6 @@
 import { useStore } from "./store";
-import { MenuButton } from "./components/MenuButton";
+import { useT } from "./i18n/useT";
+import { JourneyBar } from "./components/JourneyBar";
 import { Footer } from "./components/Footer";
 import { Toast } from "./components/Toast";
 import { Menu } from "./components/Menu";
@@ -23,9 +24,29 @@ import { SettingsModal } from "./components/SettingsModal";
 import { isSupabaseConfigured } from "./lib/supabase";
 
 export default function App() {
+  const t = useT();
   const screen = useStore((s) => s.screen);
   const authReady = useStore((s) => s.authReady);
   const recovery = useStore((s) => s.recovery);
+  const next = useStore((s) => s.next);
+  const goTo = useStore((s) => s.goTo);
+  const showPricing = useStore((s) => s.settings.showPricing);
+
+  // What the shared bar carries on the right, per document screen:
+  //   Инженерия — its forward CTA, moved up out of the footer (the screen has no footer at all now)
+  //   Передача  — a way HOME. It's the end of the journey, and until now finishing a kitchen left
+  //               you on the last step with only the hamburger to get out. Secondary styling: the
+  //               export in the footer is still the primary action here.
+  const barRight =
+    screen === "engineering" ? (
+      <button className="step-next" onClick={next} type="button">
+        {showPricing ? t.footer.toCostShort : t.footer.toHandoffShort}
+      </button>
+    ) : screen === "handoff" ? (
+      <button className="step-next step-home" onClick={() => goTo("home")} type="button">
+        {t.menu.home}
+      </button>
+    ) : null;
 
   // GUEST-FIRST: no login wall. While Supabase checks for an existing session, show a brief
   // splash; a password-recovery link still forces the "set a new password" screen. Otherwise
@@ -99,8 +120,10 @@ export default function App() {
 
   return (
     <div className="app">
-      {/* Variants carries its own in-bar menu button; engineering/cost/handoff use the floating one */}
-      {screen !== "variants" && <MenuButton />}
+      {/* The SAME bar the canvas screens carry — these three used to have none at all, just a
+          floating hamburger over the content. Variants renders its own (its trailing slot holds
+          the options gear, which is its local state). */}
+      {screen !== "variants" && <JourneyBar right={barRight} />}
       <main className="body">
         {/* No "quiz" or "space" route any more — the journey starts on the ROOM EDITOR (which carries
             the shape choice inline), and the layout questions live in a sheet on the Variants screen,
@@ -115,7 +138,8 @@ export default function App() {
           <HandoffScreen />
         ) : null}
       </main>
-      <Footer />
+      {/* Раскладка and Инженерия carry their CTA in the bar, so they render no footer */}
+      {screen !== "engineering" && screen !== "variants" && <Footer />}
       <Toast />
       <Menu />
       <SettingsModal />

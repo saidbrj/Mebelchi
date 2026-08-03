@@ -22,6 +22,8 @@ import { RENDER_PRESETS, LAMP_COUNTS, DEFAULT_SUN, clampEl, type LightPreset } f
 import { FLOOR_COVERINGS } from "../model/floors";
 import { AI_RENDER } from "../config";
 import { shareOrDownload, dataUrlToBlob } from "../lib/shareFile";
+import { JourneyBar } from "../components/JourneyBar";
+import { IconShare, IconSun, IconSparkle, IconCamera, IconDownload } from "../components/icons";
 
 /** the long edge of a snapshot (px). 2K is a picture you can send a client; 4K is the factory export. */
 const SNAP_EDGE = 2048;
@@ -43,13 +45,15 @@ const MAX_ZOOM = 4;
  * by hand because a photo viewer that cannot be pinched feels broken on a phone, and CSS alone will not
  * give us that inside a fixed overlay.
  */
-function Lightbox({ shots, index, onIndex, onClose, onSave, saveLabel }: {
+function Lightbox({ shots, index, onIndex, onClose, onSave, onShare, saveLabel, shareLabel }: {
   shots: string[];
   index: number;
   onIndex: (i: number) => void;
   onClose: () => void;
   onSave: () => void;
+  onShare: () => void;
   saveLabel: string;
+  shareLabel: string;
 }) {
   const [zoom, setZoom] = useState(1);
   const [pan, setPan] = useState({ x: 0, y: 0 });
@@ -140,7 +144,12 @@ function Lightbox({ shots, index, onIndex, onClose, onSave, saveLabel }: {
         </>
       )}
 
-      <button className="lb-save" onClick={onSave} type="button">{saveLabel} ↓</button>
+      <div className="lb-actions">
+        <button className="lb-save" onClick={onSave} type="button">{saveLabel} ↓</button>
+        <button className="lb-share" onClick={onShare} type="button">
+          <IconShare /> {shareLabel}
+        </button>
+      </div>
     </div>
   );
 }
@@ -211,9 +220,7 @@ export function RenderScreen() {
   const cabs = useStore((s) => s.cabs);
   const floorCovering = useStore((s) => s.floorCovering);
   const flash = useStore((s) => s.flash);
-  const back = useStore((s) => s.back);
   const next = useStore((s) => s.next);
-  const openMenu = useStore((s) => s.openMenu);
   const coveringColor = FLOOR_COVERINGS[floorCovering]?.color ?? "#ecd9b4";
 
   const apiRef = useRef<SceneApi | null>(null);
@@ -261,16 +268,7 @@ export function RenderScreen() {
 
   return (
     <div className="roomscene">
-      <div className="stepbar cfg-bar">
-        <div className="cfg-bar-l">
-          <button className="cfg-burger" onClick={openMenu} type="button" aria-label={t.menu.menu}>
-            <span /><span />
-          </button>
-          <button className="cfg-back" onClick={back} type="button" aria-label={t.config.back}>←</button>
-        </div>
-        <div className="cfg-title">{t.render.title}</div>
-        <button className="step-next" onClick={next} type="button">{t.config.next}</button>
-      </div>
+      <JourneyBar right={<button className="step-next" onClick={next} type="button">{t.config.next}</button>} />
 
       <div
         className="scene-area"
@@ -308,18 +306,6 @@ export function RenderScreen() {
           sheet="off"
           onApi={onApi}
         />
-
-        {/* the light controls — folded away, because the scene is the point */}
-        <button className={`rnd-fab rnd-fab-l${panel ? " on" : ""}`} onClick={() => setPanel((v) => !v)} type="button" aria-label={t.render.lighting}>
-          ☀
-        </button>
-
-        {/* IMG2IMG — it eats this screen's render, which is why it lives here. Held until the key can
-            live server-side (config.ts), so for now it is a promise with a badge on it. */}
-        <button className="rnd-ai-fab" type="button" disabled={!AI_RENDER}>
-          ✨ {t.render.ai}
-          {!AI_RENDER && <span className="soon-tag">{t.render.soon}</span>}
-        </button>
 
         {panel && (
           <div className="rnd-panel rnd-panel-l pop-anim">
@@ -379,10 +365,37 @@ export function RenderScreen() {
           </div>
         )}
 
-        <div className="rnd-actions">
-          <button className="rnd-snap" onClick={snap} type="button">◉ {t.render.snap}</button>
-          <button className="rnd-save" onClick={() => void save(0)} type="button" disabled={!shots.length}>
-            {t.render.save} ↓
+        {/* Five actions, laid out like the hub's tab bar — icon over label, «Снимок» raised in the
+            middle as the green primary. Five buttons of different widths and weights in two rows
+            read as clutter; one row of equal columns reads as a toolbar, and it's the pattern the
+            seller already knows from the home screen. */}
+        <div className="rnd-tabbar">
+          <button className={`rnd-tab${panel ? " on" : ""}`} onClick={() => setPanel((v) => !v)} type="button">
+            <span className="rnd-tab-ico"><IconSun /></span>
+            <span className="rnd-tab-lbl">{t.render.lighting}</span>
+          </button>
+
+          {/* IMG2IMG — it eats this screen's render, which is why it lives here. Held until the key
+              can live server-side (config.ts), so for now it is a promise with a badge on it. */}
+          <button className="rnd-tab rnd-tab-ai" type="button" disabled={!AI_RENDER}>
+            <span className="rnd-tab-ico"><IconSparkle /></span>
+            <span className="rnd-tab-lbl">{t.render.ai}</span>
+            {!AI_RENDER && <span className="rnd-tab-soon">{t.render.soon}</span>}
+          </button>
+
+          <button className="rnd-tab rnd-tab-snap" onClick={snap} type="button">
+            <span className="rnd-tab-ico rnd-tab-ico-snap"><IconCamera /></span>
+            <span className="rnd-tab-lbl">{t.render.snap}</span>
+          </button>
+
+          <button className="rnd-tab" onClick={() => void save(0)} type="button" disabled={!shots.length}>
+            <span className="rnd-tab-ico"><IconDownload /></span>
+            <span className="rnd-tab-lbl">{t.render.save}</span>
+          </button>
+
+          <button className="rnd-tab" onClick={() => void save(0)} type="button" disabled={!shots.length}>
+            <span className="rnd-tab-ico"><IconShare /></span>
+            <span className="rnd-tab-lbl">{t.render.share}</span>
           </button>
         </div>
       </div>
@@ -394,7 +407,9 @@ export function RenderScreen() {
           onIndex={setLightbox}
           onClose={() => setLightbox(-1)}
           onSave={() => void save(lightbox)}
+          onShare={() => void save(lightbox)}
           saveLabel={t.render.save}
+          shareLabel={t.render.share}
         />
       )}
     </div>

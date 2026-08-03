@@ -26,6 +26,13 @@ export const IconTabUser = () => (
   </svg>
 );
 
+export const IconTabPlus = () => (
+  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="M12 5V19M5 12H19" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" />
+  </svg>
+);
+
+
 // Telegram plane (icons8) — inherits the button text colour via currentColor.
 export const IconTelegram = () => (
   <svg width="16" height="16" viewBox="0 0 16 16" fill="none" aria-hidden="true">
@@ -339,6 +346,66 @@ export const IconDeleteItem = () => (
       d="M14 4C13.4766 4 12.9414 4.18359 12.5625 4.5625C12.1836 4.94141 12 5.47656 12 6V7H5V9H6.09375L8 27.0938L8.09375 28H23.9062L24 27.0938L25.9062 9H27V7H20V6C20 5.47656 19.8164 4.94141 19.4375 4.5625C19.0586 4.18359 18.5234 4 18 4H14ZM14 6H18V7H14V6ZM8.125 9H23.875L22.0938 26H9.90625L8.125 9ZM12 12V23H14V12H12ZM15 12V23H17V12H15ZM18 12V23H20V12H18Z"
       fill="var(--accent)"
     />
+  </svg>
+);
+
+// ---- Рендер action bar (24px, currentColor — the tab treatment tints them) ----
+export const IconSun = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <circle cx="12" cy="12" r="4.2" stroke="currentColor" strokeWidth="1.8" />
+    <path d="M12 2.2v2.6M12 19.2v2.6M2.2 12h2.6M19.2 12h2.6M5.1 5.1l1.8 1.8M17.1 17.1l1.8 1.8M18.9 5.1l-1.8 1.8M6.9 17.1l-1.8 1.8"
+      stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+  </svg>
+);
+
+export const IconSparkle = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="M12 3.2l1.7 4.6 4.6 1.7-4.6 1.7L12 15.8l-1.7-4.6L5.7 9.5l4.6-1.7L12 3.2Z" stroke="currentColor" strokeWidth="1.6" strokeLinejoin="round" />
+    <path d="M18.4 15.2l.75 2.05 2.05.75-2.05.75-.75 2.05-.75-2.05-2.05-.75 2.05-.75.75-2.05Z" stroke="currentColor" strokeWidth="1.4" strokeLinejoin="round" />
+  </svg>
+);
+
+/** Shutter — «Снимок», the render screen's primary action. */
+export const IconCamera = () => (
+  <svg width="26" height="26" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="M4 8.4h2.9l1.5-2.4h7.2l1.5 2.4H20a1.4 1.4 0 0 1 1.4 1.4v8.2A1.4 1.4 0 0 1 20 20H4a1.4 1.4 0 0 1-1.4-1.4V9.8A1.4 1.4 0 0 1 4 8.4Z"
+      stroke="currentColor" strokeWidth="1.8" strokeLinejoin="round" />
+    <circle cx="12" cy="13.7" r="3.5" stroke="currentColor" strokeWidth="1.8" />
+  </svg>
+);
+
+export const IconDownload = () => (
+  <svg width="24" height="24" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="M12 3.6v11m0 0 4-4m-4 4-4-4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M4 16.4v2.2a1.8 1.8 0 0 0 1.8 1.8h12.4a1.8 1.8 0 0 0 1.8-1.8v-2.2" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+  </svg>
+);
+
+/** Share — the platform "share out" glyph (node graph), used beside «Сохранить» on Рендер. */
+export const IconShare = () => (
+  <svg width="18" height="18" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <circle cx="18" cy="5" r="2.6" stroke="currentColor" strokeWidth="1.8" />
+    <circle cx="6" cy="12" r="2.6" stroke="currentColor" strokeWidth="1.8" />
+    <circle cx="18" cy="19" r="2.6" stroke="currentColor" strokeWidth="1.8" />
+    <path d="M8.4 10.8 15.6 6.4M8.4 13.2l7.2 4.4" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" />
+  </svg>
+);
+
+// ---- project-card quick actions (16px, currentColor so the pill can tint them) ----
+export const IconPhone = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path
+      d="M7.4 3H4.7C3.8 3 3 3.8 3 4.7C3 13.1 9.9 20 18.3 20C19.2 20 20 19.2 20 18.3V15.6L16.6 14.3L14.9 16.4C12.4 15.2 10.3 13.1 9.1 10.6L11.2 8.9L9.9 5.5L7.4 3Z"
+      stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round"
+    />
+  </svg>
+);
+
+export const IconPin = () => (
+  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+    <path d="M12 21.5C12 21.5 19 15.4 19 10.2C19 6.3 15.9 3.2 12 3.2C8.1 3.2 5 6.3 5 10.2C5 15.4 12 21.5 12 21.5Z"
+      stroke="currentColor" strokeWidth="1.7" strokeLinejoin="round" />
+    <circle cx="12" cy="10.1" r="2.6" stroke="currentColor" strokeWidth="1.7" />
   </svg>
 );
 

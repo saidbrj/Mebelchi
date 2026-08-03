@@ -24,21 +24,43 @@ create table if not exists public.profiles (
 );
 
 -- =====================================================================
--- projects: saved kitchen designs (the whole design slice as JSON)
--- id is the client-generated UUID so local and cloud share the same key
+-- projects: saved kitchen designs (the whole design slice as JSON) plus the
+-- client details that make the list a deal list — see migrations/002_project_meta.sql.
+-- id is the client-generated UUID so local and cloud share the same key.
+--
+-- The client columns are COLUMNS, not keys inside `state`: the project list filters and
+-- sorts on them, and reading them out of the design blob would mean downloading every
+-- kitchen just to draw a list of cards.
 -- =====================================================================
 create table if not exists public.projects (
-  id          uuid primary key,
-  owner       uuid        not null references auth.users (id) on delete cascade,
-  name        text        not null default 'Проект',
-  client      text        not null default '',
-  state       jsonb       not null default '{}'::jsonb,
-  created_at  timestamptz not null default now(),
-  updated_at  timestamptz not null default now()
+  id              uuid primary key,
+  owner           uuid        not null references auth.users (id) on delete cascade,
+  name            text        not null default 'Проект',
+  client          text        not null default '',
+  client_phone    text        not null default '',
+  address         text        not null default '',
+  geo_lat         double precision,
+  geo_lng         double precision,
+  -- deal stage, set by hand: measure | design | quoted | won | production | installed | lost.
+  -- Text, not an enum — statuses are product wording; an enum turns a label tweak into a
+  -- migration. Validated on read (sync.ts asStatus).
+  status          text        not null default 'design',
+  -- quote snapshot in USD, the BASE currency (model/settings.ts); сум/тенге are derived at
+  -- display time from the seller's rate, so a stored local amount would rot.
+  total_usd       numeric,
+  state           jsonb       not null default '{}'::jsonb,
+  created_at      timestamptz not null default now(),
+  updated_at      timestamptz not null default now(),
+  -- last client-info edit, kept apart from updated_at (last DESIGN save) so fixing a typo in
+  -- a phone number doesn't reorder the seller's "По дате" list.
+  meta_updated_at timestamptz
 );
 
 create index if not exists projects_owner_updated_idx
   on public.projects (owner, updated_at desc);
+
+create index if not exists projects_owner_status_idx
+  on public.projects (owner, status);
 
 -- =====================================================================
 -- saved_cabinets: the "My cabinets" reusable library ← model/savedCabs.ts

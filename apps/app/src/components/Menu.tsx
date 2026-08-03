@@ -1,9 +1,10 @@
 // The navbar hamburger drawer: shows the journey PROGRESS (tap a visited step to
 // jump back) plus app navigation to the home / projects / settings screens.
+import type { ReactNode } from "react";
 import { useStore, type Screen } from "../store";
 import { useT } from "../i18n/useT";
-import { isSupabaseConfigured } from "../lib/supabase";
 import { Logo } from "./logo";
+import { IconTabHome, IconTabProjects, IconTabSettings, IconTabUser } from "./icons";
 
 // phase → its label key in t.menu.phases; label resolved at render (language-aware)
 const PHASES: { key: keyof ReturnType<typeof useT>["menu"]["phases"]; target: Screen; members: Screen[] }[] = [
@@ -24,9 +25,6 @@ export function Menu() {
   const screen = useStore((s) => s.screen);
   const closeMenu = useStore((s) => s.closeMenu);
   const goTo = useStore((s) => s.goTo);
-  const authUser = useStore((s) => s.authUser);
-  const signOut = useStore((s) => s.signOut);
-  const openAuth = useStore((s) => s.openAuth);
   const openSettings = useStore((s) => s.openSettings);
   const showPricing = useStore((s) => s.settings.showPricing);
 
@@ -44,12 +42,10 @@ export function Menu() {
     to();
     closeMenu();
   };
-  const ITEMS: { label: string; onClick: () => void }[] = [
-    { label: t.menu.home, onClick: () => nav(() => goTo("home")) },
-    { label: t.menu.projects, onClick: () => nav(() => goTo("projects")) },
-    { label: t.menu.settings, onClick: openSettings },
-    ...(isSupabaseConfigured && !authUser ? [{ label: t.menu.signIn, onClick: openAuth }] : []),
-    ...(authUser ? [{ label: t.menu.signOut, onClick: () => nav(() => { void signOut(); }) }] : []),
+  const ITEMS: { label: string; icon: ReactNode; onClick: () => void }[] = [
+    { label: t.menu.home, icon: <IconTabHome />, onClick: () => nav(() => goTo("home")) },
+    { label: t.menu.projects, icon: <IconTabProjects />, onClick: () => nav(() => goTo("projects")) },
+    { label: t.menu.settings, icon: <IconTabSettings />, onClick: openSettings },
   ];
 
   return (
@@ -57,7 +53,10 @@ export function Menu() {
       <div className="menu-backdrop" onClick={closeMenu} />
       <aside className="menu-drawer">
         <div className="menu-head">
-          <div className="brand"><Logo height={22} /></div>
+          {/* the wordmark is the way home — the same thing it does in most apps */}
+          <button className="brand menu-brand" onClick={() => nav(() => goTo("home"))} type="button" aria-label={t.menu.home}>
+            <Logo height={22} />
+          </button>
           <button className="menu-x" onClick={closeMenu} aria-label={t.menu.close} type="button">
             ✕
           </button>
@@ -80,9 +79,21 @@ export function Menu() {
         <div className="menu-items">
           {ITEMS.map((it) => (
             <button key={it.label} className="menu-item" onClick={it.onClick} type="button">
+              <span className="menu-item-ic">{it.icon}</span>
               {it.label}
             </button>
           ))}
+        </div>
+
+        {/* Профиль sits apart at the foot of the drawer — it's the account, not another place in
+            the app. It replaces the old «Войти» / «Выйти» pair: the Профиль screen carries the
+            sign-out for a signed-in seller and embeds the whole sign-in form for a guest, so one
+            entry serves both and the menu stops changing shape depending on who's looking. */}
+        <div className="menu-foot">
+          <button className="menu-item" onClick={() => nav(() => goTo("user"))} type="button">
+            <span className="menu-item-ic"><IconTabUser /></span>
+            {t.menu.profile}
+          </button>
         </div>
       </aside>
     </>

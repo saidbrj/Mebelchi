@@ -1,10 +1,10 @@
 // "На главную" — landing: greet the designer, start a new project, or jump back into
 // a recent one. Projects save automatically as you work (model/projects.ts); the
 // profile nudge points first-time users to Настройки.
-import { useState, useCallback } from "react";
+import { useState, useCallback, useMemo } from "react";
 import { useStore } from "../store";
 import { useT } from "../i18n/useT";
-import { listProjects, type ProjectMeta } from "../model/projects";
+import { listProjects, isStale, type MetaPatch, type ProjectMeta } from "../model/projects";
 import { profileComplete } from "../model/settings";
 
 import { ProjectCard, RenameModal, DeleteModal } from "../components/ProjectCard";
@@ -19,25 +19,35 @@ export function HomeScreen() {
   const removeProject = useStore((s) => s.removeProject);
   const renameProject = useStore((s) => s.renameProject);
   const settings = useStore((s) => s.settings);
-  useStore((s) => s.projectsRev); // re-render when the project list changes
+  const setProjectBucket = useStore((s) => s.setProjectBucket);
+  const rev = useStore((s) => s.projectsRev); // re-render when the project list changes
 
   const [renaming, setRenaming] = useState<ProjectMeta | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
 
-  const all = listProjects();
+  const all = useMemo(() => listProjects(), [rev]);
   // Home shows only the 4 most-recent projects (sorting/search live on the Projects tab).
   const recent = [...all].sort((a, b) => b.updatedAt - a.updatedAt).slice(0, 4);
+  // The one thing a seller loses money on: a quote sent days ago that nobody chased. It's the
+  // only agenda item derivable today — deadlines and install dates need a due date on the
+  // project first, so the strip stays honest rather than padded with guesses.
+  const waiting = all.filter((p) => isStale(p)).length;
 
   const firstName = settings.name.trim().split(/\s+/)[0];
   const hello = firstName ? t.home.greetingName(firstName) : t.home.greeting;
 
   const handleSaveRename = useCallback(
-    (id: string, patch: { name: string; client: string }) => {
+    (id: string, patch: MetaPatch) => {
       renameProject(id, patch);
       setRenaming(null);
     },
     [renameProject],
   );
+
+  const showWaiting = useCallback(() => {
+    setProjectBucket("quoted");
+    goTo("projects");
+  }, [setProjectBucket, goTo]);
 
   const handleDelete = useCallback(
     (id: string) => {
@@ -57,9 +67,16 @@ export function HomeScreen() {
       </div>
 
       {!profileComplete(settings) && (
-        <button className="home-nudge" onClick={() => goTo("settings")} type="button">
+        <button className="home-nudge" onClick={() => goTo("user")} type="button">
           <span>{t.home.nudge}</span>
           <span className="home-nudge-sub">{t.home.nudgeSub}</span>
+        </button>
+      )}
+
+      {waiting > 0 && (
+        <button className="home-attention" onClick={showWaiting} type="button">
+          <span>{t.projects.awaiting(waiting)}</span>
+          <span className="home-nudge-sub">{t.projects.awaitingSub}</span>
         </button>
       )}
 
@@ -88,13 +105,6 @@ export function HomeScreen() {
       ) : (
         <p className="sub home-empty">{t.home.empty}</p>
       )}
-
-      {/* sticky bottom "New project" CTA */}
-      <div className="hc-bottom-cta">
-        <button className="hc-new-btn" onClick={newProject} type="button">
-          {t.home.newProject}
-        </button>
-      </div>
 
       {/* rename modal */}
       {renaming && (

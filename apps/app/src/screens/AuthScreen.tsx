@@ -39,8 +39,8 @@ export function AuthScreen({ embedded = false }: { embedded?: boolean } = {}) {
     setBusy(true);
     const res =
       mode === "in" ? await signIn(email, password)
-      : mode === "up" ? await signUp(email, password)
-      : await resetPassword(email);
+        : mode === "up" ? await signUp(email, password)
+          : await resetPassword(email);
     setBusy(false);
     if (res.error) { setError(res.error); return; }
     if (mode === "reset") setSent("reset");
@@ -52,7 +52,6 @@ export function AuthScreen({ embedded = false }: { embedded?: boolean } = {}) {
     return (
       <section className="screen auth-screen">
         <div className="auth-box">
-          <div className="qnum"><Logo height={22} /></div>
           <h1 className="h1">{t.auth.checkMail}</h1>
           <p className="sub">{sent === "confirm" ? t.auth.sentConfirm(email) : t.auth.sentReset(email)}</p>
           <button className="link-btn" onClick={() => { setSent(null); go("in"); }} type="button">
@@ -71,7 +70,6 @@ export function AuthScreen({ embedded = false }: { embedded?: boolean } = {}) {
       <form className="auth-box" onSubmit={submit}>
         {!embedded && <button className="auth-close" type="button" onClick={closeAuth} aria-label={t.menu.close}>✕</button>}
         {langToggle}
-        <div className="qnum"><Logo height={22} /></div>
         <h1 className="h1">{title}</h1>
         <p className="sub">
           {mode === "in" ? t.auth.subIn : mode === "up" ? t.auth.subUp : t.auth.subReset}

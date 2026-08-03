@@ -43,6 +43,7 @@ const GLASS_L = "#7ba7bd";
 const DOORL = "#9a9184";
 const FITL = "#9aa3ad";
 const RED = "#e53935";
+const WIRE_LINE = "#1a1a1a"; // «Линии»: near-black outline on white paper
 
 export interface EditDim {
   clientX: number;
@@ -82,6 +83,7 @@ export function ElevationGrid({
   run,
   ceiling,
   selectedId,
+  selectedIds,
   mode = "real",
   onSelect,
   onAddInCell,
@@ -103,6 +105,9 @@ export function ElevationGrid({
   run: number;
   ceiling: number;
   selectedId: string | null;
+  /** the whole selection set — every member is highlighted, so a multi-select reads in the front view
+   *  exactly as it does in the 3D. Falls back to `selectedId` when absent. */
+  selectedIds?: string[];
   mode?: "real" | "xray" | "wire";
   onSelect: (id: string | null) => void;
   onAddInCell: (cell: CellRef) => void;
@@ -344,7 +349,7 @@ export function ElevationGrid({
       <rect x={box.x} y={box.y} width={box.w} height={box.h} fill="#fff" onClick={() => onSelect(null)} />
 
       {/* ── THE WALL ── */}
-      <rect x={0} y={Y(viewH)} width={wallLen} height={viewH} fill={WALL} onClick={() => onSelect(null)} />
+      <rect x={0} y={Y(viewH)} width={wallLen} height={viewH} fill={wire ? "#ffffff" : WALL} onClick={() => onSelect(null)} />
       <g opacity={0.75} pointerEvents="none">
         {feats.map((f) => {
           const w = f.x1 - f.x0;
@@ -356,7 +361,7 @@ export function ElevationGrid({
             const mull = Math.max(1, Math.round(w / 700));
             return (
               <g key={f.id}>
-                <rect x={f.x0} y={yTop} width={w} height={h} fill={GLASS} stroke={GLASS_L} strokeWidth={8 * s} />
+                <rect x={f.x0} y={yTop} width={w} height={h} fill={wire ? "#ffffff" : GLASS} stroke={wire ? WIRE_LINE : GLASS_L} strokeWidth={8 * s} />
                 {Array.from({ length: mull - 1 }, (_, k) => (
                   <line key={k} x1={f.x0 + (w * (k + 1)) / mull} y1={yTop} x2={f.x0 + (w * (k + 1)) / mull} y2={yTop + h} stroke={GLASS_L} strokeWidth={6 * s} />
                 ))}
@@ -417,8 +422,8 @@ export function ElevationGrid({
               y={Y(y1)}
               width={wallLen}
               height={y1 - y0}
-              fill={isVoid ? VOID_T : r.kind === "floor" ? BAND_A : BAND_B}
-              fillOpacity={isVoid ? 0.3 : 0.45}
+              fill={wire ? "#ffffff" : isVoid ? VOID_T : r.kind === "floor" ? BAND_A : BAND_B}
+              fillOpacity={wire ? 1 : isVoid ? 0.3 : 0.45}
               onClick={() => onSelect(null)}
             />
             {label && (
@@ -478,8 +483,8 @@ export function ElevationGrid({
               }}
               style={{ cursor: "pointer" }}
             >
-              <g opacity={wire ? 0.25 : 1}>{moduleLocal(rc.cab, rc.band.y0, extLeft, extRight)}</g>
-              {(wire || mode === "xray") && interiorLocal(rc.cab, rc.band.y0)}
+              <g>{moduleLocal(rc.cab, rc.band.y0, extLeft, extRight, wire)}</g>
+              {(wire || mode === "xray") && interiorLocal(rc.cab, rc.band.y0, wire)}
             </g>
           );
         })}
@@ -498,9 +503,9 @@ export function ElevationGrid({
             : C.facade;
           return (
             <g key={`fill${i}`}>
-              <rect x={f.x} y={Y(f.y1)} width={f.w} height={f.y1 - f.y0} fill={facadeColor} stroke={C.facadeLine} strokeWidth={2 * s} />
+              <rect x={f.x} y={Y(f.y1)} width={f.w} height={f.y1 - f.y0} fill={wire ? "#ffffff" : facadeColor} stroke={wire ? WIRE_LINE : C.facadeLine} strokeWidth={2 * s} />
               {label && (
-                <text x={cx} y={cy} fontSize={42 * s} fill={C.dim} textAnchor="middle" dominantBaseline="central" transform={`rotate(${rot} ${cx} ${cy})`}>
+                <text x={cx} y={cy} fontSize={42 * s} fill={wire ? WIRE_LINE : C.dim} textAnchor="middle" dominantBaseline="central" transform={`rotate(${rot} ${cx} ${cy})`}>
                   Добор {f.horizontal ? ceiling - f.y0 : f.w}
                 </text>
               )}
@@ -621,12 +626,29 @@ export function ElevationGrid({
           <rect key={`x${rc.id}`} x={rc.x} y={Y(rc.band.y1)} width={rc.w} height={rc.band.y1 - rc.band.y0} fill={RED} fillOpacity={0.18} stroke={RED} strokeWidth={9 * s} rx={8} pointerEvents="none" />
         ))}
 
-      {/* selection */}
+      {/* selection — every member of the set (a multi-select outlines them all, like the 3D). A bold
+          border PLUS a translucent tint over the whole module, so a pick is unmistakable — a thin
+          outline alone read as almost nothing against the drawing. */}
       {cells
-        .filter((rc) => rc.id === selectedId)
-        .map((rc) => (
-          <rect key="sel" x={rc.x} y={Y(rc.band.y1)} width={rc.w} height={rc.band.y1 - rc.band.y0} fill="none" stroke={L.clashing.has(rc.id) ? RED : C.sel} strokeWidth={9 * s} rx={8} pointerEvents="none" />
-        ))}
+        .filter((rc) => (selectedIds && selectedIds.length ? selectedIds.includes(rc.id) : rc.id === selectedId))
+        .map((rc) => {
+          const col = L.clashing.has(rc.id) ? RED : C.sel;
+          return (
+            <rect
+              key={`sel${rc.id}`}
+              x={rc.x}
+              y={Y(rc.band.y1)}
+              width={rc.w}
+              height={rc.band.y1 - rc.band.y0}
+              fill={col}
+              fillOpacity={0.22}
+              stroke={col}
+              strokeWidth={20 * s}
+              rx={12}
+              pointerEvents="none"
+            />
+          );
+        })}
 
       {/* ── ROW BORDERS ── */}
       {grid.rows.slice(0, -1).map((r, j) => {

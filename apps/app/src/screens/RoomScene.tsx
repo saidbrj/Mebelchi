@@ -9,6 +9,8 @@ import { FloorPlan } from "../components/FloorPlan";
 import { WaterPicker } from "../components/WaterPicker";
 import { OpeningThumb, FittingThumb } from "../components/Thumb";
 import { OptionCard } from "../components/OptionCard";
+import { DimSlider, GlyphW, GlyphH } from "../components/DimControls";
+import { JourneyBar } from "../components/JourneyBar";
 import { Illustration } from "../quiz/Illustration";
 import { FLOOR_COVERINGS, ROOM_TYPES } from "../model/floors";
 import { fittingCatalog, fittingKind, openingCatalog, wallSegments, defaultFittingHeight, defaultOpeningSill, OPENING_FINISHES, type FittingCategory, type OpeningKind, type OpeningKindId, type Pt } from "../model/room";
@@ -96,6 +98,7 @@ export function RoomScene() {
   const floorCovering = useStore((s) => s.floorCovering);
   const setShape = useStore((s) => s.setShape);
   const setCeiling = useStore((s) => s.setCeiling);
+  const setCeilingValue = useStore((s) => s.setCeilingValue);
   const reveal = useStore((s) => s.reveal);
   const setReveal = useStore((s) => s.setReveal);
   const setRoomName = useStore((s) => s.setRoomName);
@@ -104,6 +107,8 @@ export function RoomScene() {
   const moveCorner = useStore((s) => s.moveCorner);
   const setWallEndpoints = useStore((s) => s.setWallEndpoints);
   const setWallLength = useStore((s) => s.setWallLength);
+  const setRoomWidth = useStore((s) => s.setRoomWidth);
+  const setRoomDepth = useStore((s) => s.setRoomDepth);
   const moveOpening = useStore((s) => s.moveOpening);
   const dragOpeningTo = useStore((s) => s.dragOpeningTo);
   const setOpeningWidth = useStore((s) => s.setOpeningWidth);
@@ -120,9 +125,7 @@ export function RoomScene() {
   const redo = useStore((s) => s.redo);
   const canUndo = useStore((s) => s.past.length > 0);
   const canRedo = useStore((s) => s.future.length > 0);
-  const back = useStore((s) => s.back);
   const next = useStore((s) => s.next);
-  const openMenu = useStore((s) => s.openMenu);
   const flash = useStore((s) => s.flash);
 
   const [view, setView] = useState<SceneView>("3d");
@@ -472,16 +475,9 @@ export function RoomScene() {
 
   return (
     <div className="roomscene">
-      <div className="stepbar cfg-bar">
-        <div className="cfg-bar-l">
-          <button className="cfg-burger" onClick={openMenu} type="button" aria-label={t.menu.menu}>
-            <span /><span />
-          </button>
-          <button className="cfg-back" onClick={back} type="button" aria-label={t.room.back2}>←</button>
-        </div>
-        <div className="cfg-title">{roomName || t.menu.phases.space}</div>
-        <button className="step-next" onClick={next} type="button">{t.room.toVariants}</button>
-      </div>
+      {/* the bar shows the PROJECT name, not the room's — the room's own label is already drawn
+          on the floor plan itself, so the bar is free to say whose kitchen this is */}
+      <JourneyBar right={<button className="step-next" onClick={next} type="button">{t.room.toVariants}</button>} />
 
       <div className="scene-area">
         {waterPick ? (
@@ -549,6 +545,16 @@ export function RoomScene() {
             onFittingDrag={dragFitting3D}
             onOpeningClick={selectOpening}
             onFloorClick={selectFloor}
+            onSetWallLength={setWallLength}
+            onSetCeilingValue={setCeilingValue}
+            onEditNumber={onEditNumber}
+            onMoveCorner={moveCorner}
+            onMoveWall={setWallEndpoints}
+            onBeginEdit={beginEdit}
+            onOpeningDrag={dragOpeningTo}
+            onSetOpeningWidth={setOpeningWidth}
+            onSetOpeningHeight={setOpeningHeight}
+            onSetOpeningSill={setOpeningSill}
           />
         )}
 
@@ -1116,18 +1122,83 @@ export function RoomScene() {
             {sheet === "ceiling" && (
               <>
                 <div className="sheet-title">{t.room.ceiling}</div>
-                <div className="stepper">
-                  <button onClick={() => setCeiling(-100)} type="button" aria-label={t.room.less}>−</button>
-                  <div className="num">{ceiling}<small>{t.room.ceilingStep}</small></div>
-                  <button onClick={() => setCeiling(100)} type="button" aria-label={t.room.more}>+</button>
+                <div style={{ display: "flex", flexDirection: "column", gap: 12, marginTop: 10, paddingBottom: 6 }}>
+                  {/* A RECTANGLE (4 corners) gets true WIDTH + DEPTH — each resizes the whole box and
+                      keeps it square. An L-room (6 corners) keeps its two arm lengths, which is what
+                      "width/depth" would even mean there. */}
+                  {roomPoints.length === 4 ? (
+                    <>
+                      <DimSlider
+                        icon={<GlyphW />}
+                        label={t.room.roomWidth}
+                        value={Math.round(Math.hypot(roomPoints[1].x - roomPoints[0].x, roomPoints[1].y - roomPoints[0].y))}
+                        min={1000}
+                        max={10000}
+                        step={50}
+                        onLive={(v) => setRoomWidth(v)}
+                        onCommit={(v) => setRoomWidth(v)}
+                      />
+                      <DimSlider
+                        icon={<GlyphW />}
+                        label={t.room.roomDepth}
+                        value={Math.round(Math.hypot(roomPoints[2].x - roomPoints[1].x, roomPoints[2].y - roomPoints[1].y))}
+                        min={1000}
+                        max={10000}
+                        step={50}
+                        onLive={(v) => setRoomDepth(v)}
+                        onCommit={(v) => setRoomDepth(v)}
+                      />
+                    </>
+                  ) : (
+                    <>
+                      {roomPoints.length > 0 && (
+                        <DimSlider
+                          icon={<GlyphW />}
+                          label={roomPoints.length > 4 ? t.room.wallALen : t.room.wallLen}
+                          value={Math.round(Math.hypot(roomPoints[1].x - roomPoints[0].x, roomPoints[1].y - roomPoints[0].y))}
+                          min={1000}
+                          max={10000}
+                          step={50}
+                          onLive={(v) => setWallLength(0, v, "b")}
+                          onCommit={(v) => setWallLength(0, v, "b")}
+                        />
+                      )}
+                      {roomPoints.length > 4 && (
+                        <DimSlider
+                          icon={<GlyphW />}
+                          label={t.room.wallBLen}
+                          value={Math.round(Math.hypot(roomPoints[2].x - roomPoints[1].x, roomPoints[2].y - roomPoints[1].y))}
+                          min={1000}
+                          max={10000}
+                          step={50}
+                          onLive={(v) => setWallLength(1, v, "b")}
+                          onCommit={(v) => setWallLength(1, v, "b")}
+                        />
+                      )}
+                    </>
+                  )}
+                  <DimSlider
+                    icon={<GlyphH />}
+                    label={t.room.ceilingHeight}
+                    value={ceiling}
+                    min={2000}
+                    max={4000}
+                    step={10}
+                    onLive={(v) => setCeilingValue(v)}
+                    onCommit={(v) => setCeilingValue(v)}
+                  />
+                  <DimSlider
+                    icon={<GlyphW />}
+                    label={t.room.reveal}
+                    value={reveal}
+                    min={0}
+                    max={120}
+                    step={5}
+                    onLive={(v) => setReveal(v)}
+                    onCommit={(v) => setReveal(v)}
+                  />
                 </div>
-                <div className="sheet-title">{t.room.reveal}</div>
-                <div className="stepper">
-                  <button onClick={() => setReveal(reveal - 10)} type="button" aria-label={t.room.less}>−</button>
-                  <div className="num">{reveal}<small>{t.room.revealStep}</small></div>
-                  <button onClick={() => setReveal(reveal + 10)} type="button" aria-label={t.room.more}>+</button>
-                </div>
-                <div className="sheet-note">{t.room.revealHint}</div>
+                <div className="sheet-note" style={{ marginTop: 8 }}>{t.room.revealHint}</div>
               </>
             )}
 

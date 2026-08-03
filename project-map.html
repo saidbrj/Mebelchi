@@ -1,0 +1,392 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Карта проекта Jihozla</title>
+<style>
+  :root {
+    --bg: #f4f6f3;
+    --surface: #ffffff;
+    --surface-2: #eef1ec;
+    --ink: #15201a;
+    --muted: #566257;
+    --faint: #7f8c81;
+    --line: #e0e5df;
+    --line-strong: #cfd6cd;
+    --accent: #0a7d4d;
+    --accent-ink: #00522e;
+    --a: #0a7d4d;
+    --a-bg: #e7f3ec;
+    --b: #2b57bf;
+    --b-bg: #e8eefb;
+    --c: #a86a06;
+    --c-bg: #f6eedb;
+    --warn: #b23a2c;
+    --warn-bg: #f8e9e6;
+    --code: #24402f;
+    --code-bg: #eef2ec;
+    --shadow: 0 1px 2px rgba(20,40,28,.04), 0 6px 20px rgba(20,40,28,.05);
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme]) {
+      --bg: #0d1310; --surface: #141c17; --surface-2: #1a231d; --ink: #eef2ee;
+      --muted: #9aa89e; --faint: #7c8a80; --line: #253029; --line-strong: #33413a;
+      --accent: #37c98a; --accent-ink: #a7ecca; --a: #37c98a; --a-bg: #142a20;
+      --b: #7ba1ff; --b-bg: #16203a; --c: #e2ab45; --c-bg: #2c2413;
+      --warn: #f0776a; --warn-bg: #2e1a17; --code: #b9e6ce; --code-bg: #172019;
+      --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0d1310; --surface: #141c17; --surface-2: #1a231d; --ink: #eef2ee;
+    --muted: #9aa89e; --faint: #7c8a80; --line: #253029; --line-strong: #33413a;
+    --accent: #37c98a; --accent-ink: #a7ecca; --a: #37c98a; --a-bg: #142a20;
+    --b: #7ba1ff; --b-bg: #16203a; --c: #e2ab45; --c-bg: #2c2413;
+    --warn: #f0776a; --warn-bg: #2e1a17; --code: #b9e6ce; --code-bg: #172019;
+    --shadow: 0 1px 2px rgba(0,0,0,.3), 0 8px 24px rgba(0,0,0,.35);
+  }
+
+  * { box-sizing: border-box; }
+  html { -webkit-text-size-adjust: 100%; }
+  body {
+    margin: 0;
+    background: var(--bg);
+    color: var(--ink);
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", "Inter", "Helvetica Neue", Arial, sans-serif;
+    line-height: 1.6;
+    -webkit-font-smoothing: antialiased;
+  }
+  .wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px 96px; }
+
+  code, .mono {
+    font-family: ui-monospace, "SF Mono", "JetBrains Mono", Menlo, Consolas, monospace;
+    font-size: .78em;
+    color: var(--code);
+    background: var(--code-bg);
+    padding: .12em .4em;
+    border-radius: 5px;
+    word-break: break-word;
+  }
+
+  /* theme toggle */
+  .toggle {
+    position: fixed; top: 16px; right: 16px; z-index: 10;
+    font: inherit; font-size: .8rem; cursor: pointer;
+    background: var(--surface); color: var(--muted);
+    border: 1px solid var(--line-strong); border-radius: 999px;
+    padding: 7px 14px; box-shadow: var(--shadow);
+  }
+  .toggle:hover { color: var(--ink); }
+  .toggle:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+
+  /* header */
+  .hero { padding: 60px 0 34px; border-bottom: 1px solid var(--line); margin-bottom: 40px; }
+  .kicker { font-size: .72rem; letter-spacing: .16em; text-transform: uppercase; color: var(--accent); font-weight: 700; margin: 0 0 14px; }
+  h1 { font-size: clamp(2rem, 5vw, 3rem); line-height: 1.05; letter-spacing: -.025em; font-weight: 800; margin: 0 0 16px; text-wrap: balance; }
+  .lede { font-size: 1.08rem; color: var(--muted); max-width: 62ch; margin: 0 0 22px; }
+  .meta { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chip { font-size: .74rem; padding: 5px 11px; border-radius: 999px; border: 1px solid var(--line-strong); color: var(--muted); background: var(--surface); }
+  .chip b { color: var(--ink); font-weight: 650; }
+
+  section { margin-top: 52px; }
+  .sec-head { display: flex; align-items: baseline; gap: 12px; margin-bottom: 6px; }
+  .sec-num { font-size: .72rem; font-weight: 700; color: var(--accent); font-variant-numeric: tabular-nums; }
+  h2 { font-size: 1.35rem; letter-spacing: -.01em; font-weight: 750; margin: 0; }
+  .sec-sub { color: var(--muted); margin: 4px 0 24px; max-width: 68ch; }
+
+  .legend { display: flex; flex-wrap: wrap; gap: 10px; margin: 0 0 26px; }
+  .owner { display: inline-flex; align-items: center; gap: 8px; font-size: .82rem; padding: 7px 13px 7px 10px; border-radius: 10px; background: var(--surface); border: 1px solid var(--line); }
+  .owner .dot { width: 11px; height: 11px; border-radius: 3px; flex: none; }
+  .owner b { font-weight: 700; }
+  .owner span { color: var(--muted); }
+  .dot.A { background: var(--a); } .dot.B { background: var(--b); } .dot.C { background: var(--c); }
+
+  .ribbon { display: flex; gap: 0; overflow-x: auto; padding: 4px 2px 14px; scrollbar-width: thin; }
+  .step { flex: 1 0 128px; position: relative; padding: 14px 14px 14px 16px; background: var(--surface); border: 1px solid var(--line); border-left-width: 4px; border-radius: 10px; margin-right: 8px; }
+  .step:last-child { margin-right: 0; }
+  .step.A { border-left-color: var(--a); }
+  .step.B { border-left-color: var(--b); }
+  .step.C { border-left-color: var(--c); }
+  .step .n { font-size: .68rem; font-weight: 700; color: var(--faint); font-variant-numeric: tabular-nums; }
+  .step .nm { font-weight: 700; font-size: .96rem; margin-top: 2px; }
+  .step .slug { font-size: .68rem; color: var(--faint); margin-top: 2px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 16px; }
+  .card { background: var(--surface); border: 1px solid var(--line); border-top: 3px solid var(--line-strong); border-radius: 14px; padding: 20px; box-shadow: var(--shadow); transition: transform .18s ease, box-shadow .18s ease; }
+  .card.A { border-top-color: var(--a); }
+  .card.B { border-top-color: var(--b); }
+  .card.C { border-top-color: var(--c); }
+  .card:hover { transform: translateY(-3px); box-shadow: 0 10px 30px rgba(20,40,28,.10); }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme]) .card:hover { box-shadow: 0 12px 34px rgba(0,0,0,.5); } }
+  :root[data-theme="dark"] .card:hover { box-shadow: 0 12px 34px rgba(0,0,0,.5); }
+
+  .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; }
+  .card h3 { margin: 0; font-size: 1.18rem; font-weight: 750; letter-spacing: -.01em; }
+  .card .route { font-size: .72rem; color: var(--faint); margin-top: 2px; }
+  .badge { flex: none; font-size: .7rem; font-weight: 700; padding: 4px 9px; border-radius: 7px; letter-spacing: .02em; }
+  .badge.A { background: var(--a-bg); color: var(--a); }
+  .badge.B { background: var(--b-bg); color: var(--b); }
+  .badge.C { background: var(--c-bg); color: var(--c); }
+  .does { color: var(--muted); font-size: .9rem; margin: 12px 0 16px; }
+  .rows { display: flex; flex-direction: column; gap: 9px; }
+  .row { display: grid; grid-template-columns: 62px 1fr; gap: 10px; align-items: start; }
+  .row .lab { font-size: .64rem; text-transform: uppercase; letter-spacing: .07em; font-weight: 700; color: var(--faint); padding-top: 3px; }
+  .row .files { display: flex; flex-wrap: wrap; gap: 5px; }
+  .row .files code { font-size: .73rem; }
+  .flag { display: inline-block; font-size: .64rem; font-weight: 700; color: var(--warn); background: var(--warn-bg); padding: 1px 6px; border-radius: 5px; margin-left: 4px; }
+
+  .kernel { border: 1px solid var(--warn); background: var(--warn-bg); border-radius: 14px; padding: 22px 24px; }
+  .kernel h3 { margin: 0 0 6px; font-size: 1.1rem; color: var(--warn); }
+  .kernel p { margin: 0 0 14px; color: var(--muted); font-size: .92rem; }
+  .kernel .files { display: flex; flex-wrap: wrap; gap: 7px; }
+  .kernel .files code { background: var(--surface); }
+
+  .layers { display: grid; gap: 1px; background: var(--line); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .layer { display: grid; grid-template-columns: 190px 1fr; gap: 16px; background: var(--surface); padding: 14px 18px; }
+  .layer .path { font-weight: 650; }
+  .layer .desc { color: var(--muted); font-size: .9rem; }
+  @media (max-width: 640px) { .layer { grid-template-columns: 1fr; gap: 3px; } }
+
+  .tbl { width: 100%; border-collapse: collapse; font-size: .9rem; }
+  .tbl th, .tbl td { text-align: left; padding: 11px 12px; border-bottom: 1px solid var(--line); vertical-align: top; }
+  .tbl th { font-size: .68rem; text-transform: uppercase; letter-spacing: .07em; color: var(--faint); font-weight: 700; }
+  .tbl td:first-child { white-space: nowrap; }
+  .tbl .muted { color: var(--muted); }
+  .tscroll { overflow-x: auto; }
+
+  .rules { display: grid; gap: 14px; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); }
+  .rule { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 18px 20px; position: relative; }
+  .rule .rn { font-size: 1.6rem; font-weight: 800; color: var(--accent); line-height: 1; font-variant-numeric: tabular-nums; opacity: .85; }
+  .rule h4 { margin: 8px 0 6px; font-size: 1rem; font-weight: 700; }
+  .rule p { margin: 0; color: var(--muted); font-size: .88rem; }
+
+  .verdict { display: flex; gap: 16px; align-items: flex-start; background: var(--surface); border: 1px solid var(--line); border-left: 4px solid var(--accent); border-radius: 12px; padding: 20px 22px; }
+  .verdict .mark { flex: none; width: 34px; height: 34px; border-radius: 9px; background: var(--a-bg); color: var(--accent); display: grid; place-items: center; font-weight: 800; font-size: 1.1rem; }
+  .verdict p { margin: 0; }
+  .verdict b { color: var(--ink); }
+
+  footer { margin-top: 60px; padding-top: 24px; border-top: 1px solid var(--line); color: var(--faint); font-size: .82rem; }
+
+  @media (prefers-reduced-motion: reduce) { * { transition: none !important; } }
+</style>
+</head>
+<body>
+<button class="toggle" id="themeToggle" type="button" aria-label="Переключить тему">◐ Тема</button>
+<div class="wrap">
+
+  <header class="hero">
+    <p class="kicker">Карта проекта · для команды</p>
+    <h1>Jihozla — что где лежит и кто за что отвечает</h1>
+    <p class="lede">Приложение — это монорепозиторий. Продукт живёт в <code>apps/app</code> и построен вокруг маршрута из 7 шагов: от рисования комнаты до передачи на производство. Эта карта показывает, какие файлы относятся к каждому шагу, и как разделить работу между тремя людьми.</p>
+    <div class="meta">
+      <span class="chip"><b>Стек:</b> React + Vite + Capacitor (iOS/Android)</span>
+      <span class="chip"><b>Состояние:</b> Zustand (<code>store.ts</code>)</span>
+      <span class="chip"><b>3D:</b> Three.js</span>
+      <span class="chip"><b>Данные:</b> Supabase + localStorage</span>
+    </div>
+  </header>
+
+  <div class="verdict">
+    <div class="mark">?</div>
+    <p><b>Можно ли делить работу по папкам?</b> — Да, по <b>фазам маршрута</b>. Приложение уже разложено по слоям (экраны / компоненты / 3D / модель), это хорошая база. Но три вещи заставляют всех трогать одни и те же файлы: общий <code>store.ts</code>, дублирующиеся движки раскладки и 3D, и общее «ядро» <code>model/</code>. Поэтому делим по фазам + держим три правила (внизу страницы).</p>
+  </div>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">01</span><h2>Маршрут и зоны ответственности</h2></div>
+    <p class="sec-sub">Семь шагов journey идут строго по порядку. Естественное деление на троих — по цвету рядом с каждым шагом.</p>
+
+    <div class="legend">
+      <span class="owner"><span class="dot A"></span><b>Разработчик A</b><span>· Помещение + Варианты (раскладки, солвер)</span></span>
+      <span class="owner"><span class="dot B"></span><b>Разработчик B</b><span>· Конфигуратор + Рендер (3D, редактирование)</span></span>
+      <span class="owner"><span class="dot C"></span><b>Разработчик C</b><span>· Инженерия + Смета + Передача + Хаб</span></span>
+    </div>
+
+    <div class="ribbon">
+      <div class="step A"><div class="n">01</div><div class="nm">Помещение</div><div class="slug">details</div></div>
+      <div class="step A"><div class="n">02</div><div class="nm">Варианты</div><div class="slug">variants</div></div>
+      <div class="step B"><div class="n">03</div><div class="nm">Конфигуратор</div><div class="slug">configure</div></div>
+      <div class="step B"><div class="n">04</div><div class="nm">Рендер</div><div class="slug">preview</div></div>
+      <div class="step C"><div class="n">05</div><div class="nm">Инженерия</div><div class="slug">engineering</div></div>
+      <div class="step C"><div class="n">06</div><div class="nm">Смета</div><div class="slug">cost</div></div>
+      <div class="step C"><div class="n">07</div><div class="nm">Передача</div><div class="slug">handoff</div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">02</span><h2>Фазы в деталях</h2></div>
+    <p class="sec-sub">Каждая карточка — один экран маршрута: что он делает и какие файлы к нему относятся. <code>≈N строк</code> помечены крупные файлы, которые стоит трогать осторожно.</p>
+
+    <div class="grid">
+
+      <div class="card A">
+        <div class="card-top"><div><h3>Помещение</h3><div class="route">screen: details</div></div><span class="badge A">A</span></div>
+        <p class="does">Рисование стен, дверей и окон, выбор формы помещения. Отправная точка проекта.</p>
+        <div class="rows">
+          <div class="row"><div class="lab">Экран</div><div class="files"><code>screens/RoomScene.tsx</code></div></div>
+          <div class="row"><div class="lab">UI</div><div class="files"><code>FloorPlan.tsx</code><code>PlanView.tsx</code><code>WaterPicker.tsx</code></div></div>
+          <div class="row"><div class="lab">Модель</div><div class="files"><code>room.ts</code><code>walls.ts</code><code>floors.ts</code><code>subareas.ts</code></div></div>
+        </div>
+      </div>
+
+      <div class="card A">
+        <div class="card-top"><div><h3>Варианты</h3><div class="route">screen: variants</div></div><span class="badge A">A</span></div>
+        <p class="does">Генератор раскладок кухни и выбор варианта. Здесь же «Параметры» (бывший квиз).</p>
+        <div class="rows">
+          <div class="row"><div class="lab">Экран</div><div class="files"><code>screens/VariantsScreen.tsx</code></div></div>
+          <div class="row"><div class="lab">3D</div><div class="files"><code>three/VariantScene.tsx</code><span class="flag">≈3345 строк</span></div></div>
+          <div class="row"><div class="lab">Модель</div><div class="files"><code>layout.ts</code><code>runPlan.ts</code><code>resolve.ts</code></div></div>
+          <div class="row"><div class="lab">Прочее</div><div class="files"><code>quiz/questions.ts</code><code>quiz/Illustration.tsx</code></div></div>
+        </div>
+      </div>
+
+      <div class="card B">
+        <div class="card-top"><div><h3>Конфигуратор</h3><div class="route">screen: configure</div></div><span class="badge B">B</span></div>
+        <p class="does">Живое 3D: редактирование модулей, размеры, фасады, углы, наполнение. Самая тяжёлая фаза.</p>
+        <div class="rows">
+          <div class="row"><div class="lab">Экран</div><div class="files"><code>screens/ConfigScreen.tsx</code><span class="flag">≈1652</span></div></div>
+          <div class="row"><div class="lab">UI</div><div class="files"><code>ConstructorPlan</code><code>ElevationGrid</code><code>FillEditor</code><code>FurnitureEditor</code><code>V21BlueprintEditor</code><code>V21Cabinet3DStudio</code><code>GolaSidePanel</code><code>DimControls</code></div></div>
+          <div class="row"><div class="lab">3D</div><div class="files"><code>ThreeScene.tsx</code><code>kitchen3d.ts</code><code>frontFace.ts</code><code>cabinetHardware.ts</code></div></div>
+          <div class="row"><div class="lab">Модель</div><div class="files"><code>cabinet</code><code>grid</code><code>bands</code><code>rowOps</code><code>carcassGroups</code><code>cornerEdit</code><code>outerCorner</code><code>fill</code><code>gola</code><code>reinforce</code></div></div>
+        </div>
+      </div>
+
+      <div class="card B">
+        <div class="card-top"><div><h3>Рендер</h3><div class="route">screen: preview</div></div><span class="badge B">B</span></div>
+        <p class="does">Красивый 3D-рендер готовой кухни: свет, материалы, снимок для клиента. AI-пасс — за флагом <code>AI_RENDER</code>.</p>
+        <div class="rows">
+          <div class="row"><div class="lab">Экран</div><div class="files"><code>screens/RenderScreen.tsx</code></div></div>
+          <div class="row"><div class="lab">3D</div><div class="files"><code>lighting.ts</code><code>pbr.ts</code><code>post.ts</code><code>reflect.ts</code><code>quality.ts</code></div></div>
+          <div class="row"><div class="lab">Модель</div><div class="files"><code>render.ts</code><code>renderPrompt.ts</code></div></div>
+        </div>
+      </div>
+
+      <div class="card C">
+        <div class="card-top"><div><h3>Инженерия</h3><div class="route">screen: engineering</div></div><span class="badge C">C</span></div>
+        <p class="does">Карты сверления, ЧПУ, DXF, чертежи, раскрой листа. Производственная подготовка.</p>
+        <div class="rows">
+          <div class="row"><div class="lab">Экран</div><div class="files"><code>screens/EngineeringScreen.tsx</code></div></div>
+          <div class="row"><div class="lab">UI</div><div class="files"><code>DrillSheet</code><code>DrawingPage</code><code>CarcassBoxes</code><code>CutMap</code></div></div>
+          <div class="row"><div class="lab">Модель</div><div class="files"><code>machining</code><code>cncExport</code><code>dxfExport</code><code>drawings</code><code>parts</code><code>nest</code></div></div>
+          <div class="row"><div class="lab">Пакет</div><div class="files"><code>engine/</code></div></div>
+        </div>
+      </div>
+
+      <div class="card C">
+        <div class="card-top"><div><h3>Смета</h3><div class="route">screen: cost · опционально</div></div><span class="badge C">C</span></div>
+        <p class="does">Расчёт цены: BOM → распил / кромка / ЧПУ → сумма. Выпадает из маршрута, если продавец выключил цены.</p>
+        <div class="rows">
+          <div class="row"><div class="lab">Экран</div><div class="files"><code>screens/CostScreen.tsx</code></div></div>
+          <div class="row"><div class="lab">Пакет</div><div class="files"><code>packages/pricing/</code></div></div>
+          <div class="row"><div class="lab">Модель</div><div class="files"><code>rates.ts</code><code>sheet.ts</code><code>pricing/usePrice.ts</code><code>useMoney.ts</code></div></div>
+        </div>
+      </div>
+
+      <div class="card C">
+        <div class="card-top"><div><h3>Передача</h3><div class="route">screen: handoff</div></div><span class="badge C">C</span></div>
+        <p class="does">Экспорт и отправка комплекта на производство (SWJ008 + DXF + CSV, шаринг через Telegram/файлы).</p>
+        <div class="rows">
+          <div class="row"><div class="lab">Экран</div><div class="files"><code>screens/HandoffScreen.tsx</code></div></div>
+          <div class="row"><div class="lab">lib</div><div class="files"><code>handoffExport.ts</code><code>shareFile.ts</code></div></div>
+          <div class="row"><div class="lab">Модель</div><div class="files"><code>toProject.ts</code></div></div>
+        </div>
+      </div>
+
+      <div class="card C">
+        <div class="card-top"><div><h3>Хаб + Аккаунт</h3><div class="route">home · projects · settings · auth · вне маршрута</div></div><span class="badge C">C</span></div>
+        <p class="does">Главная, список проектов, настройки, вход и синхронизация с облаком. Оболочка вокруг journey.</p>
+        <div class="rows">
+          <div class="row"><div class="lab">Экраны</div><div class="files"><code>HomeScreen</code><code>ProjectsScreen</code><code>SettingsScreen</code><code>UserScreen</code><code>AuthScreen</code></div></div>
+          <div class="row"><div class="lab">UI</div><div class="files"><code>TabBar</code><code>Menu</code><code>ProjectCard</code><code>SettingsModal</code></div></div>
+          <div class="row"><div class="lab">Модель</div><div class="files"><code>projects</code><code>settings</code><code>savedCabs</code></div></div>
+          <div class="row"><div class="lab">lib</div><div class="files"><code>supabase.ts</code><code>sync.ts</code><code>i18n/</code></div></div>
+        </div>
+      </div>
+
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">03</span><h2>Общее ядро — трогать только по согласованию</h2></div>
+    <p class="sec-sub">Эти файлы использует каждая фаза. Ни за одним человеком они не закреплены — правки маленькие и через ревью.</p>
+    <div class="kernel">
+      <h3>⚠ Не редактировать в одиночку</h3>
+      <p><code>store.ts</code> — «мозг» приложения на ≈2470 строк, импортит ~30 файлов модели. Здесь чаще всего случаются конфликты слияния. <code>styles.css</code> — общие стили. <code>model/</code> и <code>packages/schema</code> — контракт данных: изменение может сломать чужую фазу.</p>
+      <div class="files">
+        <code>src/store.ts</code>
+        <code>src/App.tsx</code>
+        <code>src/config.ts</code>
+        <code>src/styles.css</code>
+        <code>model/cabinet.ts</code>
+        <code>model/resolve.ts</code>
+        <code>packages/schema</code>
+      </div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">04</span><h2>Слои внутри apps/app/src</h2></div>
+    <p class="sec-sub">Правило зависимостей: экраны → компоненты → 3D / модель. Модель — чистая логика, без React и Three.</p>
+    <div class="layers">
+      <div class="layer"><div class="path"><code>main.tsx → App.tsx</code></div><div class="desc">Точка входа и роутер. Это <code>switch</code> по <code>store.screen</code> (не react-router). Порядок шагов — в <code>FLOW</code> внутри store.</div></div>
+      <div class="layer"><div class="path"><code>store.ts</code></div><div class="desc">Единый Zustand-store: всё состояние и все действия. Общий центр.</div></div>
+      <div class="layer"><div class="path"><code>screens/</code></div><div class="desc">По одному файлу на шаг маршрута — верхнеуровневые фичи.</div></div>
+      <div class="layer"><div class="path"><code>components/</code></div><div class="desc">Переиспользуемый UI + большие редакторы (конструктор, чертежи).</div></div>
+      <div class="layer"><div class="path"><code>three/</code></div><div class="desc">Весь рендеринг на Three.js.</div></div>
+      <div class="layer"><div class="path"><code>model/</code></div><div class="desc">Чистая доменная логика: геометрия, солвер раскладок, ЧПУ, DXF, тарифы. Без UI. ≈38 файлов.</div></div>
+      <div class="layer"><div class="path"><code>lib/</code></div><div class="desc">Инфраструктура: Supabase, облачная синхронизация, шаринг файлов, превью.</div></div>
+      <div class="layer"><div class="path"><code>i18n/</code></div><div class="desc">Словари ru/uz + хук <code>useT()</code>.</div></div>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">05</span><h2>Монорепозиторий — верхний уровень</h2></div>
+    <p class="sec-sub">Корень репозитория — это движок; сам продукт лежит в <code>apps/app</code>.</p>
+    <div class="tscroll">
+      <table class="tbl">
+        <thead><tr><th>Путь</th><th>Что это</th><th>Трогать?</th></tr></thead>
+        <tbody>
+          <tr><td><code>apps/app</code></td><td>Продукт — React + Vite + Capacitor. Весь маршрут и живое 3D.</td><td class="muted">Да, каждый день</td></tr>
+          <tr><td><code>packages/schema</code></td><td>Общие типы (project, module, quote, rates, BOM). Контракт данных.</td><td class="muted">Редко, аккуратно</td></tr>
+          <tr><td><code>packages/pricing</code></td><td>Движок расчёта цены (BOM → распил/кромка/ЧПУ → сумма).</td><td class="muted">Владелец «Сметы»</td></tr>
+          <tr><td><code>packages/render-spike</code></td><td>Эксперимент офлайн-рендера. В прод не идёт.</td><td class="muted">Нет</td></tr>
+          <tr><td><code>engine/</code></td><td>Движок ЧПУ/сверления (SWJ008, паттерны отверстий, DXF).</td><td class="muted">Владелец «Инженерии»</td></tr>
+          <tr><td><code>catalog · DB · mined · *.csv/xlsx</code></td><td>Каталоги фурнитуры, датасеты, прайс-листы. Это данные, не код.</td><td class="muted">Только обновление данных</td></tr>
+          <tr><td><code>CORE 1/2/3 · Researches · UI Examples …</code></td><td>Архивы дизайна и ресёрча. Замусоривают корень — стоит убрать в <code>docs/</code>.</td><td class="muted">Нет (справочно)</td></tr>
+        </tbody>
+      </table>
+    </div>
+  </section>
+
+  <section>
+    <div class="sec-head"><span class="sec-num">06</span><h2>Три правила, чтобы ничего не ломалось</h2></div>
+    <p class="sec-sub">Делим по фазам — и держим эти договорённости, пока не проведём рефакторинг store и не уберём дубли движков.</p>
+    <div class="rules">
+      <div class="rule"><div class="rn">1</div><h4>store.ts и styles.css — общие</h4><p>Меняем по согласованию, маленькими правками, ревьюим диффы именно по этим двум файлам. Позже разрежем store на слайсы по фазам.</p></div>
+      <div class="rule"><div class="rn">2</div><h4>Не плодим дубли движков</h4><p>Не добавляем 4-й движок раскладки и 3-й 3D-рендерер. Расширяем существующий под свою фазу — иначе «как выглядит шкаф» окажется в трёх местах.</p></div>
+      <div class="rule"><div class="rn">3</div><h4>model/ и schema — это контракт</h4><p>Изменение в общей модели может сломать чужую фазу. Всегда помечай такие правки в ревью и предупреждай команду.</p></div>
+    </div>
+  </section>
+
+  <footer>
+    Карта отражает состояние репозитория на момент составления. Крупные файлы (<code>VariantScene ≈3345</code>, <code>store ≈2470</code>, <code>ConfigScreen ≈1652</code>) — кандидаты на разбиение: это самый быстрый способ сделать деление по папкам по-настоящему независимым.
+  </footer>
+
+</div>
+<script>
+  (function () {
+    var root = document.documentElement;
+    var btn = document.getElementById('themeToggle');
+    btn.addEventListener('click', function () {
+      var cur = root.getAttribute('data-theme');
+      if (!cur) {
+        // no explicit theme yet — flip away from what the OS currently shows
+        var osDark = window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches;
+        cur = osDark ? 'dark' : 'light';
+      }
+      root.setAttribute('data-theme', cur === 'dark' ? 'light' : 'dark');
+    });
+  })();
+</script>
+</body>
+</html>

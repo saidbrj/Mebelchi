@@ -13,10 +13,12 @@ import { VariantScene } from "../three/VariantScene";
 import { DEFAULT_SUN } from "../three/lighting";
 import { ConstructorPlan, type PlanEdit } from "../components/ConstructorPlan";
 import { ElevationGrid, type EditDim } from "../components/ElevationGrid";
-import { locate, rowEdges, ROW_MIN, type CellRef, type RowKind } from "../model/grid";
+import { locate, type CellRef, type RowKind } from "../model/grid";
 import { FurnitureEditor, emptyCfg, type PartCfg } from "../components/FurnitureEditor";
 import { V21Cabinet3DStudio } from "../components/V21Cabinet3DStudio";
 import { FillEditor } from "../components/FillEditor";
+import { DimSlider, DimControls, GlyphW, GlyphH, GlyphD, GlyphShelf } from "../components/DimControls";
+import { JourneyBar } from "../components/JourneyBar";
 import { planRuns } from "../model/runPlan";
 import { fillGapSpan } from "../model/fill";
 import { openCells } from "../model/sheet";
@@ -129,11 +131,6 @@ const GlyphEdit = () => (
     <path d="M22.4 6.6c-.8 0-1.5.3-2.1.9l-1.4 1.4 4.2 4.2 1.4-1.4c1.2-1.2 1.2-3 0-4.2-.6-.6-1.3-.9-2.1-.9zM17.5 10.3l-9.9 9.9-.5 2.3-1.1 5 5-1.1 2.3-.5 9.9-9.9-5.7-5.7zM9.1 21.6l-.7-.7 8.4-8.4 1.4 1.4-8.4 8.4-.7-.7z" />
   </svg>
 );
-// resize-panel dimension glyphs
-const GlyphW = () => (<svg width="20" height="20" viewBox="0 0 30 30" fill="currentColor" aria-hidden><path d="M6 15L6.44494 15.4534L11.6225 20.5L12.5528 19.5932L8.48764 15.6308L21.5124 15.6308L17.4472 19.5932L18.3775 20.5L23.5551 15.4534L24 15L23.5551 14.5466L18.3775 9.5L17.4472 10.4068L21.5124 14.3692L8.48764 14.3692L12.5528 10.4068L11.6225 9.5L6.44494 14.5466L6 15Z" /></svg>);
-const GlyphH = () => (<svg width="20" height="20" viewBox="0 0 30 30" fill="currentColor" aria-hidden><path d="M14.5 6L14.0466 6.44494L9 11.6225L9.90681 12.5528L13.8692 8.48764L13.8692 21.5124L9.90681 17.4472L9 18.3775L14.0466 23.5551L14.5 24L14.9534 23.5551L20 18.3775L19.0932 17.4472L15.1308 21.5124L15.1308 8.48764L19.0932 12.5528L20 11.6225L14.9534 6.44494L14.5 6Z" /></svg>);
-const GlyphD = () => (<svg width="20" height="20" viewBox="0 0 30 30" fill="currentColor" aria-hidden><path d="M10.125 7.5L9.75 9H20.25L19.875 7.5H10.125ZM15 9.75L13.125 11.25H14.25V17.25H11.625L15 20.25L18.375 17.25H15.75V11.25H16.875L15 9.75ZM6.375 21L6 22.5H24L23.625 21H6.375Z" /></svg>);
-const GlyphShelf = () => (<svg width="20" height="20" viewBox="0 0 30 30" fill="currentColor" aria-hidden><path d="M6.5625 8.90625V10.2604H23.4375V8.90625H6.5625ZM6.5625 11.6146V12.9687H23.4375V11.6146H6.5625ZM6.5625 14.3229V15.6771H23.4375V14.3229H6.5625ZM6.5625 17.0312V18.3854H23.4375V17.0312H6.5625ZM6.5625 19.7396V21.0937H23.4375V19.7396H6.5625Z" /></svg>);
 
 // style-panel part-tab glyphs (Фасад / Ручка / Столешница / Корпус)
 const StyleFront = () => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden><rect x="5" y="3" width="14" height="18" rx="1.5" /><circle cx="15.5" cy="12" r="0.9" fill="currentColor" stroke="none" /></svg>);
@@ -141,38 +138,6 @@ const StyleHandle = () => (<svg width="22" height="22" viewBox="0 0 24 24" fill=
 const StyleWorktop = () => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden><rect x="3" y="6" width="18" height="4" rx="1" /><path d="M6 10v8M18 10v8" /></svg>);
 const StyleCarcass = () => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden><rect x="4" y="4" width="16" height="16" rx="1.5" /><path d="M4 9h16M9 9v11" /></svg>);
 
-// A snapping slider + an exact editable number. Drag snaps to `step`; release commits (one undo
-// step, opened at pointer-down). The number is uncontrolled (`key` resets it when the value moves
-// under it) and commits on blur/Enter — so you can type an exact size the slider can't land on.
-function DimSlider(props: {
-  icon: React.ReactNode; label: string; value: number; min: number; max: number; step: number;
-  unit?: string; onBegin?: () => void; onLive: (v: number) => void; onCommit: (v: number) => void;
-}) {
-  const { icon, label, value, min, max, step, unit = "мм", onBegin, onLive, onCommit } = props;
-  const clamp = (v: number) => Math.max(min, Math.min(max, Math.round(v)));
-  return (
-    <div className="dim-row">
-      <span className="dim-ico" aria-hidden>{icon}</span>
-      <span className="dim-lbl">{label}</span>
-      <input
-        className="dim-slider" type="range" min={min} max={max} step={step} value={value}
-        onPointerDown={onBegin}
-        onChange={(e) => onLive(clamp(Number(e.target.value)))}
-        onPointerUp={(e) => onCommit(clamp(Number((e.target as HTMLInputElement).value)))}
-        onKeyUp={(e) => onCommit(clamp(Number((e.target as HTMLInputElement).value)))}
-        onContextMenu={(e) => e.preventDefault()}
-      />
-      <input
-        className="dim-num" type="number" inputMode="numeric" min={min} max={max} step={step}
-        key={value} defaultValue={value}
-        onFocus={onBegin}
-        onBlur={(e) => { const v = clamp(Number(e.target.value)); if (v !== value) onCommit(v); }}
-        onKeyDown={(e) => { if (e.key === "Enter") (e.target as HTMLInputElement).blur(); }}
-      />
-      {unit && <span className="dim-unit">{unit}</span>}
-    </div>
-  );
-}
 
 // TAP-TO-PLACE bands. Five categories the way the user thinks about a wall: three rows of cabinets,
 // a floor-to-ceiling column, and everything free-standing. Appliances fold into the row they live in
@@ -215,7 +180,6 @@ export function ConfigScreen() {
   const money = useMoney();
   const settings = useStore((s) => s.settings);
   const showPricing = settings.showPricing;
-  const openMenu = useStore((s) => s.openMenu);
   const quality = settings.quality;
   const cabs = useStore((s) => s.cabs);
   const price = useDesignPrice(cabs); // USD, per the active pricing mode
@@ -286,7 +250,6 @@ export function ConfigScreen() {
   const setMode = useStore((s) => s.setMode);
   const saveCurrent = useStore((s) => s.saveCurrent);
   const flash = useStore((s) => s.flash);
-  const back = useStore((s) => s.back);
   const next = useStore((s) => s.next);
 
   const labelFor = (c: Cabinet): string => {
@@ -473,21 +436,6 @@ export function ConfigScreen() {
   const panelOpen = sheet === "resize" || sheet === "style";
   // tapping a left-stack button opens its panel, or closes it if already open (a toggle)
   const openPanel = (k: Sheet) => setSheet((cur) => (cur === k ? null : k));
-  // a convertible VOID band on the selected module's wall (dead wall tall enough to become another
-  // upper row) → the 3D band control offers "+ ряд" (the same edit as the front view's "+ ряд").
-  const addRowJ = (() => {
-    if (view !== "3d" || !sel || !sel.cell || sel.px != null) return -1;
-    const g = grids[sel.run ?? 0];
-    if (!g) return -1;
-    const ys = rowEdges(g);
-    // the HIGHEST convertible void (dead wall near the ceiling) → an antresol / "3rd row", not the
-    // low backsplash gap
-    let best = -1;
-    for (let j = 0; j < g.rows.length; j++) {
-      if (g.rows[j].kind === "void" && ys[j + 1] - ys[j] >= ROW_MIN + 50) best = j;
-    }
-    return best;
-  })();
 
   // select EXACTLY ONE module (from a chip, or after adding)
   const pick = (id: string | null) => {
@@ -735,12 +683,7 @@ export function ConfigScreen() {
   // re-docked for the gap test so the chip appears there too.
   const fillSpan = (() => {
     if (!sel || sheet) return null;
-    // dock ALL modules so the gap test sees free-placed neighbours too (matches the store's
-    // fillCabGap) — the chip must reflect the same result the button will produce.
-    const docked = dockAll(cabs, points, waterWall, runLayout, openings, reveal);
-    const cab = docked.find((c) => c.id === sel.id);
-    if (!cab || cab.x == null || cab.px != null) return null; // not on a wall run
-    return fillGapSpan(docked, cab, allRuns[cab.run ?? 0]?.len ?? Infinity);
+    return fillGapSpan(cabs, sel, room, sel.run ?? 0);
   })();
   // «Заполнить стену» — the selected gridded module's ROW has empty cells left. Filling them with a
   // copy of it (both ways to the wall ends) saves placing each unit by hand. Show only when there is
@@ -855,23 +798,14 @@ export function ConfigScreen() {
 
   return (
     <div className="roomscene">
-      {/* top bar: ☰ menu · ← back (left) · step name / price (absolutely centred) · Next → (right) */}
-      <div className="stepbar cfg-bar">
-        <div className="cfg-bar-l">
-          <button className="cfg-burger" onClick={openMenu} type="button" aria-label="Меню">
-            <span /><span />
-          </button>
-          <button className="cfg-back" onClick={back} type="button" aria-label={t.config.back}>←</button>
-        </div>
-        <div className="cfg-title">
-          {showPricing ? (
-            <span className="cfg-price">{money(price)}<span className="cfg-price-i" aria-hidden>ⓘ</span></span>
-          ) : (
-            t.menu.phases.configure
-          )}
-        </div>
-        <button className="step-next" onClick={next} type="button">{t.config.next}</button>
-      </div>
+      {/* project name on top; the live price ticker keeps its place underneath when the
+          seller has pricing on (it's the one number worth watching while editing) */}
+      <JourneyBar
+        sub={showPricing ? (
+          <span className="cfg-price">{money(price)}<span className="cfg-price-i" aria-hidden>ⓘ</span></span>
+        ) : null}
+        right={<button className="step-next" onClick={next} type="button">{t.config.next}</button>}
+      />
 
       {/* front view: switch which wall run / island is shown + edited */}
       {front && runIdxs.length > 0 && (
@@ -995,8 +929,11 @@ export function ConfigScreen() {
             mode={mode}
             grid={planGrid}
             magnet={planMagnet}
-            selectedId={sceneSelId}
-            onSelectCab={pick}
+            // single selection drives the drag / rotate / dimension handles; several tint as a group.
+            // tap toggles a module in/out of the set — the same batch-select as the 3D + front view.
+            selectedId={sheet === "editor" || selIds.length !== 1 ? null : selIds[0]}
+            selectedIds={sheet === "editor" || selIds.length <= 1 ? undefined : selIds}
+            onSelectCab={pick3d}
             onMovePlan={moveCabPlan}
             onBeginEdit={beginCabEdit}
             onEditDim={onEditDim}
@@ -1012,7 +949,9 @@ export function ConfigScreen() {
             ceiling={ceiling}
             mode={mode}
             selectedId={sceneSelId}
-            onSelect={pick}
+            // tap toggles a module in/out of the selection set — the same batch-select as the 3D
+            selectedIds={sheet === "editor" ? undefined : selIds}
+            onSelect={pick3d}
             onAddInCell={onAddInCell}
             onAddCol={onAddCol}
             onDropCol={onDropCol}
@@ -1116,15 +1055,6 @@ export function ConfigScreen() {
             <button className="band-btn" onClick={() => gridDropCol(sel.run ?? 0, sel.cell!.r)} type="button" aria-label="Убрать шкаф из ряда">
               <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" aria-hidden><path d="M6 12h12" /></svg>
             </button>
-            {/* add a ROW — turn the dead wall above into another upper band (the "3rd row") */}
-            {addRowJ >= 0 && (
-              <>
-                <span className="band-sep" aria-hidden />
-                <button className="band-btn row" onClick={() => gridSetRowKind(sel.run ?? 0, addRowJ, "wall")} type="button" aria-label="Добавить ряд">
-                  <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" aria-hidden><path d="M5 8h14M5 16h14" /><path d="M12 3.5v3M10.5 5h3" /></svg>
-                </button>
-              </>
-            )}
           </div>
         )}
 
@@ -1378,6 +1308,7 @@ export function ConfigScreen() {
                 patchCab={(patch) => patchCab(selIndex, patch)}
                 onClose={closeSheet}
                 settings={settings}
+                style={runStyle}
               />
             )}
 
@@ -1407,22 +1338,7 @@ export function ConfigScreen() {
                           </div>
                         );
                       })()}
-                      <DimSlider icon={<GlyphW />} label="Ширина" value={sel.w} min={150} max={1200} step={50}
-                        onBegin={beginCabEdit}
-                        onLive={(v) => (sel.cell && sel.px == null ? gridSetCabW(sel.id, v, "right", true) : resizeCabLive(sel.id, v))}
-                        onCommit={(v) => (sel.cell && sel.px == null ? gridSetCabW(sel.id, v, "right", false) : resizeCab(sel.id, v))} />
-                      <DimSlider icon={<GlyphH />} label="Высота" value={sel.h} min={MIN_H} max={maxCabH(sel, ceiling)} step={10}
-                        onBegin={beginCabEdit}
-                        onLive={(v) => patchCabDims(sel.id, { h: v }, true)}
-                        onCommit={(v) => patchCabDims(sel.id, { h: v })} />
-                      <DimSlider icon={<GlyphD />} label="Глубина" value={cabDepth(sel)} min={D_MIN} max={D_MAX} step={10}
-                        onBegin={beginCabEdit}
-                        onLive={(v) => patchCabDims(sel.id, { depth: v }, true)}
-                        onCommit={(v) => patchCabDims(sel.id, { depth: v })} />
-                      <DimSlider icon={<GlyphShelf />} label="Полок" value={sel.count ?? 0} min={0} max={8} step={1} unit=""
-                        onBegin={beginCabEdit}
-                        onLive={(v) => patchCabLive(selIndex, { count: v })}
-                        onCommit={(v) => patchCab(selIndex, { count: v })} />
+                      <DimControls cab={sel} />
                       {fillSpan && (
                         <button className="dim-fill" onClick={() => { fillCabGap(sel.id); closeSheet(); }} type="button">
                           <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M4 5v14M20 5v14" /><path d="M7 12h10M7 12l3-3M7 12l3 3M17 12l-3-3M17 12l-3 3" /></svg>

@@ -5,15 +5,12 @@
 // the run's usable length so this stays free of the run-planning geometry.
 
 import type { Cabinet } from "./cabinet";
-import { bandsOverlap } from "./bands";
+import { bandsOverlap, spansOverlap } from "./bands";
+import { resolveLayout, startOffset, wallLen, type Room } from "./resolve";
 
 // Two modules only compete for the same horizontal space when their vertical bands OVERLAP — so a
 // base and the upper mounted above it don't block each other, but a TALL column (floor→ceiling)
-// blocks BOTH the bases and the uppers beside it. Using a coarse "floor vs upper" lane instead made
-// an upper ignore a neighbouring tall column and fill right over it.
-//
-// The band comes from model/bands.ts. This file used to carry its own near-copy that returned
-// [0, h] for a base (no plinth, no worktop) — close enough to work, different enough to drift.
+// blocks BOTH the bases and the uppers beside it.
 
 /** A module is in a tiled row only if it has a run-local `x` and hasn't been freed
  *  into a plan transform (px/pz). Fillers never count. */
@@ -25,30 +22,54 @@ const rowMates = (cabs: Cabinet[], ref: Cabinet) =>
 const TOL = 4;
 
 /** The grown `{ x, w }` for `cab` if it can fill empty space beside it in its row,
- *  else null. Bounds are the NEAREST neighbour on each side (or the run ends); an
- *  OVERLAPPING module blocks growth on its side, so fill never spans over a module. */
-export function fillGapSpan(cabs: Cabinet[], cab: Cabinet, runLen: number): { x: number; w: number } | null {
-  if (!inRow(cab)) return null;
-  const x0 = cab.x as number;
-  const x1 = x0 + cab.w;
-  let left = 0; // run start
-  let right = Number.isFinite(runLen) ? Math.max(runLen, x1) : x1; // run end
-  for (const c of rowMates(cabs, cab)) {
-    if (c.id === cab.id) continue;
-    const cx0 = c.x as number;
-    const cx1 = cx0 + c.w;
+ *  else null. Bounds are the NEAREST neighbour on each side (including corner units and wall ends);
+ *  an OVERLAPPING module blocks growth on its side, so fill never spans over a module. */
+export function fillGapSpan(
+  cabs: Cabinet[],
+  cab: Cabinet,
+  room: Room,
+  run: number,
+): { x: number; w: number } | null {
+  if (cab.appliance === "filler" || cab.furniture || cab.corner) return null;
+  const L = resolveLayout(cabs, room);
+  const pr = L.runs[run];
+  if (!pr) return null;
+
+  const off = startOffset(pr);
+  const wl = wallLen(pr);
+
+  const targetRc = L.elevation(run).find((rc) => rc.cab.id === cab.id);
+  if (!targetRc) return null;
+
+  const x0 = targetRc.x;
+  const x1 = x0 + targetRc.w;
+
+  let left = 0;
+  let right = wl;
+
+  for (const rc of L.elevation(run)) {
+    if (rc.cab.id === cab.id || rc.cab.furniture || rc.cab.appliance === "filler") continue;
+    if (!spansOverlap(rc.band, targetRc.band)) continue;
+
+    const cx0 = rc.x;
+    const cx1 = rc.x + rc.w;
+
     if (cx1 <= x0 + TOL) {
-      if (cx1 > left) left = cx1; // sibling fully on our left → can't grow past its right edge
+      if (cx1 > left) left = cx1;
     } else if (cx0 >= x1 - TOL) {
-      if (cx0 < right) right = cx0; // sibling fully on our right → can't grow past its left edge
+      if (cx0 < right) right = cx0;
     } else {
-      // sibling OVERLAPS us — block growth on whichever side it intrudes from
       if (cx0 < x0) left = Math.max(left, x0);
       if (cx1 > x1) right = Math.min(right, x1);
     }
   }
-  if (right - left <= cab.w + TOL) return null; // already snug — nothing to fill
-  return { x: Math.round(left), w: Math.round(right - left) };
+
+  if (right - left <= targetRc.w + TOL) return null;
+
+  const newX = Math.round(left - off);
+  const newW = Math.round(right - left);
+
+  return { x: newX, w: newW };
 }
 
 /** Where to drop a duplicate of width `w` in `ref`'s row: the first gap big enough

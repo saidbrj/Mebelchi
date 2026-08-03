@@ -3,244 +3,38 @@ import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { Cabinet } from "../model/cabinet";
 import type { Settings } from "../model/settings";
+import type { KitchenStyle } from "../model/layout";
+import { buildCabinetSolo } from "../three/kitchen3d";
 import { V21BlueprintEditor } from "./V21BlueprintEditor";
+import { DimSlider, GlyphD } from "./DimControls";
+import { FillEditor, FILL_TOOLS, ToolIcon, type Tool } from "./FillEditor";
+import { useStore } from "../store";
+import { useT } from "../i18n/useT";
+import { cabDepth, D_MIN, D_MAX } from "../model/bands";
+import { IconUndo, IconRedo, IconLines } from "./icons";
 
-/** Individual Cabinet 3D Mesh Generator for isolated studio preview (with Bazis-style physical hardware) */
-function createIsolatedCabinetMesh(cab: Cabinet, viewMode: "3d" | "2d" | "outline" = "3d", settings?: Settings): THREE.Group {
-  const group = new THREE.Group();
+/** Neutral fallback finish for the isolated studio when the caller supplies no kitchen style. */
+const DEFAULT_SOLO_STYLE: KitchenStyle = { carcass: 0xeeece6, facade: 0xc8a878, worktop: 0xd8d8d8, handle: 0x8e9499, glassUppers: false };
 
-  const w = cab.w / 1000;
-  const h = cab.h / 1000;
-  const d = (cab.depth ?? 560) / 1000;
-  const boardT = (cab.boardThickness ?? 16) / 1000;
-  const hasBack = cab.hasBack ?? (cab.backMount !== "none");
-  const isGroove = hasBack && (cab.backMount ?? "groove") === "groove";
-  const grooveSetback = (cab.grooveSetback ?? 12) / 1000;
-  const plinthH = (cab.plinthMode === "box" || !cab.plinthMode ? 120 : cab.plinthMode === "legs" ? 100 : 0) / 1000;
-  const isOutline = viewMode === "outline";
-  const jointHw = settings?.jointFamily ?? "confirmat";
-  const jointSetback = (settings?.jointSetbackMm ?? 65) / 1000;
-
-  // Materials (translucent in outline mode)
-  const carcassMat = new THREE.MeshStandardMaterial({
-    color: 0xeeece6,
-    roughness: 0.4,
-    metalness: 0.05,
-    transparent: isOutline,
-    opacity: isOutline ? 0.35 : 1.0,
+/** Build the isolated cabinet mesh — one place so the mount + rebuild effects can't diverge.
+ *  «2D Чертеж» still needs a 3D mesh behind the SVG overlay, so it maps to the solid 3D build. */
+function makeSoloMesh(cab: Cabinet, viewMode: "3d" | "2d" | "outline", style: KitchenStyle | undefined, settings?: Settings): THREE.Group {
+  return buildCabinetSolo(cab, style ?? DEFAULT_SOLO_STYLE, {
+    outline: viewMode === "outline",
+    hardwareOpts: { family: settings?.jointFamily, setbackMm: settings?.jointSetbackMm },
   });
-  const backMat = new THREE.MeshStandardMaterial({
-    color: 0xe5dfd3,
-    roughness: 0.6,
-    metalness: 0.0,
-    transparent: isOutline,
-    opacity: isOutline ? 0.3 : 1.0,
+}
+
+/** Free a built group's geometries + materials — the studio makes a fresh mesh on every edit. */
+function disposeGroup(g: THREE.Object3D): void {
+  g.traverse((obj) => {
+    const mesh = obj as THREE.Mesh;
+    if (!mesh.isMesh) return;
+    mesh.geometry?.dispose();
+    const m = mesh.material;
+    if (Array.isArray(m)) m.forEach((x) => x.dispose());
+    else m?.dispose();
   });
-  const frontMat = new THREE.MeshStandardMaterial({
-    color: 0xc8a878,
-    roughness: 0.3,
-    metalness: 0.1,
-    transparent: isOutline,
-    opacity: isOutline ? 0.25 : 0.9,
-  });
-  const plinthMat = new THREE.MeshStandardMaterial({
-    color: 0x4a4740,
-    roughness: 0.5,
-    transparent: isOutline,
-    opacity: isOutline ? 0.4 : 1.0,
-  });
-
-  // Physical Hardware Materials (Bazis-style metal & wood)
-  const steelHwMat = new THREE.MeshStandardMaterial({ color: 0xc4c9ce, metalness: 0.8, roughness: 0.2 });
-  const minifixCamMat = new THREE.MeshStandardMaterial({ color: 0x8e9499, metalness: 0.85, roughness: 0.3 });
-  const woodDowelMat = new THREE.MeshStandardMaterial({ color: 0xd2b48c, roughness: 0.7 });
-  const edgeMat = new THREE.LineBasicMaterial({ color: isOutline ? 0x2f6fe4 : 0x1b4d3e, linewidth: 2 });
-
-  // 1. Plinth / Base
-  if (plinthH > 0) {
-    if (cab.plinthMode === "legs") {
-      const legGeo = new THREE.CylinderGeometry(0.02, 0.02, plinthH, 16);
-      const legMat = new THREE.MeshStandardMaterial({ color: 0x222222 });
-      const offsets = [
-        [-w / 2 + 0.05, plinthH / 2, -d / 2 + 0.05],
-        [w / 2 - 0.05, plinthH / 2, -d / 2 + 0.05],
-        [-w / 2 + 0.05, plinthH / 2, d / 2 - 0.05],
-        [w / 2 - 0.05, plinthH / 2, d / 2 - 0.05],
-      ];
-      for (const [lx, ly, lz] of offsets) {
-        const leg = new THREE.Mesh(legGeo, legMat);
-        leg.position.set(lx, ly, lz);
-        group.add(leg);
-      }
-    } else {
-      const plinthGeo = new THREE.BoxGeometry(w - 0.01, plinthH, d - 0.04);
-      const plinth = new THREE.Mesh(plinthGeo, plinthMat);
-      plinth.position.set(0, plinthH / 2, 0.02);
-      group.add(plinth);
-    }
-  }
-
-  const bodyY = plinthH;
-  const bodyH = h - plinthH;
-
-  // Helper: Render Bazis-Style Hardware at (x, y, z)
-  const addHardwareJoint = (jx: number, jy: number, jzFront: number, jzBack: number) => {
-    for (const jz of [jzFront, jzBack]) {
-      if (jointHw === "confirmat") {
-        // Confirmat Ø7×50mm Screw Head
-        const headGeo = new THREE.CylinderGeometry(0.0035, 0.0035, 0.002, 16);
-        const headL = new THREE.Mesh(headGeo, steelHwMat);
-        headL.rotation.z = Math.PI / 2;
-        headL.position.set(-w / 2 + 0.001, jy, jz);
-        group.add(headL);
-
-        const headR = new THREE.Mesh(headGeo, steelHwMat);
-        headR.rotation.z = Math.PI / 2;
-        headR.position.set(w / 2 - 0.001, jy, jz);
-        group.add(headR);
-      } else if (jointHw === "minifix") {
-        // Minifix Ø15×12.5mm Cam Cylinder + Dowel Ø8×30mm
-        const camGeo = new THREE.CylinderGeometry(0.0075, 0.0075, 0.0125, 16);
-        const camL = new THREE.Mesh(camGeo, minifixCamMat);
-        camL.position.set(-w / 2 + boardT + 0.035, jy - boardT / 2 - 0.006, jz);
-        group.add(camL);
-
-        const camR = new THREE.Mesh(camGeo, minifixCamMat);
-        camR.position.set(w / 2 - boardT - 0.035, jy - boardT / 2 - 0.006, jz);
-        group.add(camR);
-
-        // Dowel Ø8×30mm
-        const dowelGeo = new THREE.CylinderGeometry(0.004, 0.004, 0.03, 12);
-        const dowelL = new THREE.Mesh(dowelGeo, woodDowelMat);
-        dowelL.rotation.z = Math.PI / 2;
-        dowelL.position.set(-w / 2 + boardT / 2, jy, jz + 0.032);
-        group.add(dowelL);
-
-        const dowelR = new THREE.Mesh(dowelGeo, woodDowelMat);
-        dowelR.rotation.z = Math.PI / 2;
-        dowelR.position.set(w / 2 - boardT / 2, jy, jz + 0.032);
-        group.add(dowelR);
-      }
-    }
-  };
-
-  // 2. Left Side Board
-  const sideW = boardT;
-  const sideH = bodyH;
-  const sideD = d;
-  const sideGeo = new THREE.BoxGeometry(sideW, sideH, sideD);
-  const leftSide = new THREE.Mesh(sideGeo, carcassMat);
-  leftSide.position.set(-w / 2 + boardT / 2, bodyY + bodyH / 2, 0);
-  group.add(leftSide);
-
-  // 3. Right Side Board
-  const rightSide = new THREE.Mesh(sideGeo, carcassMat);
-  rightSide.position.set(w / 2 - boardT / 2, bodyY + bodyH / 2, 0);
-  group.add(rightSide);
-
-  // 4. Bottom Board
-  const bottomW = cab.bottomMode === "vkladnoe" ? w - 2 * boardT : w;
-  const bottomGeo = new THREE.BoxGeometry(bottomW, boardT, d);
-  const bottomMesh = new THREE.Mesh(bottomGeo, carcassMat);
-  const bottomY = bodyY + boardT / 2;
-  bottomMesh.position.set(0, bottomY, 0);
-  group.add(bottomMesh);
-  addHardwareJoint(0, bottomY, d / 2 - jointSetback, -d / 2 + jointSetback);
-
-  // 5. Top Board / Stretchers
-  if (cab.topMode === "stretchers") {
-    const stW = w - 2 * boardT;
-    const stD = 0.08;
-    const stGeo = new THREE.BoxGeometry(stW, boardT, stD);
-    const stFront = new THREE.Mesh(stGeo, carcassMat);
-    stFront.position.set(0, bodyY + bodyH - boardT / 2, d / 2 - stD / 2);
-    group.add(stFront);
-
-    const stBack = new THREE.Mesh(stGeo, carcassMat);
-    stBack.position.set(0, bodyY + bodyH - boardT / 2, -d / 2 + stD / 2);
-    group.add(stBack);
-  } else if (cab.topMode !== "none") {
-    const topGeo = new THREE.BoxGeometry(w - 2 * boardT, boardT, d);
-    const topMesh = new THREE.Mesh(topGeo, carcassMat);
-    const topY = bodyY + bodyH - boardT / 2;
-    topMesh.position.set(0, topY, 0);
-    group.add(topMesh);
-    addHardwareJoint(0, topY, d / 2 - jointSetback, -d / 2 + jointSetback);
-  }
-
-  // 6. Shelves + Hardware Fasteners
-  const shelfCount = Math.max(0, cab.count ?? 0);
-  if (shelfCount > 0) {
-    const shelfW = w - 2 * boardT;
-    const shelfD = isGroove ? d - grooveSetback - 0.004 : d - 0.01;
-    const shelfGeo = new THREE.BoxGeometry(shelfW, boardT, shelfD);
-    const innerH = bodyH - 2 * boardT;
-    const stepH = innerH / (shelfCount + 1);
-
-    for (let i = 1; i <= shelfCount; i++) {
-      const shelf = new THREE.Mesh(shelfGeo, carcassMat);
-      const sy = bodyY + boardT + i * stepH;
-      const sz = isGroove ? grooveSetback / 2 : 0;
-      shelf.position.set(0, sy, sz);
-      group.add(shelf);
-      addHardwareJoint(0, sy, sz + shelfD / 2 - jointSetback, sz - shelfD / 2 + jointSetback);
-    }
-  }
-
-  // 7. Back Panel (В паз vs Внахлёст)
-  if (hasBack) {
-    if (isGroove) {
-      const backW = w - 2 * boardT + 0.016;
-      const backH = bodyH - 2 * boardT + 0.016;
-      const backGeo = new THREE.BoxGeometry(backW, backH, 0.003);
-      const backMesh = new THREE.Mesh(backGeo, backMat);
-      backMesh.position.set(0, bodyY + bodyH / 2, -d / 2 + grooveSetback);
-      group.add(backMesh);
-    } else {
-      const backW = w;
-      const backH = bodyH;
-      const backGeo = new THREE.BoxGeometry(backW, backH, 0.016);
-      const backMesh = new THREE.Mesh(backGeo, backMat);
-      backMesh.position.set(0, bodyY + bodyH / 2, -d / 2 - 0.008);
-      group.add(backMesh);
-    }
-  }
-
-  // 8. Facade / Door + Hinge Cups Ø35mm
-  if (cab.door !== 3 && cab.fill !== "open") {
-    const doorW = w - 0.004;
-    const doorH = bodyH - boardT;
-    const doorD = 0.018;
-    const doorGeo = new THREE.BoxGeometry(doorW, doorH, doorD);
-    const doorMesh = new THREE.Mesh(doorGeo, frontMat);
-    const doorY = bodyY + bodyH / 2;
-    const doorZ = d / 2 + doorD / 2;
-    doorMesh.position.set(0, doorY, doorZ);
-    group.add(doorMesh);
-
-    // Hinge Cups Ø35mm on Inner Door Face
-    const cupGeo = new THREE.CylinderGeometry(0.0175, 0.0175, 0.013, 16);
-    const cupTop = new THREE.Mesh(cupGeo, minifixCamMat);
-    cupTop.rotation.x = Math.PI / 2;
-    cupTop.position.set(-doorW / 2 + 0.0215, doorY + doorH / 2 - 0.1, doorZ - doorD / 2 - 0.006);
-    group.add(cupTop);
-
-    const cupBot = new THREE.Mesh(cupGeo, minifixCamMat);
-    cupBot.rotation.x = Math.PI / 2;
-    cupBot.position.set(-doorW / 2 + 0.0215, doorY - doorH / 2 + 0.1, doorZ - doorD / 2 - 0.006);
-    group.add(cupBot);
-  }
-
-  // Add Wireframe Outlines for CAD Blueprint feel
-  group.traverse((obj) => {
-    if (obj instanceof THREE.Mesh) {
-      const edges = new THREE.EdgesGeometry(obj.geometry);
-      const line = new THREE.LineSegments(edges, edgeMat);
-      obj.add(line);
-    }
-  });
-
-  return group;
 }
 
 /** ─── Interactive 2D Technical Vector CAD Drawing (Bazis / GOST) ─── */
@@ -570,11 +364,14 @@ export function V21Cabinet3DStudio({
   patchCab,
   onClose,
   settings,
+  style,
 }: {
   cab: Cabinet;
   patchCab: (patch: Partial<Cabinet>) => void;
   onClose: () => void;
   settings?: Settings;
+  /** the kitchen-wide finish (colours) — falls back to a neutral default if the caller omits it */
+  style?: KitchenStyle;
 }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const sceneRef = useRef<THREE.Scene | null>(null);
@@ -584,6 +381,28 @@ export function V21Cabinet3DStudio({
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
 
   const [viewMode, setViewMode] = useState<"3d" | "2d" | "outline">("3d");
+  // the active interior tool — OWNED here so the viewport rail and the 2D edit canvas share it
+  const [tool, setTool] = useState<Tool>("draw");
+  // the bottom-left «Глубина» button expands a depth slider to its right
+  const [depthOpen, setDepthOpen] = useState(false);
+  // set by the embedded 2D editor when a divider/cell/front is selected → shows the delete button
+  const [hasSel, setHasSel] = useState(false);
+  const deleteFnRef = useRef<(() => void) | null>(null); // the 2D editor's delete action, for our button
+  const t = useT();
+
+  // store wiring for the embedded interior editor — it patches cab.layout by index; the studio's
+  // 3D rebuilds on every `cab` change, so edits here appear live in the view above.
+  const cabs = useStore((s) => s.cabs);
+  const storePatchCab = useStore((s) => s.patchCab);
+  const storePatchCabLive = useStore((s) => s.patchCabLive);
+  const patchCabDims = useStore((s) => s.patchCabDims);
+  const beginCabEdit = useStore((s) => s.beginCabEdit);
+  const undoCab = useStore((s) => s.undoCab);
+  const redoCab = useStore((s) => s.redoCab);
+  const canUndoCab = useStore((s) => s.cabsPast.length > 0);
+  const canRedoCab = useStore((s) => s.cabsFuture.length > 0);
+  const ceiling = useStore((s) => s.ceiling);
+  const fillIndex = cabs.findIndex((c) => c.id === cab.id);
 
   // 1. Initialize Three.js scene ONCE on mount
   useEffect(() => {
@@ -625,7 +444,7 @@ export function V21Cabinet3DStudio({
     scene.add(fillLight);
     scene.add(new THREE.GridHelper(4, 20, 0x00ac7a, 0xcbd5e1));
 
-    const initialMesh = createIsolatedCabinetMesh(cab, "3d", settings);
+    const initialMesh = makeSoloMesh(cab, "3d", style, settings);
     meshRef.current = initialMesh;
     scene.add(initialMesh);
 
@@ -651,6 +470,7 @@ export function V21Cabinet3DStudio({
     return () => {
       cancelAnimationFrame(animId);
       window.removeEventListener("resize", handleResize);
+      if (meshRef.current) disposeGroup(meshRef.current);
       renderer.dispose();
       if (container.contains(renderer.domElement)) {
         container.removeChild(renderer.domElement);
@@ -658,16 +478,18 @@ export function V21Cabinet3DStudio({
     };
   }, []);
 
-  // 2. Update mesh when cab/viewMode/settings change — camera preserved
+  // 2. Rebuild the mesh when the cabinet / view / finish / settings change — camera preserved.
   useEffect(() => {
     const scene = sceneRef.current;
     if (!scene) return;
-    if (meshRef.current) scene.remove(meshRef.current);
-    const mode = viewMode === "2d" ? "3d" : viewMode;
-    const newMesh = createIsolatedCabinetMesh(cab, mode, settings);
+    if (meshRef.current) {
+      scene.remove(meshRef.current);
+      disposeGroup(meshRef.current); // free the old build's geometries + materials
+    }
+    const newMesh = makeSoloMesh(cab, viewMode, style, settings);
     meshRef.current = newMesh;
     scene.add(newMesh);
-  }, [cab, viewMode, settings]);
+  }, [cab, viewMode, settings, style]);
 
   // 3. Bottom panel states:
   // - "collapsed": Panel minimized to 48px header at bottom -> 3D scene TAKES FULL SCREEN
@@ -710,19 +532,24 @@ export function V21Cabinet3DStudio({
     setPanelState((prev) => (prev === "expanded" ? "normal" : "collapsed"));
   };
 
-  const viewBtn = (mode: "3d" | "2d" | "outline", label: string) => (
+  const viewBtn = (mode: "3d" | "2d" | "outline", label: React.ReactNode) => (
     <button
       onClick={() => setViewMode(mode)}
       style={{
         border: "none",
         background: viewMode === mode ? "#00ac7a" : "transparent",
         color: viewMode === mode ? "#fff" : "#475569",
-        padding: "5px 12px",
+        width: 34,
+        height: 34,
+        padding: 0,
         borderRadius: 8,
         fontSize: 12,
         fontWeight: 600,
         cursor: "pointer",
         transition: "all 0.15s ease",
+        display: "flex",
+        alignItems: "center",
+        justifyContent: "center",
         boxShadow: viewMode === mode ? "0 2px 6px rgba(0,172,122,0.25)" : "none",
       }}
       type="button"
@@ -731,12 +558,9 @@ export function V21Cabinet3DStudio({
 
   return (
     <div className="v21-studio-overlay" style={{ position: "fixed", inset: 0, zIndex: 120, background: "#0f172a", display: "flex", flexDirection: "column", fontFamily: "var(--sans, system-ui, sans-serif)" }}>
-      {/* Top Header */}
-      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 18px", background: "#0f172a", color: "#f8fafc", borderBottom: "1px solid #1e293b", flex: "none" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
-          <button onClick={onClose} style={{ border: "none", background: "rgba(255,255,255,0.08)", color: "#94a3b8", width: 32, height: 32, borderRadius: 16, display: "flex", alignItems: "center", justifyContent: "center", fontSize: 16, cursor: "pointer", transition: "all 0.15s" }} type="button">✕</button>
-          <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, letterSpacing: "-0.01em" }}>📐 Студия: {cab.w}×{cab.h}×{cab.depth ?? 560} мм</h2>
-        </div>
+      {/* Top Header — light bar, black text; the green «Готово» is the only close affordance */}
+      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", padding: "12px 18px", background: "#f9fafc", color: "#0f172a", flex: "none" }}>
+        <h2 style={{ margin: 0, fontSize: 16, fontWeight: 700, letterSpacing: "-0.01em" }}>Студия: {cab.w}×{cab.h}×{cab.depth ?? 560} мм</h2>
         <button onClick={onClose} style={{ border: "none", background: "#00ac7a", color: "#fff", padding: "8px 20px", borderRadius: 999, fontWeight: 700, fontSize: 13, cursor: "pointer", boxShadow: "0 2px 8px rgba(0,172,122,0.3)" }} type="button">Готово</button>
       </div>
 
@@ -751,7 +575,7 @@ export function V21Cabinet3DStudio({
           background: "#f8fafc",
           transition: "all 0.3s cubic-bezier(0.4, 0, 0.2, 1)"
         }}>
-          {/* 3D canvas — ALWAYS mounted, just hidden when 2D is active */}
+          {/* 3D canvas — ALWAYS mounted, just hidden when the 2D edit canvas is active */}
           <div
             ref={mountRef}
             style={{
@@ -762,16 +586,76 @@ export function V21Cabinet3DStudio({
             }}
           />
 
-          {/* 2D overlay — shown only when viewMode is "2d" */}
-          {viewMode === "2d" && (
-            <V21Technical2DCADDrawing cab={cab} settings={settings} />
+          {/* 2D editable interior canvas — the tools act HERE; the viewport rail (below) drives them,
+              and every edit writes cab.layout so the 3D view reflects it the moment you switch back. */}
+          {viewMode === "2d" && fillIndex >= 0 && (
+            <div className="studio-fillwrap">
+              <FillEditor
+                embedded
+                tool={tool}
+                onToolChange={setTool}
+                onSelChange={setHasSel}
+                deleteRef={deleteFnRef}
+                cab={cab}
+                index={fillIndex}
+                name=""
+                style={style ?? DEFAULT_SOLO_STYLE}
+                patchCab={storePatchCab}
+                patchCabLive={storePatchCabLive}
+                beginEdit={beginCabEdit}
+                undo={undoCab}
+                redo={redoCab}
+                canUndo={canUndoCab}
+                canRedo={canRedoCab}
+                ceiling={ceiling}
+                onClose={() => setViewMode("3d")}
+              />
+            </div>
           )}
 
-          {/* View switcher bar */}
-          <div style={{ position: "absolute", top: 12, left: 14, zIndex: 10, display: "flex", gap: 4, background: "rgba(255,255,255,0.9)", backdropFilter: "blur(10px)", padding: 4, borderRadius: 12, border: "1px solid #e2e8f0", boxShadow: "0 4px 14px rgba(0,0,0,0.06)" }}>
-            {viewBtn("3d", "3D")}
-            {viewBtn("2d", "2D Чертеж")}
-            {viewBtn("outline", "Сетка")}
+          {/* Bottom-LEFT: a vertical pill of 3D / 2D / Сетка, and — SEPARATE below it — a «Глубина»
+              icon button that slides the depth slider out to its right (the one dim 2D can't do). */}
+          <div className="studio-views">
+            <div className="studio-viewcol">
+              {viewBtn("3d", "3D")}
+              {viewBtn("2d", "2D")}
+              {viewBtn("outline", <IconLines />)}
+            </div>
+            <button type="button" className={`studio-depth-pill${depthOpen ? " on" : ""}`} onClick={() => setDepthOpen((o) => !o)} aria-label="Глубина" title="Глубина">
+              <GlyphD />
+            </button>
+            {depthOpen && (
+              <div className="studio-depth-slider">
+                <DimSlider icon={null} label="Глубина" value={cabDepth(cab)} min={D_MIN} max={D_MAX} step={10}
+                  onBegin={beginCabEdit}
+                  onLive={(v) => patchCabDims(cab.id, { depth: v }, true)}
+                  onCommit={(v) => patchCabDims(cab.id, { depth: v })} />
+              </div>
+            )}
+          </div>
+
+          {/* Bottom-CENTER: undo/redo (like the main construction scene). When something is selected
+              in the 2D editor, its delete button sits just above them. */}
+          {viewMode === "2d" && hasSel && (
+            <button type="button" className="studio-del" aria-label="delete" onClick={() => deleteFnRef.current?.()}>✕ Удалить</button>
+          )}
+          <div className="studio-undoredo">
+            <button onClick={undoCab} disabled={!canUndoCab} type="button" aria-label={t.config.undo}><IconUndo /></button>
+            <button onClick={redoCab} disabled={!canRedoCab} type="button" aria-label={t.config.redo}><IconRedo /></button>
+          </div>
+
+          {/* Bottom-RIGHT TOOL RAIL — tapping a tool jumps into the 2D edit canvas and activates it. */}
+          <div className="studio-rail">
+            {FILL_TOOLS.map((ft) => {
+              const active = viewMode === "2d" && tool === ft.key;
+              return (
+                <button key={ft.key} className={`studio-tool${active ? " sel" : ""}`} type="button"
+                  onClick={() => { setTool(ft.key); setViewMode("2d"); }}>
+                  <span className="studio-tool-ic"><ToolIcon tool={ft.key} /></span>
+                  <span className="studio-tool-lbl">{(t.fe as unknown as Record<string, string>)[ft.labelKey]}</span>
+                </button>
+              );
+            })}
           </div>
         </div>
 
@@ -795,7 +679,6 @@ export function V21Cabinet3DStudio({
               height: 48,
               minHeight: 48,
               background: "#ffffff",
-              borderBottom: panelState === "collapsed" ? "none" : "1px solid #e2e8f0",
               display: "flex",
               alignItems: "center",
               justifyContent: "space-between",
@@ -806,65 +689,42 @@ export function V21Cabinet3DStudio({
           >
             <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
               <div style={{ width: 28, height: 4, borderRadius: 2, background: "#cbd5e1" }} />
-              <span style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>⚙️ Настройки и узлы V21</span>
-              {panelState === "collapsed" && (
-                <span style={{ fontSize: 11, color: "#00ac7a", fontWeight: 600 }}>(3D на весь экран)</span>
-              )}
+              <span style={{ fontSize: 13, fontWeight: 700, color: "#0f172a" }}>Настройки</span>
             </div>
-            
+
             {/* Directional arrow controls */}
             <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
-              {/* Push panel down -> enlarge 3D view */}
-              <button
-                onClick={collapsePanelDown}
-                disabled={panelState === "collapsed"}
-                title="Свернуть панели (увеличить 3D)"
-                style={{
-                  border: "1px solid #e2e8f0",
-                  background: panelState === "collapsed" ? "#f1f5f9" : "#ffffff",
-                  color: panelState === "collapsed" ? "#94a3b8" : "#475569",
-                  padding: "4px 10px",
-                  borderRadius: 8,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: panelState === "collapsed" ? "default" : "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 4,
-                }}
-                type="button"
-              >
-                ▼ <span style={{ fontSize: 11 }}>Свернуть</span>
-              </button>
-
-              {/* Pull panel up -> shrink 3D view */}
-              <button
-                onClick={expandPanelUp}
-                disabled={panelState === "expanded"}
-                title="Расширить панели (уменьшить 3D)"
-                style={{
-                  border: "1px solid #e2e8f0",
-                  background: panelState === "expanded" ? "#f1f5f9" : "#ffffff",
-                  color: panelState === "expanded" ? "#94a3b8" : "#475569",
-                  padding: "4px 10px",
-                  borderRadius: 8,
-                  fontSize: 12,
-                  fontWeight: 600,
-                  cursor: panelState === "expanded" ? "default" : "pointer",
-                  display: "flex",
-                  alignItems: "center",
-                  gap: 4,
-                }}
-                type="button"
-              >
-                ▲ <span style={{ fontSize: 11 }}>Расширить</span>
-              </button>
+              {(() => {
+                const arrowBtn = (dir: "down" | "up", onClick: (e?: React.MouseEvent) => void, disabled: boolean, title: string) => (
+                  <button onClick={onClick} disabled={disabled} title={title} type="button"
+                    style={{
+                      border: "1px solid #e2e8f0",
+                      background: disabled ? "#f1f5f9" : "#ffffff",
+                      color: disabled ? "#cbd5e1" : "#475569",
+                      width: 34, height: 34, padding: 0, borderRadius: 8,
+                      cursor: disabled ? "default" : "pointer",
+                      display: "flex", alignItems: "center", justifyContent: "center",
+                    }}>
+                    <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round" aria-hidden>
+                      <path d={dir === "down" ? "M6 9 L12 15 L18 9" : "M6 15 L12 9 L18 15"} />
+                    </svg>
+                  </button>
+                );
+                return (
+                  <>
+                    {arrowBtn("down", collapsePanelDown, panelState === "collapsed", "Свернуть панели (увеличить 3D)")}
+                    {arrowBtn("up", expandPanelUp, panelState === "expanded", "Расширить панели (уменьшить 3D)")}
+                  </>
+                );
+              })()}
             </div>
           </div>
 
-          {/* Settings Content Body */}
+          {/* Settings Content Body — construction (Безручковый/Задняя стенка/Дно/Верх/Цоколь · Узлы ·
+              Кромка · Назначение). Dimensions live on the viewport: W/H/shelves via the tools, depth
+              via the bottom-left «Глубина» button. */}
           {panelState !== "collapsed" && (
-            <div style={{ flex: 1, overflowY: "auto" }}>
+            <div style={{ flex: 1, overflowY: "auto", display: "flex", flexDirection: "column" }}>
               <V21BlueprintEditor cab={cab} patchCab={patchCab} onClose={onClose} settings={settings} hideHeader={true} />
             </div>
           )}
