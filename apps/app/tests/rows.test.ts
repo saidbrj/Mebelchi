@@ -9,6 +9,7 @@
 import { describe, it, expect } from "vitest";
 import { mk, type Cabinet } from "../src/model/cabinet";
 import { cabBand, maxCabH, spansOverlap } from "../src/model/bands";
+import { GEOM } from "../src/model/layout";
 import { footsClash, cabFootprints, type Foot } from "../src/model/footprint";
 import { wallRows } from "../src/model/resolve";
 import { editRows } from "../src/model/rowOps";
@@ -111,10 +112,12 @@ describe("footsClash — the clash test knows about height", () => {
 
 describe("maxCabH — the ceiling is the limit, not a constant", () => {
   it("lets a column reach the ceiling", () => {
-    // the old flat 2400 clamp + the 100mm plinth topped a column out at 2500 — permanently 200mm
-    // short of a 2700 ceiling, which is why nothing in the app could be floor-to-ceiling
+    // the old flat 2400 clamp + the plinth topped a column out at 2500 — permanently 200mm
+    // short of a 2700 ceiling, which is why nothing in the app could be floor-to-ceiling.
+    // Derived from GEOM.plinth, not hardcoded: the plinth is a census-backed value that has
+    // already been corrected once (100 → 120), and this test should follow it, not pin it.
     const tall = mk({ kind: "tall", h: 2100 });
-    expect(maxCabH(tall, 2700)).toBe(2600); // 2700 − 100mm plinth
+    expect(maxCabH(tall, 2700)).toBe(2700 - GEOM.plinth);
     expect(cabBand({ ...tall, h: maxCabH(tall, 2700) }).y1).toBe(2700); // exactly flush
   });
 

@@ -111,7 +111,8 @@ export function DrillSheet({ parts, project, date, svgId }: Props) {
   const cellX = (i: number) => m + cw4 * i;
   els.push(<line key="tbl" x1={0} y1={tbTop} x2={W} y2={tbTop} stroke={INK} strokeWidth={SW} />);
   for (let i = 1; i < 4; i++) els.push(<line key={`tbd${i}`} x1={cellX(i)} y1={tbTop} x2={cellX(i)} y2={H - 200} stroke={INK} strokeWidth={SW * 0.5} />);
-  els.push(logoGlyphs({ key: "tbb", cx: cellX(0) + cw4 / 2, cy: tbMid - 6, width: cw4 * 0.82, fill: INK }));
+  // 0.51 (was 0.82) keeps the drawn height unchanged now the wordmark box is narrower — "Mebely" is a shorter word
+  els.push(logoGlyphs({ key: "tbb", cx: cellX(0) + cw4 / 2, cy: tbMid - 6, width: cw4 * 0.51, fill: INK }));
   ([["Проект", project], ["Чертёж", "Сверловка"], ["Дата", date]] as [string, string][]).forEach(([top, bot], k) => {
     const cx = cellX(k + 1) + cw4 / 2;
     els.push(<text key={`ts${k}`} x={cx} y={tbMid - 50} fontSize={58} fill={DIM} textAnchor="middle" fontFamily="Inter, sans-serif">{top}</text>);

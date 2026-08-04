@@ -3,7 +3,7 @@
   "private": true,
   "version": "0.1.0",
   "type": "module",
-  "description": "Jihozla customer app — React + Vite, wrapped with Capacitor (iOS/Android). The 6-phase journey + live 3D constructor.",
+  "description": "Mebely customer app — React + Vite, wrapped with Capacitor (iOS/Android). The 6-phase journey + live 3D constructor.",
   "scripts": {
     "dev": "vite",
     "build": "vite build",

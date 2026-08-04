@@ -1,7 +1,7 @@
 // The cutting PDF, drawn as TRUE VECTOR (jsPDF primitives) — sharp at any zoom and a few KB
 // (rasterising the SVG cut maps produced a ~100MB file). Text is rendered with an embedded
 // PT Sans subset (see pdf/ptSans.ts) so Russian/Uzbek labels + real material names work as
-// vector. Every page has a footer: a rule, the Jihozla wordmark bottom-left, page N/total
+// vector. Every page has a footer: a rule, the Mebely wordmark bottom-left, page N/total
 // bottom-right. Landscape A4, mm.
 //
 // Layout per board page: the board scaled on the left + a "Детали на листе" table on the
@@ -23,7 +23,7 @@ export interface CutPdfLabels {
   colWid: string;
   colQty: string;
   sheetsUnit: string; // "листов"
-  brand: string; // "Jihozla"
+  brand: string; // "Mebely"
 }
 
 export interface ResultRow {

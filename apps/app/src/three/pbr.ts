@@ -58,6 +58,10 @@ const TEX: Record<string, TexDef> = {
   wood_wenge: { diff: "wood_wenge_diff.jpg", nor: "wood_wenge_nor.jpg", rough: "wood_wenge_rough.jpg", tint: false, roughness: 0.7 },
 };
 
+/** The texture keys a material may claim, for the catalog editor's picker. Exported as the
+ *  keys of TEX rather than a hand-written list so adding a texture cannot forget to list it. */
+export const TEX_KEYS: string[] = Object.keys(TEX);
+
 const cache = new Map<string, MapSet>();
 export function texSet(key: string): MapSet | null {
   const d = TEX[key];

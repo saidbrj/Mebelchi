@@ -8,6 +8,19 @@ export const IconTabHome = () => (
   </svg>
 );
 
+/** Каталог — stacked sheets. The catalog is boards in a rack before it is anything else,
+ *  and a layer stack reads that way at 26px where a shelf or a box does not. */
+export const IconTabCatalog = () => (
+  <svg width="26" height="26" viewBox="0 0 32 32" fill="none" aria-hidden="true">
+    <path
+      d="M16 3L3 9.5L16 16L29 9.5L16 3ZM16 5.25L24.5 9.5L16 13.75L7.5 9.5L16 5.25ZM5.5 14.5L3 15.75L16 22.25L29 15.75L26.5 14.5L16 19.75L5.5 14.5ZM5.5 20.75L3 22L16 28.5L29 22L26.5 20.75L16 26L5.5 20.75Z"
+      fill="currentColor"
+    />
+  </svg>
+);
+
+/** Kept although the «Проекты» tab is gone: Home still renders the same project cards, and
+ *  this is the icon they would use if the list ever needs a header glyph again. */
 export const IconTabProjects = () => (
   <svg width="26" height="26" viewBox="0 0 32 32" fill="none" aria-hidden="true">
     <path d="M5 5V6V15H15V5H5ZM17 5V6V15H27V5H17ZM7 7H13V13H7V7ZM19 7H25V13H19V7ZM5 17V18V27H15V17H5ZM17 17V18V27H27V17H17ZM7 19H13V25H7V19ZM19 19H25V25H19V19Z" fill="currentColor" />

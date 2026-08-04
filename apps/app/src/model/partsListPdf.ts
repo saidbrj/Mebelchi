@@ -2,7 +2,7 @@
 // paginated table (NOT a nested layout): one row per part size with finished dimensions and a
 // Qty, so a person can read/check/print it on the shop floor while the .xlsx feeds the machine.
 // Drawn as vector via jsPDF with the embedded PT Sans subset (Cyrillic/Latin-Uzbek), landscape
-// A4, mm. The column header repeats on every page; a Jihozla + page-number footer closes each.
+// A4, mm. The column header repeats on every page; a Mebely + page-number footer closes each.
 
 import type { jsPDF } from "jspdf";
 import type { PartsList } from "./partsList";

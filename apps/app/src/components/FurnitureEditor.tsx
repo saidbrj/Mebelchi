@@ -5,7 +5,7 @@
 //   style  → the Eman.uz material picker (with pricing) for a part
 // Real fields (width/height/fill/count) drive the model + price; per-part material
 // picks, add-ons and toggles are kept in `cfg` (scaffold until Eman is wired in).
-import { useState, type ReactNode } from "react";
+import { useState, useMemo, type ReactNode } from "react";
 import { useStore } from "../store";
 import { useT } from "../i18n/useT";
 import { useMoney } from "../useMoney";
@@ -13,7 +13,8 @@ import { HANDLES, FRONT_PROFILES, defaultHandlePos, frontOf, type Cabinet, type 
 import { maxCabH, cabDepth, cornerShapeOf, cornerArm, MIN_H, D_MIN, D_MAX } from "../model/bands";
 import { cabinetParts, PART_FINISH, type Part } from "../model/parts";
 import { isMerged, boxMates, mergeCandidates } from "../model/carcassGroups";
-import { EMAN_MATERIALS, matPriceLabel, hexToInt, catalogByColor } from "../model/materials";
+import { matPriceLabel, hexToInt } from "../model/materials";
+import { listMaterials, catalogByColor } from "../model/catalog";
 import { matSwatchStyle } from "../three/pbr";
 import type { KitchenStyle } from "../model/layout";
 import { IconSearch, IconFilter } from "./icons";
@@ -195,6 +196,10 @@ export function FurnitureEditor({
   // kind, same height and depth — so the toggle only ever appears when there is something real to
   // merge, and can only ever tag a set the workshop can actually build.
   const cabs = useStore((s) => s.cabs);
+  // the shop's live catalog — re-read whenever Каталог changes it, so a decor added or
+  // re-priced there is pickable here without a reload
+  const catalogRev = useStore((s) => s.catalogRev);
+  const MATS = useMemo(() => listMaterials(), [catalogRev]);
   const toggleCarcassMerge = useStore((s) => s.toggleCarcassMerge);
   const merged = isMerged(cab);
   const box = merged ? boxMates(cabs, cab) : [];
@@ -276,7 +281,7 @@ export function FurnitureEditor({
   // you can browse finishes and see each one applied immediately.
   const chooseMaterial = (partId: string, mid: string) => {
     onCfg((c) => ({ ...c, materials: { ...c.materials, [partId]: mid } }));
-    const m = EMAN_MATERIALS.find((x) => x.id === mid);
+    const m = MATS.find((x) => x.id === mid);
     const key = PART_FINISH[partId];
     if (m && key) {
       const col = hexToInt(m.color);
@@ -287,7 +292,7 @@ export function FurnitureEditor({
   const removePart = (partId: string) => onCfg((c) => ({ ...c, removed: [...c.removed, partId] }));
 
   const matName = (partId: string) => {
-    const m = EMAN_MATERIALS.find((x) => x.id === cfg.materials[partId]);
+    const m = MATS.find((x) => x.id === cfg.materials[partId]);
     return m ? `${m.name} · ${m.desc}` : t.fe.emanMaterials;
   };
   // a REAL, dynamic thumbnail for a part = its current material: the picked Eman material
@@ -295,7 +300,7 @@ export function FurnitureEditor({
   // catalog material for its texture), else the kitchen-wide default. Updates the instant
   // the user changes the facade wood / worktop / handle.
   const partThumb = (partId: string): Record<string, string> | undefined => {
-    const picked = EMAN_MATERIALS.find((x) => x.id === cfg.materials[partId]);
+    const picked = MATS.find((x) => x.id === cfg.materials[partId]);
     if (picked) return matSwatchStyle(picked.color, picked.tex);
     const key = PART_FINISH[partId];
     if (!key) return undefined; // non-material part → keep the default placeholder
@@ -306,7 +311,7 @@ export function FurnitureEditor({
   };
   const matsForPart = (part: Part) => {
     const key = PART_FINISH[part.id];
-    return EMAN_MATERIALS.filter(
+    return MATS.filter(
       (m) => (!key || m.part === key) && (m.name + " " + m.desc).toLowerCase().includes(matSearch.toLowerCase()),
     );
   };

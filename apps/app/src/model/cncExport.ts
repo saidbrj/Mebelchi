@@ -12,6 +12,15 @@ import { loadSettings } from "./settings";
 const matName = (ref: string): string => seedRateTable.materials[ref]?.name ?? ref;
 const hwName = (sku: string): string => Object.values(seedRateTable.hardware).find((h) => h.sku === sku)?.name ?? sku;
 
+// Kromka thickness, in the shop's own notation. The 359-panel factory dump settles which
+// bands are real: 426 edges at 1mm, 36 at 0.4mm, and ZERO at 2mm. A parts list that asks
+// for a 2mm band names a spec no local shop stocks — the fastest way to have the whole
+// export dismissed as machine-generated guesswork. Visible edges (fronts, filler panels)
+// take 1mm; hidden carcass edges take 0.4mm.
+const EDGE_VISIBLE = "1мм ПВХ";
+const EDGE_HIDDEN = "0.4мм";
+const EDGE_NONE = "—"; // glass arrives cut to size from the glazier and takes no kromka
+
 const PART_RU: Record<string, string> = {
   "side-left": "Бок левый",
   "side-right": "Бок правый",
@@ -148,7 +157,7 @@ export function production(cabs: Cabinet[], prod: ProductionOpts = DEFAULT_PRODU
         widthMm: Math.round(p.widthMm),
         // by ROLE — a bought-to-size glass pane is 4mm and takes no kromka
         thicknessMm: panelThicknessMm(p.role),
-        edge: p.role === "glass" ? "—" : facade ? "2мм ПВХ" : "0.4мм",
+        edge: p.role === "glass" ? EDGE_NONE : facade ? EDGE_VISIBLE : EDGE_HIDDEN,
         profile: p.profile && !p.name.startsWith("mullion") ? PROFILE_RU[p.profile] : "",
       });
       boardArea += panelAreaM2(p);
@@ -169,7 +178,7 @@ export function production(cabs: Cabinet[], prod: ProductionOpts = DEFAULT_PRODU
         lengthMm: Math.round(c.h),
         widthMm: Math.round(c.fillerLeft),
         thicknessMm: 16,
-        edge: "2мм ПВХ",
+        edge: EDGE_VISIBLE,
         profile: "—",
       });
       boardArea += (c.h * c.fillerLeft) / 1e6;
@@ -184,7 +193,7 @@ export function production(cabs: Cabinet[], prod: ProductionOpts = DEFAULT_PRODU
         lengthMm: Math.round(c.h),
         widthMm: Math.round(c.fillerRight),
         thicknessMm: 16,
-        edge: "2мм ПВХ",
+        edge: EDGE_VISIBLE,
         profile: "—",
       });
       boardArea += (c.h * c.fillerRight) / 1e6;
@@ -199,7 +208,7 @@ export function production(cabs: Cabinet[], prod: ProductionOpts = DEFAULT_PRODU
         lengthMm: Math.round(c.w),
         widthMm: Math.round(c.fillerTop),
         thicknessMm: 16,
-        edge: "2мм ПВХ",
+        edge: EDGE_VISIBLE,
         profile: "—",
       });
       boardArea += (c.w * c.fillerTop) / 1e6;

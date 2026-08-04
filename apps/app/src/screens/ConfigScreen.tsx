@@ -26,7 +26,8 @@ import { resolveLayout } from "../model/resolve";
 import { cabDepth, cornerShapeOf, cornerArm, maxCabH, MIN_H, D_MIN, D_MAX } from "../model/bands";
 import { dockAll, cabFootprints, objectOverlapIds } from "../model/footprint";
 import { FRONT_PROFILES, HANDLES, frontOf, defaultHandlePos, mk, type Cabinet, type FrontProfile, type FinishKey, type DoorOpening, type HandlePos } from "../model/cabinet";
-import { EMAN_MATERIALS, hexToInt } from "../model/materials";
+import { hexToInt } from "../model/materials";
+import { materialsFor } from "../model/catalog";
 import { PART_FINISH } from "../model/parts";
 import { CABINET_GROUPS, APPLIANCE_GROUPS, FURNITURE_GROUPS, EXTRA_GROUPS, type AddTemplate } from "../model/addCatalog";
 import { listSavedCabs } from "../model/savedCabs";
@@ -98,7 +99,6 @@ const FRONT_LABEL: Record<FrontProfile, string> = {
   flat: "Гладкий", shaker: "Шейкер", raised: "Филёнка", fluted: "Рифлёный", glass: "Стекло", grid: "Решётка", none: "—",
 };
 const FRONT_CHOICES = FRONT_PROFILES.filter((p) => p !== "none");
-const FACADE_SWATCHES = EMAN_MATERIALS.filter((m) => m.part === "facade");
 
 // Шкафы-panel filter — categorise a catalog template by what its cabinet IS
 const CAB_CATS: { id: string; name: string; ok: (c: Partial<Cabinet>) => boolean }[] = [
@@ -179,6 +179,9 @@ export function ConfigScreen() {
   const t = useT();
   const money = useMoney();
   const settings = useStore((s) => s.settings);
+  // Subscribe (no value needed): the material pickers below call materialsFor() during render,
+  // so all this has to do is re-render the screen when Каталог changes the list.
+  useStore((s) => s.catalogRev);
   const showPricing = settings.showPricing;
   const quality = settings.quality;
   const cabs = useStore((s) => s.cabs);
@@ -804,7 +807,7 @@ export function ConfigScreen() {
         sub={showPricing ? (
           <span className="cfg-price">{money(price)}<span className="cfg-price-i" aria-hidden>ⓘ</span></span>
         ) : null}
-        right={<button className="step-next" onClick={next} type="button">{t.config.next}</button>}
+        right={<button className="step-next" onClick={next} type="button">{t.footer.toRenderShort}</button>}
       />
 
       {/* front view: switch which wall run / island is shown + edited */}
@@ -1436,7 +1439,9 @@ export function ConfigScreen() {
               ];
               const activeId = TABS.some((tb) => tb.id === stylePart) ? stylePart : "front";
               const key = PART_FINISH[activeId] as FinishKey;
-              const mats = EMAN_MATERIALS.filter((m) => m.part === key);
+              // the LIVE catalog (the screen subscribes to catalogRev, so an edit in Каталог
+              // re-renders this picker and this call returns the new list)
+              const mats = materialsFor(key);
               // the toggle decides scope: OFF = the selection, ON = every cabinet in the kitchen
               const applyStyle = (patch: Partial<Cabinet>) => (styleAll ? patchAllCabs(patch) : applyToSelected(patch));
               const applyFinish = (fin: Partial<Record<FinishKey, number>>) => (styleAll ? applyFinishToAll(fin) : applyFinishToSelected(fin));

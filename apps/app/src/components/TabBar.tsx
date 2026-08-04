@@ -1,8 +1,9 @@
-// Bottom tab bar for the app "hub" screens (Home / Projects / Settings / User). Replaces
-// the floating hamburger on those screens. Features a prominent center green button for "+ Новый" project.
+// Bottom tab bar for the app "hub" screens (Home / Catalog / Settings / User). Replaces the
+// floating hamburger on those screens. Features a prominent center green button for "+ Новый".
+// «Проекты» used to hold slot 2 — Home is the deal list now, and Каталог took the slot.
 import { useStore } from "../store";
 import { useT } from "../i18n/useT";
-import { IconTabHome, IconTabProjects, IconTabSettings, IconTabUser, IconTabPlus } from "./icons";
+import { IconTabHome, IconTabCatalog, IconTabSettings, IconTabUser, IconTabPlus } from "./icons";
 
 export function TabBar() {
   const t = useT();
@@ -23,18 +24,18 @@ export function TabBar() {
         <span className="tab-lbl">{t.tabs.home}</span>
       </button>
 
-      {/* 2. Projects */}
+      {/* 2. Catalog — the shop's own materials / hardware / saved cabinets */}
       <button
-        className={`tab-item${screen === "projects" ? " on" : ""}`}
-        onClick={() => goTo("projects")}
+        className={`tab-item${screen === "catalog" ? " on" : ""}`}
+        onClick={() => goTo("catalog")}
         type="button"
-        aria-current={screen === "projects" ? "page" : undefined}
+        aria-current={screen === "catalog" ? "page" : undefined}
       >
-        <span className="tab-ico"><IconTabProjects /></span>
-        <span className="tab-lbl">{t.tabs.projects}</span>
+        <span className="tab-ico"><IconTabCatalog /></span>
+        <span className="tab-lbl">{t.tabs.catalog}</span>
       </button>
 
-      {/* 3. Center CTA: Green Circle "+ Новый" */}
+      {/* 3. Center CTA: Green Circle "+ Новый" — dead centre of five slots */}
       <button
         className="tab-item tab-item-new"
         onClick={newProject}
@@ -47,7 +48,7 @@ export function TabBar() {
         <span className="tab-lbl tab-lbl-new">{t.tabs.new}</span>
       </button>
 
-      {/* 4. Settings */}
+      {/* 3. Settings */}
       <button
         className={`tab-item${screen === "settings" ? " on" : ""}`}
         onClick={() => goTo("settings")}
@@ -58,7 +59,7 @@ export function TabBar() {
         <span className="tab-lbl">{t.tabs.settings}</span>
       </button>
 
-      {/* 5. User / Profile */}
+      {/* 4. User / Profile */}
       <button
         className={`tab-item${screen === "user" ? " on" : ""}`}
         onClick={() => goTo("user")}

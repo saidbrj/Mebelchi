@@ -259,7 +259,7 @@ export function RenderScreen() {
     if (!url) return;
     const blob = await dataUrlToBlob(url);
     await shareOrDownload(
-      new File([blob], `jihozla-render-${shots.length - i}.png`, { type: "image/png" }),
+      new File([blob], `mebely-render-${shots.length - i}.png`, { type: "image/png" }),
       { ok: t.render.saved, fail: t.render.saveFail },
       flash,
       blob,
@@ -268,7 +268,7 @@ export function RenderScreen() {
 
   return (
     <div className="roomscene">
-      <JourneyBar right={<button className="step-next" onClick={next} type="button">{t.config.next}</button>} />
+      <JourneyBar right={<button className="step-next" onClick={next} type="button">{t.footer.toEngineeringShort}</button>} />
 
       <div
         className="scene-area"

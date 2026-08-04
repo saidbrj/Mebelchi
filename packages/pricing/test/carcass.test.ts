@@ -214,7 +214,10 @@ describe("hardware, labour and delivery follow the BOX", () => {
   it("adds a set per span when the shop uses one", () => {
     const [box] = groupCarcasses(merged());
     expect(hangingCount(box, DEFAULT_PRODUCTION)).toBe(2); // span 0 → one set, however wide
-    expect(hangingCount(box, { hangingsPerCarcass: 2, hangingSpanMm: 900 })).toBe(6); // ceil(2400/900) = 3
+    // The span rule asks for ceil(2400/900) = 3 sets × 2 = 6 — but hangingCount caps at
+    // `modules.length + 1`, because a навес screws to a SIDE PANEL and this 4-module box has
+    // only 5 of them. Billing a 6th bracket would put it somewhere the fitter cannot mount it.
+    expect(hangingCount(box, { hangingsPerCarcass: 2, hangingSpanMm: 900 })).toBe(5);
     expect(hangingCount(box, { hangingsPerCarcass: 0, hangingSpanMm: 0 })).toBe(0); // shop fits none
   });
 

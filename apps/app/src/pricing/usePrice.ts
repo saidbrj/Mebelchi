@@ -8,15 +8,26 @@ import type { RateTable, ProductionOpts } from "@mebelchi/schema";
 import { useStore } from "../store";
 import { toProject, priceCabs, sqmPrice } from "../model/toProject";
 import { ratesToTable } from "../model/rates";
+import { ratesForDesign } from "../model/catalogRates";
 import { productionFrom } from "../model/settings";
 import type { Cabinet } from "../model/cabinet";
 
-/** The seller's own price list as an engine RateTable (USD) — reactive to Настройки edits. */
+/** The seller's own price list as an engine RateTable (USD) — reactive to Настройки edits,
+ *  to the hardware grade, AND to Каталог: the decor this kitchen is actually made of prices
+ *  itself where it can (model/catalogRates.ts), falling back to the blanket per-m² rate. */
 export function useRateTable(): RateTable {
   const rates = useStore((s) => s.settings.rates);
   // «Класс фурнитуры» is a PRICE, not a label — it scales the hinge and slide SKUs (model/rates.ts)
   const grade = useStore((s) => s.hwGrade);
-  return useMemo(() => ratesToTable(rates, grade), [rates, grade]);
+  const cabs = useStore((s) => s.cabs);
+  const style = useStore((s) => s.runStyle);
+  // catalogRev is what makes a price edited in Каталог reach the ticker: the decor lookup
+  // reads the live catalog, and without this the memo would hold yesterday's rate.
+  const catalogRev = useStore((s) => s.catalogRev);
+  return useMemo(
+    () => ratesToTable(ratesForDesign(rates, cabs, style), grade),
+    [rates, cabs, style, grade, catalogRev],
+  );
 }
 
 /** How this workshop builds a box (hangers per carcass, hanger span) — reactive to Настройки. */

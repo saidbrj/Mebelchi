@@ -1,4 +1,4 @@
-# Jihozla — temporary landing page copy (Google Sites)
+# Mebely — temporary landing page copy (Google Sites)
 
 Two pages, cross-linked. Put a `Русский | O'zbekcha` text link at the top of each (each word
 links to the other page) — that's the manual language switcher. In App Store Connect set the
@@ -13,7 +13,7 @@ official App Store badge + link.
 
 *(top link) Русский | O'zbekcha*
 
-# Jihozla
+# Mebely
 ### Кухни в 3D — от идеи до производства
 
 Проектируйте кухни в 3D, подбирайте материалы вживую и сразу получайте смету и файлы для ЧПУ.
@@ -22,7 +22,7 @@ official App Store badge + link.
 **Скоро в App Store**
 
 ## Что это
-Jihozla — мобильное приложение для мебельщиков и дизайнеров кухонь. Соберите кухню за минуты,
+Mebely — мобильное приложение для мебельщиков и дизайнеров кухонь. Соберите кухню за минуты,
 покажите клиенту в 3D и передайте на производство готовый пакет — без чертежей вручную.
 
 ## Возможности
@@ -47,7 +47,7 @@ Jihozla — мобильное приложение для мебельщико�
 По вопросам и поддержке: **renvapp@gmail.com**
 Политика конфиденциальности: (ссылка на страницу политики)
 
-© 2026 Jihozla
+© 2026 Mebely
 
 ---
 
@@ -55,7 +55,7 @@ Jihozla — мобильное приложение для мебельщико�
 
 *(top link) Русский | O'zbekcha*
 
-# Jihozla
+# Mebely
 ### 3D oshxona — g'oyadan ishlab chiqarishgacha
 
 Oshxonani 3D'da loyihalang, materiallarni jonli tanlang va darhol smeta hamda CNC uchun fayllarni
@@ -64,7 +64,7 @@ oling. Barchasi bitta ilovada.
 **Tez orada App Store'da**
 
 ## Bu nima
-Jihozla — mebelchilar va oshxona dizaynerlari uchun mobil ilova. Oshxonani bir necha daqiqada yig'ing,
+Mebely — mebelchilar va oshxona dizaynerlari uchun mobil ilova. Oshxonani bir necha daqiqada yig'ing,
 mijozga 3D'da ko'rsating va ishlab chiqarishga tayyor paketni uzating — chizmalarni qo'lda chizmasdan.
 
 ## Imkoniyatlar
@@ -89,4 +89,4 @@ Mebel ishlab chiqaruvchilar, oshxona dizaynerlari, o'lchovchilar.
 Savollar va yordam uchun: **renvapp@gmail.com**
 Maxfiylik siyosati: (siyosat sahifasiga havola)
 
-© 2026 Jihozla
+© 2026 Mebely

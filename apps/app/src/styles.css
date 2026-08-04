@@ -3774,6 +3774,14 @@ body {
   cursor: pointer;
 }
 
+/* the deal count beside «Мои проекты» — replaces the old "Все · N →" link now that
+   Home IS the full list and there is nowhere further to send the user */
+.hc-sec-count {
+  font: 600 13px/1 var(--sans);
+  color: #8a8a8a;
+  font-variant-numeric: tabular-nums;
+}
+
 /* projects: search + sort row */
 .proj-search {
   margin: 8px 0 10px;
@@ -4226,6 +4234,270 @@ body {
 .hc-rename-danger {
   background: #c0392b;
   border-color: #c0392b;
+}
+
+/* ── Каталог ─────────────────────────────────────────────────
+   The shop's own materials / hardware / saved cabinets. Rows are wide tap targets
+   (a phone in a workshop, often one-handed), and every row leads to the same editor. */
+.cat-tabs {
+  margin-top: 14px;
+}
+
+.cat-actions {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+  margin: 4px 0 10px;
+}
+
+.cat-add {
+  flex: 1 1 0;
+  padding: 12px;
+  border-radius: 12px;
+  border: 1px solid var(--accent);
+  background: var(--accent);
+  color: #fff;
+  font: 600 14px/1 var(--sans);
+  cursor: pointer;
+}
+
+.cat-reset {
+  padding: 12px 14px;
+  border-radius: 12px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: var(--muted);
+  font: 600 13px/1 var(--sans);
+  cursor: pointer;
+}
+
+.cat-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin: 8px 0 18px;
+}
+
+.cat-row {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  cursor: pointer;
+  text-align: left;
+}
+
+.cat-row:active {
+  background: #fafafa;
+}
+
+/* the decor itself — the one thing a designer recognises before reading any text */
+.cat-swatch {
+  flex: 0 0 auto;
+  width: 44px;
+  height: 44px;
+  border-radius: 10px;
+  border: 1px solid var(--line);
+  background-size: cover;
+  background-position: center;
+}
+
+.cat-row-main {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+}
+
+.cat-row-name {
+  font: 600 14px/1.2 var(--sans);
+  color: #000;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* a dot marking a material the shop added themselves, as opposed to a shipped one */
+.cat-badge-own {
+  color: var(--accent);
+  margin-left: 6px;
+}
+
+.cat-row-sub {
+  font: 500 12px/1.2 var(--sans);
+  color: var(--muted);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cat-row-right {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 3px;
+}
+
+.cat-row-price {
+  font: 600 13px/1 var(--sans);
+  color: #000;
+  font-variant-numeric: tabular-nums;
+}
+
+.cat-row-stock {
+  font: 500 11px/1 var(--sans);
+  color: var(--muted);
+}
+
+.cat-row-stock.out {
+  color: #c0392b;
+}
+
+/* the material editor is a long form — let it scroll inside the card rather than
+   push the actions off a short screen */
+.cat-modal {
+  max-height: 86vh;
+  overflow-y: auto;
+}
+
+.cat-pair {
+  display: flex;
+  gap: 10px;
+}
+
+/* a captioned field inside a pair — "Сумма" / "за сколько единиц" under the shared label */
+.cat-field {
+  flex: 1 1 0;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+
+.cat-field-cap {
+  font: 500 11px/1.2 var(--sans);
+  color: var(--muted);
+}
+
+/* «Сейчас по каталогу: …» under a Настройки rate the open design overrides */
+.set-catalog-note {
+  display: block;
+  margin-top: 5px;
+  font: 500 11px/1.35 var(--sans);
+  color: var(--accent);
+}
+
+/* explanatory line under a control the user cannot be expected to guess */
+.cat-hint {
+  font: 500 11px/1.35 var(--sans);
+  color: var(--muted);
+  margin-top: -8px;
+}
+
+.cat-color-row {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.cat-color {
+  flex: 0 0 auto;
+  width: 48px;
+  height: 44px;
+  padding: 2px;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  background: #fff;
+  cursor: pointer;
+}
+
+.cat-err {
+  font: 600 12px/1 var(--sans);
+  color: #c0392b;
+}
+
+.cat-del {
+  flex: 0 0 auto;
+  padding: 13px 14px;
+  border-radius: 12px;
+  border: 1px solid #c0392b;
+  background: #fff;
+  color: #c0392b;
+  font: 600 14px/1 var(--sans);
+  cursor: pointer;
+}
+
+/* saved cabinets — a thumbnail grid, same two-column rhythm as the project cards */
+.cat-cab-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 10px;
+  margin: 12px 0 18px;
+}
+
+.cat-cab {
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  background: #fff;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.cat-cab-thumb {
+  aspect-ratio: 1 / 1;
+  border-radius: 10px;
+  background: #f5f5f5;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+}
+
+.cat-cab-thumb img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+}
+
+.cat-cab-noimg {
+  font-size: 28px;
+  color: var(--muted);
+}
+
+.cat-cab-name {
+  font: 600 13px/1.2 var(--sans);
+  color: #000;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.cat-cab-actions {
+  display: flex;
+  gap: 8px;
+}
+
+.cat-cab-actions button {
+  flex: 1 1 0;
+  padding: 8px 4px;
+  border-radius: 9px;
+  border: 1px solid var(--line);
+  background: #fff;
+  font: 600 12px/1 var(--sans);
+  cursor: pointer;
+}
+
+.cat-cab-actions .danger {
+  color: #c0392b;
+  border-color: #e6b8b3;
 }
 
 .proj-row {
@@ -5508,6 +5780,23 @@ body {
   line-height: 1;
 }
 
+/* which board the offcut is — the chip must say, or two 800×600 pieces of different
+   material are indistinguishable on the rack */
+.ho-remain-mat {
+  font: 500 11px/1 var(--sans);
+  font-style: normal;
+  color: var(--muted);
+  max-width: 140px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+/* an offcut of a board THIS job doesn't cut — still stock, just not usable here */
+.ho-remain-chip.off {
+  opacity: 0.5;
+}
+
 /* offcut entry: two number fields on one row, the add button full-width below (so the
    button can never be pushed off a narrow screen, and the fields never collapse) */
 .ho-remains-add {
@@ -5520,6 +5809,18 @@ body {
   display: flex;
   align-items: center;
   gap: 8px;
+}
+
+/* board picker — full width under the size fields; the labels ("ЛДСП 16мм, белый") are
+   too long to sit beside two number inputs on a phone */
+.ho-remains-mat {
+  width: 100%;
+  border: 1px solid var(--line);
+  border-radius: 10px;
+  padding: 13px 12px;
+  font: 500 15px/1.2 var(--sans);
+  background: #fff;
+  color: #000;
 }
 
 .ho-remains-input {
@@ -6129,8 +6430,10 @@ body {
   margin: 0;
 }
 
-/* Настройки popup — an overlay over the current screen (keeps work in progress) */
-.settings-modal-backdrop {
+/* Настройки / Каталог popup — an overlay over the current screen (keeps work in progress).
+   Shared by <PopupModal>; the journey screens have no tab bar, so this is how they reach
+   those two hub screens at all. */
+.app-modal-backdrop {
   position: fixed;
   inset: 0;
   z-index: 60;
@@ -6144,7 +6447,7 @@ body {
   -webkit-overflow-scrolling: touch;
 }
 
-.settings-modal {
+.app-modal {
   position: relative;
   width: 100%;
   max-width: 440px;
@@ -6155,12 +6458,24 @@ body {
   animation: sheetUp 0.24s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-/* the embedded SettingsScreen keeps its own padding; trim its top so the ✕ has room */
-.settings-modal .set-screen {
+/* the embedded screen keeps its own padding; trim its top so the ✕ has room */
+.app-modal .set-screen {
   padding-top: 6px;
 }
 
-.settings-modal-x {
+/* CatalogScreen wears .home-grid-screen for the tab-bar layout: 100px of bottom padding
+   reserving space for Home's sticky CTA, which does not exist inside the popup. */
+.app-modal .home-grid-screen {
+  padding-top: 6px;
+  padding-bottom: 12px;
+}
+
+/* the ✕ overlaps the catalog's own <h1>, so pull the title clear of it */
+.app-modal .home-grid-screen > .h1 {
+  padding-right: 34px;
+}
+
+.app-modal-x {
   position: absolute;
   top: 14px;
   right: 14px;

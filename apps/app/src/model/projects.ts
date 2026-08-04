@@ -220,7 +220,9 @@ export function statusOf(p: Pick<ProjectMeta, "status">): DealStatus {
   return p.status ?? "design";
 }
 
-/** Still in play — everything but «Установлено» and «Отказ». */
+/** Still in play — everything but «Установлено» and «Отказ». No longer drives a filter chip
+ *  (the filters are exact stages now — see ProjectBucket); kept because "is this deal live"
+ *  is the natural predicate for an agenda strip, which is where it will be wanted next. */
 export function isActive(p: Pick<ProjectMeta, "status">): boolean {
   return ACTIVE_STATUSES.includes(statusOf(p));
 }
@@ -233,18 +235,23 @@ export function isStale(p: Pick<ProjectMeta, "status" | "updatedAt">, now = Date
 /** The Projects screen's filter chips. Deliberately coarser than the 7 statuses: a seller
  *  filters by what they intend to DO — chase it, celebrate it, hide it — not by every stage.
  *  Lives here rather than in the screen so Home's "Ждут ответа" banner can deep-link into it. */
-export type ProjectBucket = "all" | "active" | "quoted" | "won" | "archive";
-export const PROJECT_BUCKETS: ProjectBucket[] = ["all", "active", "quoted", "won", "archive"];
+/**
+ * The Home list filter: «Все», or one exact deal stage.
+ *
+ * It used to be five invented roll-ups — Все / В работе / Ждут ответа / Выиграно / Архив —
+ * and they were wrong in two ways at once. The WORDS appeared nowhere in the status picker,
+ * so «Выиграно» and «Согласовано» were the same thing under two names and nothing said so.
+ * And the chips OVERLAPPED while looking mutually exclusive: a `quoted` project sat in both
+ * «В работе» and «Ждут ответа», a `production` one in both «В работе» and «Выиграно».
+ *
+ * One vocabulary, one chip per stage, no overlap. `DEAL_STATUSES` is the single source of
+ * both the picker and the filter row, so the two cannot drift apart again.
+ */
+export type ProjectBucket = "all" | DealStatus;
+export const PROJECT_BUCKETS: ProjectBucket[] = ["all", ...DEAL_STATUSES];
 
 export function inBucket(p: Pick<ProjectMeta, "status">, b: ProjectBucket): boolean {
-  const s = statusOf(p);
-  switch (b) {
-    case "all": return true;
-    case "active": return isActive(p);
-    case "quoted": return s === "quoted";
-    case "won": return s === "won" || s === "production" || s === "installed";
-    case "archive": return s === "lost";
-  }
+  return b === "all" || statusOf(p) === b;
 }
 
 /* ── link helpers ───────────────────────────────────────────── */
@@ -275,4 +282,51 @@ export function mapHref(p: Pick<ProjectMeta, "address" | "geo">): string {
 /** Default name for a brand-new project (numbered by how many already exist). */
 export function defaultProjectName(): string {
   return `Проект ${listProjects().length + 1}`;
+}
+
+/* ── the Home list: filter + sort ────────────────────────────────────────────
+   Pure, and here rather than inline in HomeScreen, because the rule that keeps it honest is
+   easy to lose in JSX: A FILTER MAY ONLY NARROW THE LIST WHILE THE CONTROL THAT SET IT IS ON
+   SCREEN. Home hides the search box on a short list, and a query left in state would then
+   hide cards with nothing visible to explain why — which a seller reads as lost work, not as
+   a filter. The caller passes what is actually rendered; this function does not guess. */
+
+export type ProjectSort = "date" | "name" | "sum";
+
+export interface ProjectListOpts {
+  /** the deal-stage chip, or undefined when the chips aren't rendered */
+  bucket?: ProjectBucket;
+  /** the search text, or undefined when the search box isn't rendered */
+  query?: string;
+  sortBy?: ProjectSort;
+  /** ascending; default false = newest / Z→A first */
+  asc?: boolean;
+}
+
+/** Does this project match a free-text query? Name, client, address, and — digits-only, so
+ *  "901234567" finds a client saved as "+998 (90) 123-45-67" — the phone. */
+export function matchesQuery(p: ProjectMeta, query: string): boolean {
+  const q = query.trim().toLowerCase();
+  if (!q) return true;
+  const digits = phoneDigits(query.trim()).replace(/^\+/, "");
+  return (
+    p.name.toLowerCase().includes(q)
+    || (p.client ?? "").toLowerCase().includes(q)
+    || (p.address ?? "").toLowerCase().includes(q)
+    // a 1–2 digit query would match nearly every phone — noise, not a search
+    || (digits.length >= 3 && phoneDigits(p.clientPhone ?? "").includes(digits))
+  );
+}
+
+export function filterSortProjects(all: ProjectMeta[], opts: ProjectListOpts = {}): ProjectMeta[] {
+  const { bucket, query, sortBy = "date", asc = false } = opts;
+  return all
+    .filter((p) => (bucket ? inBucket(p, bucket) : true))
+    .filter((p) => (query ? matchesQuery(p, query) : true))
+    .sort((a, b) => {
+      const cmp = sortBy === "name" ? a.name.localeCompare(b.name)
+        : sortBy === "sum" ? (a.totalUSD ?? 0) - (b.totalUSD ?? 0)
+        : a.updatedAt - b.updatedAt;
+      return asc ? cmp : -cmp;
+    });
 }

@@ -1,4 +1,4 @@
-# Jihozla — App Store submission runbook
+# Mebely — App Store submission runbook
 
 Everything needed to get the app into App Store Connect (iOS). Work top to bottom.
 Fields marked **⚠ REPLACE** contain placeholders you must swap for real values.
@@ -7,7 +7,7 @@ Fields marked **⚠ REPLACE** contain placeholders you must swap for real values
 
 ## 0. Current repo status (already done)
 
-- `capacitor.config.ts` → `appName: "Jihozla"`, `webDir: "dist"`, Capacitor 7.
+- `capacitor.config.ts` → `appName: "Mebely"`, `webDir: "dist"`, Capacitor 7.
 - Icon source `assets/icon.png` is 1024×1024; splash light/dark present.
 - `public/privacy.html` — real privacy policy (needs the real email + hosting URL).
 - No native permissions used (no camera / location / photos / contacts) → **no Info.plist usage strings needed**, minimal privacy declarations.
@@ -18,6 +18,11 @@ Fields marked **⚠ REPLACE** contain placeholders you must swap for real values
 
 1. **Bundle ID = `uz.jihozla.app`** ✅ (set in `capacitor.config.ts`). Register this exact ID in the
    Developer portal (step 2). It is permanent after the first upload.
+   > ⚠️ The ID deliberately keeps the **old** brand spelling. The app was renamed Jihozla → Mebely,
+   > but a bundle/application ID cannot change once uploaded (Play already has an `app-release.aab`
+   > under it), so it stays as-is. Do not "fix" it to `uz.mebely.app` — that would create a
+   > separate listing that existing installs cannot update to. The user-facing name is Mebely
+   > everywhere (`appName`, `strings.xml`, store listing); only this opaque identifier lags.
 2. **Support email = `renvapp@gmail.com`** ✅ (temporary; in-app `privacy.html` updated, template
    note removed). Swap for a company address in v2.
 3. **Privacy Policy hosting = Google Sites** (temporary landing + privacy until the v2 site).
@@ -43,10 +48,10 @@ Fields marked **⚠ REPLACE** contain placeholders you must swap for real values
    Capabilities: none special needed (no push, no sign-in-with-apple for now).
 2. **App Store Connect → My Apps → +** → New App:
    - Platform: iOS
-   - Name: **Jihozla** (must be unique across the whole store — if taken, try `Jihozla — Кухни 3D`)
+   - Name: **Mebely** (must be unique across the whole store — if taken, try `Mebely — Кухни 3D`)
    - Primary language: Russian (add Uzbek as a localization later)
    - Bundle ID: the one from step 1
-   - SKU: `jihozla-ios-01` (any private string)
+   - SKU: `mebely-ios-01` (any private string)
 
 ## 3. Build & upload the iOS app
 
@@ -62,7 +67,7 @@ npx cap open ios         # opens Xcode
 In **Xcode**, select the App target → Signing & Capabilities:
 - Team: your Apple Developer team (enables automatic signing)
 - Bundle Identifier: `uz.jihozla.app`
-- Display Name: `Jihozla`
+- Display Name: `Mebely`
 - Version: `1.0`  ·  Build: `1`
 - Deployment target: iOS 14.0
 - General → Targeted Device Family: **iPhone** (v1)
@@ -82,7 +87,7 @@ The build appears in App Store Connect after ~5–15 min of processing.
 
 **Name (≤30):**
 ```
-Jihozla
+Mebely
 ```
 **Subtitle (≤30):**
 ```
@@ -98,7 +103,7 @@ Jihozla
 ```
 **Description (≤4000):**
 ```
-Jihozla — приложение для мебельщиков и дизайнеров кухонь. Соберите кухню в 3D за минуты, подберите материалы и сразу получите смету и файлы для производства.
+Mebely — приложение для мебельщиков и дизайнеров кухонь. Соберите кухню в 3D за минуты, подберите материалы и сразу получите смету и файлы для производства.
 
 ВОЗМОЖНОСТИ
 • 3D-конструктор — расставляйте модули перетаскиванием, стройте кухню по своим стенам.
@@ -132,7 +137,7 @@ oshxona,mebel,3d,konstruktor,shkaf,smeta,kesim,cnc,dizayn,loyiha,fasad,stol,jiho
 ```
 **Description:**
 ```
-Jihozla — mebelchilar va oshxona dizaynerlari uchun ilova. Oshxonani bir necha daqiqada 3D'da yig'ing, materiallarni tanlang va darhol smeta hamda ishlab chiqarish fayllarini oling.
+Mebely — mebelchilar va oshxona dizaynerlari uchun ilova. Oshxonani bir necha daqiqada 3D'da yig'ing, materiallarni tanlang va darhol smeta hamda ishlab chiqarish fayllarini oling.
 
 IMKONIYATLAR
 • 3D konstruktor — modullarni surib joylashtiring, oshxonani o'z devorlaringizga qurib chiqing.

@@ -19,7 +19,7 @@ import { addCabinetHardware, type HardwareOverlayOpts } from "./cabinetHardware"
 import { contactShadow } from "./contact";
 import { PBR, texturedMaterial, planarUV } from "./pbr";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { catalogByColor } from "../model/materials";
+import { catalogByColor } from "../model/catalog";
 
 // Vertical geometry + depth come from the CANONICAL layout model (model/resolve.ts) — this
 // file used to redeclare its own metre constants and a 4th copy of the depth table, which is

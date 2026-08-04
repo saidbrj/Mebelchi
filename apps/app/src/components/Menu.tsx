@@ -4,7 +4,7 @@ import type { ReactNode } from "react";
 import { useStore, type Screen } from "../store";
 import { useT } from "../i18n/useT";
 import { Logo } from "./logo";
-import { IconTabHome, IconTabProjects, IconTabSettings, IconTabUser } from "./icons";
+import { IconTabHome, IconTabCatalog, IconTabSettings, IconTabUser } from "./icons";
 
 // phase → its label key in t.menu.phases; label resolved at render (language-aware)
 const PHASES: { key: keyof ReturnType<typeof useT>["menu"]["phases"]; target: Screen; members: Screen[] }[] = [
@@ -26,6 +26,7 @@ export function Menu() {
   const closeMenu = useStore((s) => s.closeMenu);
   const goTo = useStore((s) => s.goTo);
   const openSettings = useStore((s) => s.openSettings);
+  const openCatalog = useStore((s) => s.openCatalog);
   const showPricing = useStore((s) => s.settings.showPricing);
 
   if (!open) return null;
@@ -43,8 +44,13 @@ export function Menu() {
     closeMenu();
   };
   const ITEMS: { label: string; icon: ReactNode; onClick: () => void }[] = [
+    // «Мои проекты» used to sit here too — it now goes to the same place as «На главную»,
+    // since Home holds the deal list. Two entries, one destination, is just a dead row.
     { label: t.menu.home, icon: <IconTabHome />, onClick: () => nav(() => goTo("home")) },
-    { label: t.menu.projects, icon: <IconTabProjects />, onClick: () => nav(() => goTo("projects")) },
+    // Каталог and Настройки open as POPUPS, not routes — the journey screens have no tab bar,
+    // and jumping to either as a screen would unmount the design being edited. Same order as
+    // the hub's <TabBar> so the two navigations agree.
+    { label: t.menu.catalog, icon: <IconTabCatalog />, onClick: openCatalog },
     { label: t.menu.settings, icon: <IconTabSettings />, onClick: openSettings },
   ];
 

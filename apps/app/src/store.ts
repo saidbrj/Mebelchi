@@ -47,12 +47,16 @@ import { defaultSurface, splitLeaf, colorLeaf, type Surface, type SurfPath } fro
 import { PERSIST_KEYS, loadProjectState, upsertProject, deleteProject, updateProjectMeta, newProjectId, allProjects, replaceAllProjects, type DesignState, type MetaPatch, type ProjectBucket } from "./model/projects";
 import { toProject } from "./model/toProject";
 import { ratesToTable } from "./model/rates";
+import { ratesForDesign } from "./model/catalogRates";
 import { priceProject } from "@mebelchi/pricing";
 import { runExport } from "./lib/handoffExport";
 import { loadSettings, saveSettings, type Settings } from "./model/settings";
 import { supabase, isSupabaseConfigured } from "./lib/supabase";
 import { pullProfile, pushProfile, pullProjects, pushProject, deleteProjectCloud, pullSavedCabs, pushSavedCab, deleteSavedCabCloud } from "./lib/sync";
-import { addSavedCab, removeSavedCab as removeSavedCabLS, stripCab, allSavedCabs, replaceAllSavedCabs } from "./model/savedCabs";
+import { addSavedCab, removeSavedCab as removeSavedCabLS, renameSavedCab as renameSavedCabLS, stripCab, allSavedCabs, replaceAllSavedCabs } from "./model/savedCabs";
+import { upsertMaterial, removeMaterial, resetCatalog } from "./model/catalog";
+import { addOffcut as addOffcutLS, removeOffcut as removeOffcutLS } from "./model/offcuts";
+import type { EmanMaterial } from "./model/materials";
 import { captureCabinetThumbnail } from "./lib/cabThumb";
 import { captureThumbnail } from "./lib/thumbnailCapture";
 import { QUIZ } from "./quiz/questions";
@@ -113,8 +117,8 @@ function remapCabRuns(cabs: Cabinet[], from: KitchenLayout, to: KitchenLayout, p
 
 
 export type Screen =
-  | "home"
-  | "projects"
+  | "home" // the hub AND the full project/deal list (the separate "projects" screen is gone)
+  | "catalog" // the shop's own materials / hardware / saved cabinets
   | "settings"
   | "user"
   | "auth"
@@ -151,7 +155,7 @@ export const FLOW: Screen[] = [
 
 /** Screens OUTSIDE the design journey — a project must never be saved with one of these as
  *  its resume point (otherwise reopening it can't find the design and falls back to onboarding). */
-const MENU_SCREENS: Screen[] = ["home", "projects", "settings", "user", "auth"];
+const MENU_SCREENS: Screen[] = ["home", "catalog", "settings", "user", "auth"];
 /** A sensible design screen to resume at, from the design's content (used when the saved
  *  screen is missing / a menu screen). Furthest sensible point given how far they got. */
 function resumeScreen(state: Partial<AppState>): Screen {
@@ -167,7 +171,10 @@ function resumeScreen(state: Partial<AppState>): Screen {
 function projectTotalUSD(s: AppState): number {
   if (!s.cabs.length) return 0;
   try {
-    return priceProject(toProject(s), ratesToTable(s.settings.rates, s.hwGrade)).total;
+    // ratesForDesign, exactly as the ticker does it — a project card that priced from the
+    // blanket rate while the screen priced from the catalog would be the same disagreement
+    // this function's own docstring exists to prevent.
+    return priceProject(toProject(s), ratesToTable(ratesForDesign(s.settings.rates, s.cabs, s.runStyle), s.hwGrade)).total;
   } catch {
     return 0;
   }
@@ -230,6 +237,10 @@ export interface AppState {
   // Настройки popup — an overlay (not a screen) so it opens over any journey step
   // without unmounting the work in progress
   settingsOpen: boolean;
+  // Каталог popup — same deal. It matters MORE here than for settings: editing a material
+  // mid-journey re-prices the live design (catalogRev), and routing to the catalog SCREEN
+  // would tear down the constructor to do it.
+  catalogOpen: boolean;
   // set when the variants "add water?" prompt sends the user to the room to place it →
   // RoomScene opens its water-picker on entry
   pendingWater: boolean;
@@ -241,6 +252,11 @@ export interface AppState {
   projectBucket: ProjectBucket;
   // "My cabinets" reusable library — a bump to refresh the saved-cabinet list
   savedCabsRev: number;
+  // the editable material catalog — bumped on add/edit/delete so every open picker
+  // (Стиль tab, FurnitureEditor sheet) re-reads the list instead of showing a stale one
+  catalogRev: number;
+  // the workshop's offcut stock (Раскрой) — bumped so the cut plan re-nests on a change
+  offcutsRev: number;
   // global user/app settings (profile · company · preferences), Supabase-ready
   settings: Settings;
   // auth (Supabase). authReady = session checked; authUser = null when signed out.
@@ -428,6 +444,18 @@ export interface AppState {
   saveCab: (cabId: string, name: string) => void;
   /** remove a saved cabinet from the library */
   removeSavedCab: (id: string) => void;
+  /** rename a saved cabinet in the library */
+  renameSavedCab: (id: string, name: string) => void;
+  /** add or overwrite a material in the shop's catalog */
+  saveMaterial: (m: EmanMaterial) => void;
+  /** delete a material from the catalog (a shipped one stays deleted across reloads) */
+  deleteMaterial: (id: string) => void;
+  /** discard every catalog edit — back to the shipped material list */
+  resetMaterials: () => void;
+  /** add an offcut to the workshop's stock (`group` = the board it is, from the cut plan) */
+  addOffcut: (w: number, h: number, group?: string) => void;
+  /** remove one offcut from stock */
+  removeOffcut: (id: string) => void;
   /** remove a module from the run (best-effort — the run isn't re-flowed yet) */
   removeCab: (id: string) => void;
   /** copy a module, parked at the end of its run lane; returns the new id */
@@ -544,6 +572,8 @@ export interface AppState {
   closeMenu: () => void;
   openSettings: () => void;
   closeSettings: () => void;
+  openCatalog: () => void;
+  closeCatalog: () => void;
   // projects — saveCurrent persists the design; withThumb=true ALSO (re)captures the
   // project card image (only done once per constructor entry, not on every auto-save)
   saveCurrent: (withThumb?: boolean) => void;
@@ -635,11 +665,14 @@ export const useStore = create<AppState>((set, get) => ({
   // an editing MODE, not part of the design — never persisted, off at the start of every session
   menuOpen: false,
   settingsOpen: false,
+  catalogOpen: false,
   pendingWater: false,
   currentProjectId: null,
   projectsRev: 0,
   projectBucket: "all",
   savedCabsRev: 0,
+  catalogRev: 0,
+  offcutsRev: 0,
   settings: loadSettings(),
   // if Supabase isn't configured, auth is skipped (app runs on localStorage)
   authReady: !isSupabaseConfigured,
@@ -743,8 +776,8 @@ export const useStore = create<AppState>((set, get) => ({
 
   goTo: (screen) => {
     const s = get();
-    const toList = screen === "home" || screen === "projects";
-    const fromMenu = s.screen === "home" || s.screen === "projects" || s.screen === "settings" || s.screen === "auth";
+    const toList = screen === "home"; // home IS the project list now
+    const fromMenu = s.screen === "home" || s.screen === "settings" || s.screen === "auth";
     const hasContent = s.cabs.length > 0 || Object.keys(s.quiz).length > 0;
     // leaving a design screen for the project list → flush a save NOW, while the 3D scene
     // is still mounted, so the card gets a freshly captured thumbnail (the debounced
@@ -1635,6 +1668,37 @@ export const useStore = create<AppState>((set, get) => ({
     if (get().authUser) void deleteSavedCabCloud(id);
     set((s) => ({ savedCabsRev: s.savedCabsRev + 1 }));
   },
+  renameSavedCab: (id, name) => {
+    renameSavedCabLS(id, name);
+    set((s) => ({ savedCabsRev: s.savedCabsRev + 1 }));
+  },
+
+  // ── the shop's material catalog ────────────────────────────────────────────
+  // Each of these writes localStorage and bumps catalogRev; every picker reads the
+  // list through that counter, so a price corrected in Каталог is the price the next
+  // quote uses — no reload, no second copy of the list to keep in step.
+  saveMaterial: (m) => {
+    upsertMaterial(m);
+    set((s) => ({ catalogRev: s.catalogRev + 1 }));
+  },
+  deleteMaterial: (id) => {
+    removeMaterial(id);
+    set((s) => ({ catalogRev: s.catalogRev + 1 }));
+  },
+  resetMaterials: () => {
+    resetCatalog();
+    set((s) => ({ catalogRev: s.catalogRev + 1 }));
+  },
+
+  // ── the workshop's offcut rack ─────────────────────────────────────────────
+  addOffcut: (w, h, group) => {
+    addOffcutLS(w, h, group);
+    set((s) => ({ offcutsRev: s.offcutsRev + 1 }));
+  },
+  removeOffcut: (id) => {
+    removeOffcutLS(id);
+    set((s) => ({ offcutsRev: s.offcutsRev + 1 }));
+  },
   removeCab: (id) =>
     set((s) => {
       const cabs = s.cabs.filter((c) => c.id !== id);
@@ -2272,9 +2336,12 @@ export const useStore = create<AppState>((set, get) => ({
   clearToast: () => set({ toast: null }),
   openMenu: () => set({ menuOpen: true }),
   closeMenu: () => set({ menuOpen: false }),
-  // settings is a popup overlay (keeps the current screen mounted) — close the menu on open
-  openSettings: () => set({ settingsOpen: true, menuOpen: false }),
+  // settings + catalog are popup overlays (they keep the current screen mounted) — close the
+  // menu on open. Only one at a time: they'd stack on the same backdrop otherwise.
+  openSettings: () => set({ settingsOpen: true, catalogOpen: false, menuOpen: false }),
   closeSettings: () => set({ settingsOpen: false }),
+  openCatalog: () => set({ catalogOpen: true, settingsOpen: false, menuOpen: false }),
+  closeCatalog: () => set({ catalogOpen: false }),
 
   // ---- projects (persisted to localStorage) ----
   saveCurrent: (withThumb = false) => {
@@ -2284,12 +2351,17 @@ export const useStore = create<AppState>((set, get) => ({
     if (!id) id = newProjectId();
     const design: DesignState = {};
     for (const k of PERSIST_KEYS) design[k] = (s as unknown as Record<string, unknown>)[k];
-    // Never persist a menu screen (home/projects/…) as the project's resume point — the
+    // Never persist a menu screen (home/settings/…) as the project's resume point — the
     // 30s auto-save + leave-flush fire while on home, and reopening at "home" makes
     // openProject fall back to onboarding. Keep the last real design screen instead.
+    // The fallback tests `prev.screen` against FLOW rather than merely "not a menu screen",
+    // so a value that is neither — a retired screen like "space", or "projects" from before
+    // Home absorbed the deal list — gets healed here instead of being copied forward. This is
+    // the same test openProject applies on the way back in; localStorage holds whatever an
+    // older build wrote, so the runtime check is what protects us, not the Screen type.
     if (MENU_SCREENS.includes(design.screen as Screen)) {
       const prev = loadProjectState(id) as Partial<AppState> | null;
-      design.screen = prev?.screen && !MENU_SCREENS.includes(prev.screen) ? prev.screen : resumeScreen(s);
+      design.screen = prev?.screen && FLOW.includes(prev.screen) ? prev.screen : resumeScreen(s);
     }
     // Only (re)capture the thumbnail when asked (constructor entry). Otherwise pass null so
     // upsertProject KEEPS the existing image — the auto-save / leave-flush persist data

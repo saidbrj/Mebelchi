@@ -12,6 +12,8 @@ import { useStore } from "../store";
 import { useT } from "../i18n/useT";
 import { Logo } from "../components/logo";
 import type { Settings, Currency, RateOverrides } from "../model/settings";
+import { catalogSourcesFor } from "../model/catalogRates";
+import { useMoney } from "../useMoney";
 
 const CURRENCIES: Currency[] = ["UZS", "KZT", "USD"];
 
@@ -31,6 +33,11 @@ export function SettingsScreen() {
   const settings = useStore((s) => s.settings);
   const update = useStore((s) => s.updateSettings);
   const authUser = useStore((s) => s.authUser);
+  const money = useMoney();
+  // the open design, for the "this rate comes from Каталог" note below
+  const cabs = useStore((s) => s.cabs);
+  const runStyle = useStore((s) => s.runStyle);
+  useStore((s) => s.catalogRev); // subscribe: re-render when a catalog price changes
   // one field-in-progress so decimal typing (e.g. "7.") isn't clobbered by parse-on-change
   const [editing, setEditing] = useState<{ key: string; val: string } | null>(null);
 
@@ -57,12 +64,26 @@ export function SettingsScreen() {
     );
   };
 
-  const rateField = (key: keyof RateOverrides) => (
-    <label className="set-field" key={key}>
-      <span className="set-label">{t.settings.priceFields[key]}</span>
-      {numInput(`rate:${key}`, settings.rates[key], (n) => update({ rates: { ...settings.rates, [key]: n } }), true)}
-    </label>
-  );
+  // Which of these fields the OPEN DESIGN is currently overriding from Каталог. Without this
+  // note a seller types 7.5 here, watches the смета bill something else, and concludes the
+  // price list is broken — the override is right, but invisible is indistinguishable from bad.
+  const catalogSources = catalogSourcesFor(cabs, runStyle);
+  const overriddenBy = (key: keyof RateOverrides) => catalogSources.find((s) => s.key === key);
+
+  const rateField = (key: keyof RateOverrides) => {
+    const src = overriddenBy(key);
+    return (
+      <label className="set-field" key={key}>
+        <span className="set-label">{t.settings.priceFields[key]}</span>
+        {numInput(`rate:${key}`, settings.rates[key], (n) => update({ rates: { ...settings.rates, [key]: n } }), true)}
+        {src && (
+          <span className="set-catalog-note">
+            {t.settings.fromCatalog(src.material.name, money(src.rate))}
+          </span>
+        )}
+      </label>
+    );
+  };
 
   return (
     <section className="screen set-screen">

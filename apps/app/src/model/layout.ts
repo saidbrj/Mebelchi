@@ -148,7 +148,11 @@ const UPPER_H = 720;
 const UPPER_DEPTH = 350;
 const BASE_DEPTH = 560;
 export const GEOM = {
-  plinth: 100,
+  // 120, not the 100 the CIS forums quote. The 359-panel factory dump measured the real
+  // plurality at 120mm (22/38 jobs) against 100mm on only 3/38 — the census overturned the
+  // research default, and DB/26 + DB/27 adopted the correction. Counter height follows:
+  // 120 + 720 carcass + 40 worktop = 880mm.
+  plinth: 120,
   baseH: BASE_H,
   worktop: 40,
   tallH: TALL_H,

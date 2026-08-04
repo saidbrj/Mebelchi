@@ -85,5 +85,5 @@ export function runSWJ008(cabs: Cabinet[]): string | null {
   const rep = machiningReport(cabs);
   // no parts = every module was skipped — don't hand the shop an empty machine file
   if (!rep || !rep.ok || !rep.parts.length) return null;
-  return exportSWJ008({ id: "jihozla", name: "Jihozla kitchen", parts: rep.parts });
+  return exportSWJ008({ id: "mebely", name: "Mebely kitchen", parts: rep.parts });
 }

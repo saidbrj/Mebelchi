@@ -74,6 +74,13 @@ export interface NestStats {
 export interface RemainSheet {
   w: number;
   h: number;
+  /** WHICH BOARD this offcut is — the `group` key of the panels it may hold
+   *  (`"ЛДСП 16мм, белый · 16"`). Absent = "any board", the old behaviour.
+   *
+   *  This exists because an offcut is a physical piece of a specific decor. Without it the
+   *  packer handed every offcut to the largest group whatever it was, so a leftover facade
+   *  board would be used to cut carcass sides — a plan that looks fine and cannot be built. */
+  group?: string;
 }
 
 export interface NestOptions {
@@ -81,7 +88,10 @@ export interface NestOptions {
   sheetH: number;
   kerf: number; // saw blade width (mm) between parts + shelves
   respectGrain: boolean;
-  remains: RemainSheet[]; // offcuts to fill first (assigned to the largest board group)
+  /** Offcuts already on the shelf — filled before any new sheet is bought. Each is matched to
+   *  the board group it belongs to; an offcut with no `group` falls back to the largest group,
+   *  which is what every offcut used to do. */
+  remains: RemainSheet[];
 }
 
 export interface NestResult {
@@ -177,16 +187,26 @@ export function nest(panels: NestPanel[], opts: NestOptions): NestResult {
   const ordered = [...groups.entries()].sort((a, b) => area(b[1]) - area(a[1]));
 
   const sheets: NestedSheet[] = [];
-  const remainPool = [...remains]; // consumed by the first (largest) group only
+  // Offcuts, bucketed by the board they ARE. An offcut with no group is untyped — from a save
+  // made before offcuts carried a material — and keeps the old "help the largest group"
+  // behaviour rather than being silently dropped from someone's stock.
+  const largest = ordered[0]?.[0];
+  const pools = new Map<string, RemainSheet[]>();
+  for (const r of remains) {
+    const key = r.group ?? largest;
+    if (key == null) continue; // nothing to nest at all
+    (pools.get(key) ?? pools.set(key, []).get(key)!).push(r);
+  }
   let unplaced = 0;
   let n = 0;
 
-  ordered.forEach(([group, gp], gi) => {
+  ordered.forEach(([group, gp]) => {
     const items = [...gp].sort((a, b) => b.w * b.h - a.w * a.h); // large parts first
+    const remainPool = pools.get(group) ?? [];
     let remaining = items;
     while (remaining.length) {
-      // pick the next board: an offcut (first group only), else a standard sheet
-      const remain = gi === 0 ? remainPool.shift() : undefined;
+      // pick the next board: an offcut OF THIS BOARD if any are left, else a standard sheet
+      const remain = remainPool.shift();
       const W = remain ? remain.w : sheetW;
       const H = remain ? remain.h : sheetH;
       const { placed, rest, free } = packSheet(remaining, W, H, kerf);

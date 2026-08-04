@@ -1,4 +1,4 @@
-# Jihozla — Terms of Use / Foydalanish shartlari (Google Sites)
+# Mebely — Terms of Use / Foydalanish shartlari (Google Sites)
 
 Host like the privacy page: one stacked page (ru on top, uz below) is fine — use that single URL
 for the site's "Условия / Shartlar" nav item, and (optionally) as the App Store Connect
@@ -10,9 +10,9 @@ disclaimer.
 
 ## 🇷🇺 Условия использования
 
-*Приложение «Jihozla». Дата вступления в силу: 5 июля 2026 г.*
+*Приложение «Mebely». Дата вступления в силу: 5 июля 2026 г.*
 
-Настоящие Условия регулируют использование приложения «Jihozla» (далее — «Приложение»). Устанавливая, открывая или используя Приложение, вы принимаете эти Условия. Если вы не согласны, не используйте Приложение.
+Настоящие Условия регулируют использование приложения «Mebely» (далее — «Приложение»). Устанавливая, открывая или используя Приложение, вы принимаете эти Условия. Если вы не согласны, не используйте Приложение.
 
 ### 1. Описание сервиса
 Приложение — инструмент для проектирования кухонной мебели: 3D-конструктор, подбор материалов, расчёт предварительной сметы и подготовка файлов для производства (раскрой, сверловка, чертежи, экспорт).
@@ -30,7 +30,7 @@ disclaimer.
 Цены являются ориентировочными и зависят от введённых вами данных и справочника материалов; они могут не совпадать с фактическими ценами поставщиков. Курс USD задаётся вручную и используется только для отображения. Проверяйте актуальные цены у поставщиков.
 
 ### 6. Интеллектуальная собственность
-Приложение, его интерфейс, код и содержимое принадлежат Jihozla и защищены законом. Вам предоставляется ограниченная, неисключительная, отзывная лицензия на использование Приложения по назначению.
+Приложение, его интерфейс, код и содержимое принадлежат Mebely и защищены законом. Вам предоставляется ограниченная, неисключительная, отзывная лицензия на использование Приложения по назначению.
 
 ### 7. Ваш контент
 Проекты и данные, которые вы создаёте, принадлежат вам. Вы предоставляете нам право хранить и обрабатывать их исключительно для работы сервиса (см. Политику конфиденциальности).
@@ -39,7 +39,7 @@ disclaimer.
 Приложение предоставляется «как есть» и «по мере доступности». Мы не гарантируем бесперебойную работу и можем изменять, приостанавливать или прекращать функции без предварительного уведомления.
 
 ### 9. Ограничение ответственности
-В максимально допустимой законом степени Jihozla не несёт ответственности за косвенные, случайные или последующие убытки, а также за упущенную выгоду, связанные с использованием или невозможностью использования Приложения.
+В максимально допустимой законом степени Mebely не несёт ответственности за косвенные, случайные или последующие убытки, а также за упущенную выгоду, связанные с использованием или невозможностью использования Приложения.
 
 ### 10. Прекращение
 Вы можете в любой момент удалить аккаунт в разделе «Настройки → Опасная зона → Удалить аккаунт». Мы вправе ограничить или прекратить доступ при нарушении настоящих Условий.
@@ -54,9 +54,9 @@ disclaimer.
 
 ## 🇺🇿 Foydalanish shartlari
 
-*«Jihozla» ilovasi. Kuchga kirish sanasi: 2026-yil 5-iyul.*
+*«Mebely» ilovasi. Kuchga kirish sanasi: 2026-yil 5-iyul.*
 
-Ushbu Shartlar «Jihozla» ilovasidan (keyingi o'rinlarda — «Ilova») foydalanishni tartibga soladi. Ilovani o'rnatib, ochib yoki undan foydalanib, siz ushbu Shartlarni qabul qilasiz. Agar rozi bo'lmasangiz, Ilovadan foydalanmang.
+Ushbu Shartlar «Mebely» ilovasidan (keyingi o'rinlarda — «Ilova») foydalanishni tartibga soladi. Ilovani o'rnatib, ochib yoki undan foydalanib, siz ushbu Shartlarni qabul qilasiz. Agar rozi bo'lmasangiz, Ilovadan foydalanmang.
 
 ### 1. Xizmat tavsifi
 Ilova — oshxona mebelini loyihalash vositasi: 3D konstruktor, materiallarni tanlash, dastlabki smetani hisoblash va ishlab chiqarish uchun fayllarni tayyorlash (kesim, teshiklar, chizmalar, eksport).
@@ -74,7 +74,7 @@ Ilova yaratadigan barcha smetalar, spetsifikatsiyalar, chizmalar, teshik xarital
 Narxlar taxminiy bo'lib, siz kiritgan ma'lumotlar va materiallar ma'lumotnomasiga bog'liq; ular yetkazib beruvchilarning haqiqiy narxlariga mos kelmasligi mumkin. USD kursi qo'lda kiritiladi va faqat ko'rsatish uchun ishlatiladi. Dolzarb narxlarni yetkazib beruvchilardan tekshiring.
 
 ### 6. Intellektual mulk
-Ilova, uning interfeysi, kodi va mazmuni Jihozlaga tegishli va qonun bilan himoyalangan. Sizga Ilovadan maqsadli foydalanish uchun cheklangan, eksklyuziv bo'lmagan, qaytarib olinadigan litsenziya beriladi.
+Ilova, uning interfeysi, kodi va mazmuni Mebelyga tegishli va qonun bilan himoyalangan. Sizga Ilovadan maqsadli foydalanish uchun cheklangan, eksklyuziv bo'lmagan, qaytarib olinadigan litsenziya beriladi.
 
 ### 7. Sizning kontentingiz
 Siz yaratadigan loyihalar va ma'lumotlar sizga tegishli. Siz bizga ularni faqat xizmat ishlashi uchun saqlash va qayta ishlash huquqini berasiz (Maxfiylik siyosatiga qarang).
@@ -83,7 +83,7 @@ Siz yaratadigan loyihalar va ma'lumotlar sizga tegishli. Siz bizga ularni faqat 
 Ilova «bor holicha» va «mavjudligiga qarab» taqdim etiladi. Biz uzluksiz ishlashni kafolatlamaymiz va funksiyalarni oldindan ogohlantirmasdan o'zgartirishimiz, to'xtatishimiz yoki bekor qilishimiz mumkin.
 
 ### 9. Javobgarlikni cheklash
-Qonun ruxsat etgan maksimal darajada Jihozla Ilovadan foydalanish yoki foydalana olmaslik bilan bog'liq bilvosita, tasodifiy yoki keyingi zararlar, shuningdek boy berilgan foyda uchun javobgar emas.
+Qonun ruxsat etgan maksimal darajada Mebely Ilovadan foydalanish yoki foydalana olmaslik bilan bog'liq bilvosita, tasodifiy yoki keyingi zararlar, shuningdek boy berilgan foyda uchun javobgar emas.
 
 ### 10. To'xtatish
 Siz istalgan vaqtda «Sozlamalar → Xavfli hudud → Hisobni o'chirish» bo'limida hisobni o'chirishingiz mumkin. Biz ushbu Shartlar buzilganda kirishni cheklash yoki to'xtatish huquqiga egamiz.

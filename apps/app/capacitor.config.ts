@@ -4,7 +4,7 @@ import type { CapacitorConfig } from "@capacitor/cli";
 // `cap:add:android` (needs Xcode / Android SDK), then `npm run build && cap sync`.
 const config: CapacitorConfig = {
   appId: "uz.jihozla.app",
-  appName: "Jihozla",
+  appName: "Mebely",
   webDir: "dist",
 };
 

@@ -1,4 +1,4 @@
-# Jihozla — Account deletion page (Google Sites)
+# Mebely — Account deletion page (Google Sites)
 
 Add ONE page to your Google Sites (e.g. title "Удаление аккаунта / Hisobni o'chirish"), paste
 this (ru on top, uz below), publish, and put that page's public URL in Play Console →
@@ -7,9 +7,9 @@ shows the deletion steps, and states what's deleted/kept + retention.
 
 ---
 
-## 🇷🇺 Удаление аккаунта — Jihozla
+## 🇷🇺 Удаление аккаунта — Mebely
 
-Приложение «Jihozla» (оператор — Jihozla) позволяет полностью удалить ваш аккаунт и все связанные данные.
+Приложение «Mebely» (оператор — Mebely) позволяет полностью удалить ваш аккаунт и все связанные данные.
 
 ### Как удалить аккаунт
 
@@ -31,9 +31,9 @@ shows the deletion steps, and states what's deleted/kept + retention.
 
 ---
 
-## 🇺🇿 Hisobni o'chirish — Jihozla
+## 🇺🇿 Hisobni o'chirish — Mebely
 
-«Jihozla» ilovasi (operator — Jihozla) hisobingizni va unga bog'liq barcha ma'lumotlarni to'liq o'chirish imkonini beradi.
+«Mebely» ilovasi (operator — Mebely) hisobingizni va unga bog'liq barcha ma'lumotlarni to'liq o'chirish imkonini beradi.
 
 ### Hisobni qanday o'chirish
 

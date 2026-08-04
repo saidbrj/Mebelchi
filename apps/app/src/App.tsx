@@ -7,7 +7,7 @@ import { Menu } from "./components/Menu";
 import { RoomScene } from "./screens/RoomScene";
 import { VariantsScreen } from "./screens/VariantsScreen";
 import { HomeScreen } from "./screens/HomeScreen";
-import { ProjectsScreen } from "./screens/ProjectsScreen";
+import { CatalogScreen } from "./screens/CatalogScreen";
 import { SettingsScreen } from "./screens/SettingsScreen";
 import { UserScreen } from "./screens/UserScreen";
 import { TabBar } from "./components/TabBar";
@@ -21,6 +21,7 @@ import { SetPasswordScreen } from "./screens/SetPasswordScreen";
 import { SyncIndicator } from "./components/SyncIndicator";
 import { LoginNudge } from "./components/LoginNudge";
 import { SettingsModal } from "./components/SettingsModal";
+import { CatalogModal } from "./components/CatalogModal";
 import { isSupabaseConfigured } from "./lib/supabase";
 
 export default function App() {
@@ -96,19 +97,20 @@ export default function App() {
         <Toast />
         <Menu />
         <SettingsModal />
+        <CatalogModal />
         <LoginNudge />
       </div>
     );
   }
 
-  // the app HUB — home / projects / settings / user — a bottom TAB BAR (no hamburger, no
+  // the app HUB — home / catalog / settings / user — a bottom TAB BAR (no hamburger, no
   // settings popup; settings is a full screen here). The hamburger + settings popup stay on
-  // the journey screens below.
-  if (screen === "home" || screen === "projects" || screen === "settings" || screen === "user") {
+  // the journey screens below. Home absorbed the old «Проекты» screen — it is the deal list.
+  if (screen === "home" || screen === "catalog" || screen === "settings" || screen === "user") {
     return (
       <div className="app">
         <main className="body body-tabbed">
-          {screen === "home" ? <HomeScreen /> : screen === "projects" ? <ProjectsScreen /> : screen === "settings" ? <SettingsScreen /> : <UserScreen />}
+          {screen === "home" ? <HomeScreen /> : screen === "catalog" ? <CatalogScreen /> : screen === "settings" ? <SettingsScreen /> : <UserScreen />}
         </main>
         <TabBar />
         <SyncIndicator />
@@ -143,6 +145,7 @@ export default function App() {
       <Toast />
       <Menu />
       <SettingsModal />
+      <CatalogModal />
     </div>
   );
 }

@@ -115,7 +115,7 @@ function makeProject(run: Module[], space: Project["space"], prod: ProductionOpt
   const now = new Date().toISOString();
   return {
     id: "local-project",
-    name: "Jihozla kitchen",
+    name: "Mebely kitchen",
     ownerId: "local",
     units: "mm",
     createdAt: now,

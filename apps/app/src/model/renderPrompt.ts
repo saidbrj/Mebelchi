@@ -8,7 +8,8 @@ import type { Cabinet, FinishKey } from "./cabinet";
 import type { KitchenStyle } from "./layout";
 import type { Opening } from "./room";
 import type { KitchenLayout } from "./runPlan";
-import { EMAN_MATERIALS, hexToInt } from "./materials";
+import { hexToInt } from "./materials";
+import { listMaterials } from "./catalog";
 
 const LAYOUT_EN: Record<KitchenLayout, string> = {
   i: "single-wall",
@@ -52,7 +53,7 @@ function colourName(int: number): string {
 }
 /** the catalog material's descriptor if this colour was a pick, else a colour fallback */
 function materialEn(int: number, part: FinishKey, fallback: (c: string) => string): string {
-  const m = EMAN_MATERIALS.find((x) => x.part === part && x.en && hexToInt(x.color) === int);
+  const m = listMaterials().find((x) => x.part === part && x.en && hexToInt(x.color) === int);
   return m?.en ?? fallback(colourName(int));
 }
 /** the most common finish[part] across the real cabinets (falling back to the style) */

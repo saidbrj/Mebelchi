@@ -11,7 +11,8 @@ import { IconTelegram } from "../components/icons";
 import { useT } from "../i18n/useT";
 import { production, productionCSV, cabLabel } from "../model/cncExport";
 import { cabDepth } from "../model/resolve";
-import { nest, nestPanels, type RemainSheet } from "../model/nest";
+import { nest, nestPanels } from "../model/nest";
+import { listOffcuts } from "../model/offcuts";
 import { nestDXF } from "../model/nestDxf";
 import { partsList } from "../model/partsList";
 import { partsXlsx, type PartsXlsxLabels, type PartsXlsxMeta } from "../model/partsXlsx";
@@ -71,14 +72,39 @@ export function HandoffScreen() {
   // this workshop actually fits, and a merged row hangs on one set, not one per cabinet
   const shop = useProduction();
   const prod = useMemo(() => production(cabs, shop), [cabs, shop]);
-  // sheet nesting (Раскрой) — pack the cut list onto boards; offcuts entered here fill first
-  const [remains, setRemains] = useState<RemainSheet[]>([]);
+  // sheet nesting (Раскрой) — pack the cut list onto boards; offcuts on the rack fill first.
+  // The offcut stock lives in localStorage (model/offcuts.ts), not in this component: a rack
+  // of leftover boards belongs to the workshop, not to one quote, and retyping it per job was
+  // enough friction that nobody would.
+  const offcutsRev = useStore((s) => s.offcutsRev);
+  const addOffcutToStock = useStore((s) => s.addOffcut);
+  const removeOffcutFromStock = useStore((s) => s.removeOffcut);
+  const remains = useMemo(() => listOffcuts(), [offcutsRev]);
   const [rw, setRw] = useState("");
   const [rh, setRh] = useState("");
+  const [rGroup, setRGroup] = useState("");
   const { sheetW, sheetH, kerf, respectGrain } = settings;
+  const panels = useMemo(() => nestPanels(cabs, respectGrain), [cabs, respectGrain]);
+  // the DISTINCT boards this job is cut from — an offcut can only be an offcut OF one of these,
+  // so they are the choices the picker offers (never the whole catalog)
+  const boards = useMemo(() => {
+    const seen = new Map<string, { group: string; label: string }>();
+    for (const p of panels) {
+      if (seen.has(p.group)) continue;
+      // most board names already carry their thickness ("ЛДСП 16мм, белый") — appending it
+      // again reads as a mistake, so only add it when it isn't already in the name
+      const label = p.material.includes(`${p.thickness}мм`) ? p.material : `${p.material} · ${p.thickness}мм`;
+      seen.set(p.group, { group: p.group, label });
+    }
+    return [...seen.values()];
+  }, [panels]);
+  const boardLabel = useCallback(
+    (group?: string) => (group ? boards.find((b) => b.group === group)?.label ?? group : undefined),
+    [boards],
+  );
   const nestResult = useMemo(
-    () => nest(nestPanels(cabs, respectGrain), { sheetW, sheetH, kerf, respectGrain, remains }),
-    [cabs, sheetW, sheetH, kerf, respectGrain, remains],
+    () => nest(panels, { sheetW, sheetH, kerf, respectGrain, remains }),
+    [panels, sheetW, sheetH, kerf, respectGrain, remains],
   );
   // the CNC parts list — finished sizes, no kerf, no nesting (the router does that itself)
   const pl = useMemo(() => (prod ? partsList(prod, respectGrain) : null), [prod, respectGrain]);
@@ -86,7 +112,9 @@ export function HandoffScreen() {
     const w = parseInt(rw, 10);
     const h = parseInt(rh, 10);
     if (w > 0 && h > 0) {
-      setRemains((rs) => [...rs, { w, h }]);
+      // default to the first board (the biggest group, which is what every offcut used to
+      // be assigned to) so the picker is never a required field to get the old behaviour
+      addOffcutToStock(w, h, rGroup || boards[0]?.group);
       setRw("");
       setRh("");
     }
@@ -125,7 +153,7 @@ export function HandoffScreen() {
     return {
       title: th.drawings, view3d: th.view3d, face: th.vFace, topPlan: th.dwTopPlan, worktop: th.vWorktop,
       legend: th.dwLegend, wall: th.wall, project: th.dwProject, dateL: th.dwDate, note: th.dwNote,
-      colN: th.dwColN, colName: th.dwColName, colDims: th.dwColDims, brand: "Jihozla",
+      colN: th.dwColN, colName: th.dwColName, colDims: th.dwColDims, brand: "Mebely",
     };
   }, [t]);
   const dwData: DrawingsData = useMemo(() => {
@@ -173,10 +201,10 @@ export function HandoffScreen() {
   };
   // CSV carries the engineering spec (grade + усиление) as a header so it travels to the factory
   const specHeader = `${fromLine ? `${t.handoff.csvFrom};${fromLine}\r\n` : ""}${t.handoff.csvSpec};${project}\r\n${t.handoff.csvGrade};${gradeLabel}\r\n${t.handoff.csvReinforce};${hardened ? t.handoff.yes : t.handoff.no}\r\n\r\n`;
-  const downloadCSV = () => downloadText(specHeader + productionCSV(prod), "jihozla-spec.csv", "text/csv;charset=utf-8", t.handoff.tCsv);
+  const downloadCSV = () => downloadText(specHeader + productionCSV(prod), "mebely-spec.csv", "text/csv;charset=utf-8", t.handoff.tCsv);
   const downloadDXF = () => {
     const dxf = nestDXF(nestResult);
-    if (dxf) downloadText(dxf, "jihozla-nesting.dxf", "application/dxf", t.handoff.tDxf, false);
+    if (dxf) downloadText(dxf, "mebely-nesting.dxf", "application/dxf", t.handoff.tDxf, false);
   };
   // SWJ008 machine file — the engine only emits it if the safety gate passed
   const downloadSWJ008 = () => {
@@ -185,7 +213,7 @@ export function HandoffScreen() {
       flash(t.handoff.tSwjBlocked);
       return;
     }
-    downloadText(xml, "jihozla-swj008.xml", "application/xml", t.handoff.tSwj, false);
+    downloadText(xml, "mebely-swj008.xml", "application/xml", t.handoff.tSwj, false);
   };
 
   // Share the factory package via the OS share sheet — the user picks Telegram. Web Share
@@ -201,25 +229,25 @@ export function HandoffScreen() {
     const all: File[] = [];
     if (cutMode === "cnc" && pl) {
       const partsPdf = await buildPartsPdf();
-      if (partsPdf) all.push(new File([partsPdf], "jihozla-детали.pdf", { type: "application/pdf" }));
+      if (partsPdf) all.push(new File([partsPdf], "mebely-детали.pdf", { type: "application/pdf" }));
       const buf = partsXlsx(pl, cncMeta, cncLabels).buffer as ArrayBuffer;
-      all.push(new File([buf], "jihozla-детали.xlsx", { type: XLSX_MIME }));
+      all.push(new File([buf], "mebely-детали.xlsx", { type: XLSX_MIME }));
     } else {
       const pdfBlob = await buildCutPdf();
       const dxf = nestDXF(nestResult);
-      if (pdfBlob) all.push(new File([pdfBlob], "jihozla-раскрой.pdf", { type: "application/pdf" }));
-      if (dxf) all.push(new File([dxf], "jihozla-nesting.dxf", { type: "text/plain" }));
+      if (pdfBlob) all.push(new File([pdfBlob], "mebely-раскрой.pdf", { type: "application/pdf" }));
+      if (dxf) all.push(new File([dxf], "mebely-nesting.dxf", { type: "text/plain" }));
     }
     const xml = adv ? runSWJ008(cabs) : null; // SWJ008 only if the safety gate passed
-    if (xml) all.push(new File([xml], "jihozla-swj008.xml", { type: "text/plain" }));
-    if (adv) all.push(new File(["﻿" + specHeader + productionCSV(prod)], "jihozla-spec.csv", { type: "text/csv" }));
+    if (xml) all.push(new File([xml], "mebely-swj008.xml", { type: "text/plain" }));
+    if (adv) all.push(new File(["﻿" + specHeader + productionCSV(prod)], "mebely-spec.csv", { type: "text/csv" }));
     if (!all.length) return;
 
     const nav = navigator as Navigator & {
       canShare?: (d?: { files?: File[] }) => boolean;
       share?: (d: { files?: File[]; title?: string; text?: string }) => Promise<void>;
     };
-    const title = `Jihozla · ${project}`;
+    const title = `Mebely · ${project}`;
     const text = `${project} — ${t.handoff.hardware}: ${gradeLabel}.`;
     const dlAnchor = (f: File) => {
       const url = URL.createObjectURL(f);
@@ -322,7 +350,7 @@ export function HandoffScreen() {
     const data = await drawingsPayload(true);
     const pdf = await newPdf();
     drawDrawingsPdf(pdf, data, dwLabels, "PTSans");
-    const name = `jihozla-чертежи-${(project || "проект").replace(/[/\\:*?"<>|]+/g, "-")}.pdf`;
+    const name = `mebely-чертежи-${(project || "проект").replace(/[/\\:*?"<>|]+/g, "-")}.pdf`;
     void shareOrDownload(new File([pdf.output("blob") as Blob], name, { type: "application/pdf" }), t.handoff.tShared);
   };
   /** One drawing on its own sheet — the SAME sheet the preview shows, so an individual file is
@@ -339,7 +367,7 @@ export function HandoffScreen() {
 
   // Cutting PDF — the paper plan the workshop follows at the saw, drawn as VECTOR with an
   // embedded PT Sans subset (Russian/Uzbek labels, sharp, a few KB). Results page + one board
-  // per page + a parts table + a Jihozla/page-number footer. The primary deliverable for the
+  // per page + a parts table + a Mebely/page-number footer. The primary deliverable for the
   // ~95% who cut manually; the DXF is for CAD/CNC. Shared by the download + the Telegram share.
   const buildCutPdf = async (): Promise<Blob | null> => {
     if (!nestResult.sheets.length) return null;
@@ -361,7 +389,7 @@ export function HandoffScreen() {
     const labels = {
       title: th.sumTitle, results: th.sumResults, materials: th.sumMaterials,
       sheet: th.sheet, offcut: th.offcutWord, remnantWord: th.remnantWord, partsOnSheet: th.partsOnSheet,
-      colLen: th.colLen, colWid: th.colWid, colQty: th.colQty, sheetsUnit: th.sheets, brand: "Jihozla",
+      colLen: th.colLen, colWid: th.colWid, colQty: th.colQty, sheetsUnit: th.sheets, brand: "Mebely",
     };
     drawCutPdf(pdf, nestResult, results, labels, "PTSans");
     return pdf.output("blob") as Blob;
@@ -369,7 +397,7 @@ export function HandoffScreen() {
   const downloadCutPDF = async () => {
     const blob = await buildCutPdf();
     if (!blob) return;
-    const name = `jihozla-раскрой-${(project || "проект").replace(/[/\\:*?"<>|]+/g, "-")}.pdf`;
+    const name = `mebely-раскрой-${(project || "проект").replace(/[/\\:*?"<>|]+/g, "-")}.pdf`;
     void shareOrDownload(new File([blob], name, { type: "application/pdf" }), t.handoff.tCutPdf);
   };
 
@@ -380,13 +408,13 @@ export function HandoffScreen() {
   const cncLabels: PartsXlsxLabels & PartsPdfLabels = {
     sheetParts: th.plSheetParts, sheetHw: th.plSheetHw, title: th.plTitle, from: th.csvFrom,
     project: th.dwProject, grade: th.csvGrade, reinforce: th.csvReinforce, yes: th.yes, no: th.no,
-    totalParts: th.plTotalParts, boardM2: th.plBoardM2, note: th.plNote, brand: "Jihozla",
+    totalParts: th.plTotalParts, boardM2: th.plBoardM2, note: th.plNote, brand: "Mebely",
     colNo: th.plColNo, colModule: th.plColModule, colPart: th.plColPart, colMat: th.plColMat,
     colThk: th.plColThk, colLen: th.plColLen, colWid: th.plColWid, colQty: th.plColQty,
     colGrain: th.plColGrain, colEdge: th.plColEdge, colProfile: th.plColProfile,
     colHwName: th.plColHwName, colHwQty: th.plColHwQty, grainYes: th.plGrainYes,
   };
-  const cncFileBase = `jihozla-детали-${(project || "проект").replace(/[/\\:*?"<>|]+/g, "-")}`;
+  const cncFileBase = `mebely-детали-${(project || "проект").replace(/[/\\:*?"<>|]+/g, "-")}`;
   const XLSX_MIME = "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet";
   const downloadPartsXlsx = () => {
     if (!pl) return;
@@ -425,7 +453,7 @@ export function HandoffScreen() {
       return;
     }
     const blob = await (await fetch(url)).blob(); // data-URL → Blob for the share sheet / download
-    void shareOrDownload(new File([blob], "jihozla-3d.png", { type: "image/png" }), t.handoff.t3dDl);
+    void shareOrDownload(new File([blob], "mebely-3d.png", { type: "image/png" }), t.handoff.t3dDl);
   };
 
   return (
@@ -468,7 +496,7 @@ export function HandoffScreen() {
         {drawRuns.map((dr) => {
           const wl = drawRuns.length > 1 ? ` · ${t.handoff.wall(dr.wall)}` : "";
           return (
-            <button key={`face-${dr.run}`} className="ho-draw-card" onClick={() => downloadOneDrawing({ kind: "face", run: dr }, `jihozla-фасад-${dr.wall}.pdf`)} type="button">
+            <button key={`face-${dr.run}`} className="ho-draw-card" onClick={() => downloadOneDrawing({ kind: "face", run: dr }, `mebely-фасад-${dr.wall}.pdf`)} type="button">
               <span className="ho-draw-card-img">
                 <DrawingPage data={dwData} labels={dwLabels} sel={{ kind: "face", run: dr }} />
               </span>
@@ -476,7 +504,7 @@ export function HandoffScreen() {
             </button>
           );
         })}
-        <button className="ho-draw-card" onClick={() => downloadOneDrawing({ kind: "top" }, "jihozla-план.pdf")} type="button">
+        <button className="ho-draw-card" onClick={() => downloadOneDrawing({ kind: "top" }, "mebely-план.pdf")} type="button">
           <span className="ho-draw-card-img">
             <DrawingPage data={dwData} labels={dwLabels} sel={{ kind: "top" }} />
           </span>
@@ -485,7 +513,7 @@ export function HandoffScreen() {
         {drawRuns.map((dr) => {
           const wl = drawRuns.length > 1 ? ` · ${t.handoff.wall(dr.wall)}` : "";
           return (
-            <button key={`wt-${dr.run}`} className="ho-draw-card" onClick={() => downloadOneDrawing({ kind: "worktop", run: dr }, `jihozla-столешница-${dr.wall}.pdf`)} type="button">
+            <button key={`wt-${dr.run}`} className="ho-draw-card" onClick={() => downloadOneDrawing({ kind: "worktop", run: dr }, `mebely-столешница-${dr.wall}.pdf`)} type="button">
               <span className="ho-draw-card-img">
                 <DrawingPage data={dwData} labels={dwLabels} sel={{ kind: "worktop", run: dr }} />
               </span>
@@ -494,7 +522,7 @@ export function HandoffScreen() {
           );
         })}
         {machining && settings.advancedExport && (
-          <button className="ho-draw-card" onClick={() => downloadPNG("draw-drill", "jihozla-drill.png")} type="button">
+          <button className="ho-draw-card" onClick={() => downloadPNG("draw-drill", "mebely-drill.png")} type="button">
             <span className="ho-draw-card-img">
               <DrillSheet svgId="draw-drill" parts={machining.parts} project={project} date={today} />
             </span>
@@ -559,12 +587,18 @@ export function HandoffScreen() {
             <p className="set-hint ho-remains-hint">{t.handoff.remainsHint}</p>
             {remains.length > 0 && (
               <div className="ho-remains-chips">
-                {remains.map((r, i) => (
-                  <span className="ho-remain-chip" key={i}>
-                    {r.w}×{r.h}
-                    <button onClick={() => setRemains((rs) => rs.filter((_, j) => j !== i))} type="button" aria-label="×">×</button>
-                  </span>
-                ))}
+                {remains.map((r) => {
+                  // an offcut of a board this job doesn't use stays on the rack but can't be
+                  // nested here — say so rather than letting it look ignored
+                  const known = !r.group || boards.some((b) => b.group === r.group);
+                  return (
+                    <span className={`ho-remain-chip${known ? "" : " off"}`} key={r.id} title={boardLabel(r.group)}>
+                      {r.w}×{r.h}
+                      {r.group && <em className="ho-remain-mat">{boardLabel(r.group)}</em>}
+                      <button onClick={() => removeOffcutFromStock(r.id)} type="button" aria-label="×">×</button>
+                    </span>
+                  );
+                })}
               </div>
             )}
             <div className="ho-remains-add">
@@ -573,6 +607,15 @@ export function HandoffScreen() {
                 <span className="ho-remains-x">×</span>
                 <input className="ho-remains-input" type="text" inputMode="numeric" placeholder={t.handoff.remainH} value={rh} onChange={(e) => setRh(e.target.value.replace(/[^0-9]/g, ""))} onKeyDown={(e) => e.key === "Enter" && addRemain()} />
               </div>
+              {/* WHICH board this offcut is. A piece of МДФ cannot hold ЛДСП parts — without
+                  this the packer put every offcut on the largest group whatever it was. */}
+              {boards.length > 1 && (
+                <select className="ho-remains-mat" value={rGroup || boards[0]?.group || ""} onChange={(e) => setRGroup(e.target.value)}>
+                  {boards.map((b) => (
+                    <option key={b.group} value={b.group}>{b.label}</option>
+                  ))}
+                </select>
+              )}
               <button className="ho-remains-btn" onClick={addRemain} type="button" disabled={!(parseInt(rw, 10) > 0 && parseInt(rh, 10) > 0)}>{t.handoff.remainAddBtn}</button>
             </div>
           </div>
@@ -580,7 +623,7 @@ export function HandoffScreen() {
           {/* one cut map per board — tap to save its PNG */}
           <div className="ho-cutmaps">
             {nestResult.sheets.map((s) => (
-              <button className="ho-cutmap-card" key={s.n} onClick={() => downloadPNG(`cut-${s.n}`, `jihozla-cut-${s.n}.png`)} type="button">
+              <button className="ho-cutmap-card" key={s.n} onClick={() => downloadPNG(`cut-${s.n}`, `mebely-cut-${s.n}.png`)} type="button">
                 <CutMap svgId={`cut-${s.n}`} sheet={s} title={`${t.handoff.sheet} ${s.n}`} remainLabel={t.handoff.remain} />
               </button>
             ))}
