@@ -11,7 +11,8 @@ import { useState } from "react";
 import { useStore } from "../store";
 import { useT } from "../i18n/useT";
 import { Logo } from "../components/logo";
-import type { Settings, Currency, RateOverrides } from "../model/settings";
+import type { Currency, RateOverrides } from "../model/settings";
+import { SHOP_CONSTRUCTION_DEFAULTS, type ShopConstruction } from "../model/construction";
 import { catalogSourcesFor } from "../model/catalogRates";
 import { useMoney } from "../useMoney";
 
@@ -70,6 +71,26 @@ export function SettingsScreen() {
   const catalogSources = catalogSourcesFor(cabs, runStyle);
   const overriddenBy = (key: keyof RateOverrides) => catalogSources.find((s) => s.key === key);
 
+  // «Стандарт цеха» — the shop's construction standard. Stored whole (never partially), so a
+  // set writes the merged object; model/settings.saveSettings republishes it to the resolver
+  // that the 3D and the drawings read.
+  const con = settings.construction ?? SHOP_CONSTRUCTION_DEFAULTS;
+  const setCon = (patch: Partial<ShopConstruction>) => update({ construction: { ...con, ...patch } });
+
+  /** A labelled row of mutually exclusive pills — the shape every construction choice takes. */
+  const segRow = (label: string, opts: { k: string | number; label: string; on: boolean; set: () => void }[]) => (
+    <div className="set-pref set-pref-col" key={label}>
+      <span className="set-label">{label}</span>
+      <div className="set-lang">
+        {opts.map((o) => (
+          <button key={o.k} className={`set-lang-btn ${o.on ? "on" : ""}`} onClick={o.set} type="button">
+            {o.label}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+
   const rateField = (key: keyof RateOverrides) => {
     const src = overriddenBy(key);
     return (
@@ -87,7 +108,7 @@ export function SettingsScreen() {
 
   return (
     <section className="screen set-screen">
-      <div className="qnum"><Logo height={22} /></div>
+      <div className="qnum"><Logo height={14} /></div>
       <h1 className="h1">{t.settings.title}</h1>
       <p className="sub">{t.settings.sub}</p>
 
@@ -258,14 +279,50 @@ export function SettingsScreen() {
         <span className="set-hint set-block-hint">
           Профиль конфирмата используется для евро-сборки ручной дрелью. Минификс Ø15×12.5 выводится в SWJ008 для ЧПУ присадочного станка.
         </span>
-        <div style={{ padding: "10px 14px", borderTop: "1px solid var(--line)", background: "#f5f8fe" }}>
-          <div style={{ fontSize: 13, fontWeight: 650, color: "#2f6fe4", marginBottom: 3 }}>
-            📐 Живые чертежи V21 (Стандарт мастерской)
-          </div>
-          <div style={{ fontSize: 12, color: "#555", lineHeight: 1.4 }}>
-            Паз задника 4×8 мм, дно накладное, цоколь-коробка 120 мм, конфирмат 7×50 мм. Интерактивные SVG чертежи доступны в режиме редактора модуля.
-          </div>
-        </div>
+      </div>
+
+      {/* ── СТАНДАРТ ЦЕХА ──────────────────────────────────────────────────────────────────────
+          These used to be asked PER CABINET, in the middle of designing — eight controls in the
+          module sheet plus seven more sections in the V21 studio, on every module, forever. They
+          are not design decisions: a shop picks its board thickness and its back-panel method once
+          and builds that way for years. Answered here, inherited by every module (model/construction.ts);
+          a module stores only what it does differently, so changing a value here moves every cabinet
+          that never overrode it. Замена статичного текста, который эти же значения только ОПИСЫВАЛ. */}
+      <div className="menu-sec-title">{t.shop.title}</div>
+      <div className="set-group">
+        <p className="set-hint">{t.shop.sub}</p>
+
+        {segRow(t.shop.boardThickness, ([16, 18] as const).map((v) => ({
+          k: v, label: `${v} мм`, on: con.boardThickness === v, set: () => setCon({ boardThickness: v }),
+        })))}
+
+        {segRow(t.shop.backPanel, (["groove", "overlay", "none"] as const).map((v) => ({
+          k: v, label: t.shop.back[v], on: con.backMount === v, set: () => setCon({ backMount: v }),
+        })))}
+
+        {con.backMount === "groove" && (
+          <label className="set-field">
+            <span className="set-label">{t.shop.grooveSetback}</span>
+            {numInput("grooveSetback", con.grooveSetback, (n) => setCon({ grooveSetback: n }), false)}
+          </label>
+        )}
+
+        {segRow(t.shop.bottom, (["nakladnoe", "vkladnoe"] as const).map((v) => ({
+          k: v, label: t.shop.bottomModes[v], on: con.bottomMode === v, set: () => setCon({ bottomMode: v }),
+        })))}
+
+        {segRow(t.shop.top, (["full", "stretchers", "none"] as const).map((v) => ({
+          k: v, label: t.shop.topModes[v], on: con.topMode === v, set: () => setCon({ topMode: v }),
+        })))}
+
+        {segRow(t.shop.plinth, (["box", "sides", "legs"] as const).map((v) => ({
+          k: v, label: t.shop.plinthModes[v], on: con.plinthMode === v, set: () => setCon({ plinthMode: v }),
+        })))}
+
+        {segRow(t.shop.handles, [
+          { k: "h", label: t.shop.withHandles, on: !con.gola, set: () => setCon({ gola: false }) },
+          { k: "g", label: t.shop.gola, on: con.gola, set: () => setCon({ gola: true }) },
+        ])}
       </div>
 
       <div className="menu-sec-title">{t.settings.cutting}</div>

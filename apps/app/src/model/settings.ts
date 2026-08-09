@@ -5,6 +5,7 @@
 
 import type { ProductionOpts } from "@mebelchi/schema";
 import type { QualityPref } from "../three/quality";
+import { SHOP_CONSTRUCTION_DEFAULTS, setShopConstruction, type ShopConstruction } from "./construction";
 
 const KEY = "mebelchi.settings.v1";
 
@@ -115,6 +116,10 @@ export interface Settings {
   sqmRate: number;
   /** The seller's own itemised price list, in USD (see RateOverrides). Local-only for now. */
   rates: RateOverrides;
+  /** «Стандарт цеха» — HOW this workshop builds a box (board thickness, back panel, bottom, top,
+   *  plinth, handles vs GOLA). Answered once here instead of per cabinet; a module stores only
+   *  what it does DIFFERENTLY. See model/construction.ts. */
+  construction: ShopConstruction;
   // Раскрой (cutting/nesting) — the workshop's board + saw config, set once. Local-only.
   sheetW: number; // standard sheet length (mm)
   sheetH: number; // standard sheet width (mm)
@@ -157,6 +162,7 @@ export const DEFAULT_SETTINGS: Settings = {
   pricingSqm: false,
   sqmRate: DEFAULT_SQM_RATE,
   rates: { ...DEFAULT_RATE_OVERRIDES },
+  construction: { ...SHOP_CONSTRUCTION_DEFAULTS },
   sheetW: 2750, // standard ЛДСП sheet
   sheetH: 1830,
   kerf: 4,
@@ -174,26 +180,47 @@ export function productionFrom(s: Settings): ProductionOpts {
   return { hangingsPerCarcass: s.hangingsPerCarcass, hangingSpanMm: s.hangingSpanMm };
 }
 
+/** Every return path of loadSettings goes through here: it fills the defaults AND publishes the
+ *  construction standard to model/construction.ts, which the 3D + drawings read without being
+ *  handed settings. Forgetting that push would leave them on the built-in defaults. */
+function hydrate(s: Settings): Settings {
+  setShopConstruction(s.construction);
+  return s;
+}
+
+const freshSettings = (): Settings => ({
+  ...DEFAULT_SETTINGS,
+  fxRates: { ...DEFAULT_FX_RATES },
+  rates: { ...DEFAULT_RATE_OVERRIDES },
+  construction: { ...SHOP_CONSTRUCTION_DEFAULTS },
+});
+
 export function loadSettings(): Settings {
   try {
     const raw = localStorage.getItem(KEY);
-    if (!raw) return { ...DEFAULT_SETTINGS, fxRates: { ...DEFAULT_FX_RATES }, rates: { ...DEFAULT_RATE_OVERRIDES } };
+    if (!raw) return hydrate(freshSettings());
     const saved = JSON.parse(raw) as Partial<Settings>;
     // A save from BEFORE the USD-base model has no `fxRates`; its `rates` were in local
     // currency, so they'd be nonsense as USD — reset them to the USD defaults on migration.
     const preUsd = saved.fxRates == null;
-    return {
+    return hydrate({
       ...DEFAULT_SETTINGS,
       ...saved,
       fxRates: { ...DEFAULT_FX_RATES, ...(saved.fxRates ?? {}) },
       rates: preUsd ? { ...DEFAULT_RATE_OVERRIDES } : { ...DEFAULT_RATE_OVERRIDES, ...(saved.rates ?? {}) },
-    };
+      // a save from before «Стандарт цеха» existed has no `construction` — it gets the market
+      // standard, which is byte-for-byte the fallbacks its cabinets were already built with
+      construction: { ...SHOP_CONSTRUCTION_DEFAULTS, ...(saved.construction ?? {}) },
+    });
   } catch {
-    return { ...DEFAULT_SETTINGS, fxRates: { ...DEFAULT_FX_RATES }, rates: { ...DEFAULT_RATE_OVERRIDES } };
+    return hydrate(freshSettings());
   }
 }
 
 export function saveSettings(s: Settings): void {
+  // publish first: the 3D reads the standard from the module cache, so a changed standard has to
+  // reach it whether or not localStorage accepts the write
+  setShopConstruction(s.construction);
   try {
     localStorage.setItem(KEY, JSON.stringify(s));
   } catch {

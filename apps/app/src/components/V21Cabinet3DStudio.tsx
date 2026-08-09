@@ -2,9 +2,10 @@ import React, { useEffect, useRef, useState } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import type { Cabinet } from "../model/cabinet";
+import { constructionOf } from "../model/construction";
 import type { Settings } from "../model/settings";
 import type { KitchenStyle } from "../model/layout";
-import { buildCabinetSolo } from "../three/kitchen3d";
+import { buildCabinetSolo, moveFront, tagOpenFronts } from "../three/kitchen3d";
 import { V21BlueprintEditor } from "./V21BlueprintEditor";
 import { DimSlider, GlyphD } from "./DimControls";
 import { FillEditor, FILL_TOOLS, ToolIcon, type Tool } from "./FillEditor";
@@ -90,12 +91,14 @@ function V21Technical2DCADDrawing({ cab, settings }: { cab: Cabinet; settings?: 
   const w = cab.w;
   const h = cab.h;
   const d = cab.depth ?? 560;
-  const t = cab.boardThickness ?? 16;
-  const plinthH = cab.plinthMode === "box" || !cab.plinthMode ? 120 : cab.plinthMode === "legs" ? 100 : 0;
+  // effective build = the shop standard with this module's overrides on top (model/construction.ts)
+  const con = constructionOf(cab);
+  const t = con.boardThickness;
+  const plinthH = con.plinthMode === "box" ? 120 : con.plinthMode === "legs" ? 100 : 0;
   const count = cab.count ?? 0;
-  const hasBack = cab.hasBack ?? (cab.backMount !== "none");
-  const isGroove = hasBack && (cab.backMount ?? "groove") === "groove";
-  const grooveOff = cab.grooveSetback ?? 12;
+  const hasBack = con.backMount !== "none";
+  const isGroove = con.backMount === "groove";
+  const grooveOff = con.grooveSetback;
 
   const INK = "#1c1b18";
   const FILL = "#ececec";
@@ -380,6 +383,16 @@ export function V21Cabinet3DStudio({
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const rendererRef = useRef<THREE.WebGLRenderer | null>(null);
 
+  // ── TAP A DOOR, OPEN THAT DOOR ────────────────────────────────────────────────────────────────
+  // Same gesture the room scene has. Refs, not state: the animation runs inside the render loop,
+  // which is created once on mount and would otherwise close over a stale value.
+  //   openRef   — which fronts the user has opened, by `openKey` (`<cabId>#n`, build order)
+  //   amountRef — each front's CURRENT 0..1 position, so it eases instead of snapping
+  // Both are keyed by the string, not the object, so the state survives the mesh rebuild that
+  // every edit triggers — otherwise changing a shelf count would slam the open doors shut.
+  const openRef = useRef<Set<string>>(new Set());
+  const amountRef = useRef<Map<string, number>>(new Map());
+
   const [viewMode, setViewMode] = useState<"3d" | "2d" | "outline">("3d");
   // the active interior tool — OWNED here so the viewport rail and the 2D edit canvas share it
   const [tool, setTool] = useState<Tool>("draw");
@@ -445,12 +458,66 @@ export function V21Cabinet3DStudio({
     scene.add(new THREE.GridHelper(4, 20, 0x00ac7a, 0xcbd5e1));
 
     const initialMesh = makeSoloMesh(cab, "3d", style, settings);
+    tagOpenFronts(initialMesh, cab.id);
     meshRef.current = initialMesh;
     scene.add(initialMesh);
+
+    // TAP A DOOR OR DRAWER → it swings/slides open; tap it again → it shuts. Distinguished from an
+    // ORBIT by distance: OrbitControls owns the drag, so anything that moved more than a few px was
+    // the user turning the cabinet round, not touching a front.
+    const downAt = { x: 0, y: 0, ok: false };
+    const onDown = (e: PointerEvent) => {
+      downAt.x = e.clientX;
+      downAt.y = e.clientY;
+      downAt.ok = true;
+    };
+    const raycaster = new THREE.Raycaster();
+    const onUp = (e: PointerEvent) => {
+      if (!downAt.ok) return;
+      downAt.ok = false;
+      if (Math.hypot(e.clientX - downAt.x, e.clientY - downAt.y) > 6) return; // was an orbit
+      const mesh = meshRef.current;
+      if (!mesh) return;
+      const r = renderer.domElement.getBoundingClientRect();
+      raycaster.setFromCamera(
+        new THREE.Vector2(((e.clientX - r.left) / r.width) * 2 - 1, -((e.clientY - r.top) / r.height) * 2 + 1),
+        camera,
+      );
+      // walk up from whatever the ray struck to the nearest openable subgroup, so the drawer you
+      // touched is the drawer that moves — not the whole bank
+      for (const h of raycaster.intersectObjects(mesh.children, true)) {
+        let o: THREE.Object3D | null = h.object;
+        while (o) {
+          const key = o.userData.openKey as string | undefined;
+          if (key) {
+            if (openRef.current.has(key)) openRef.current.delete(key);
+            else openRef.current.add(key);
+            return;
+          }
+          o = o.parent;
+        }
+      }
+    };
+    renderer.domElement.addEventListener("pointerdown", onDown);
+    renderer.domElement.addEventListener("pointerup", onUp);
 
     let animId: number;
     const animate = () => {
       animId = requestAnimationFrame(animate);
+      // ease every front toward its target. Applied unconditionally rather than only while moving,
+      // so a freshly rebuilt mesh (born shut) is put back where the user left it on its first frame.
+      const mesh = meshRef.current;
+      if (mesh) {
+        mesh.traverse((o) => {
+          const key = o.userData.openKey as string | undefined;
+          if (!key) return;
+          const target = openRef.current.has(key) ? 1 : 0;
+          const cur = amountRef.current.get(key) ?? 0;
+          const next = Math.abs(target - cur) < 0.005 ? target : cur + (target - cur) * 0.18;
+          amountRef.current.set(key, next);
+          moveFront(o, next);
+        });
+      }
       controls.update();
       renderer.render(scene, camera);
     };
@@ -470,6 +537,8 @@ export function V21Cabinet3DStudio({
     return () => {
       cancelAnimationFrame(animId);
       window.removeEventListener("resize", handleResize);
+      renderer.domElement.removeEventListener("pointerdown", onDown);
+      renderer.domElement.removeEventListener("pointerup", onUp);
       if (meshRef.current) disposeGroup(meshRef.current);
       renderer.dispose();
       if (container.contains(renderer.domElement)) {
@@ -487,6 +556,9 @@ export function V21Cabinet3DStudio({
       disposeGroup(meshRef.current); // free the old build's geometries + materials
     }
     const newMesh = makeSoloMesh(cab, viewMode, style, settings);
+    // re-issue the per-front keys: build order is deterministic, so «the second drawer is open»
+    // still means the second drawer. The render loop eases it back open on the next frame.
+    tagOpenFronts(newMesh, cab.id);
     meshRef.current = newMesh;
     scene.add(newMesh);
   }, [cab, viewMode, settings, style]);
@@ -564,9 +636,9 @@ export function V21Cabinet3DStudio({
         <button onClick={onClose} style={{ border: "none", background: "#00ac7a", color: "#fff", padding: "8px 20px", borderRadius: 999, fontWeight: 700, fontSize: 13, cursor: "pointer", boxShadow: "0 2px 8px rgba(0,172,122,0.3)" }} type="button">Готово</button>
       </div>
 
-      <div style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
+      <div className="v21-studio-body" style={{ flex: 1, display: "flex", flexDirection: "column", overflow: "hidden", position: "relative" }}>
         {/* Top Viewport — grows when panel is collapsed, shrinks when panel is expanded */}
-        <div style={{
+        <div className="v21-studio-viewport" style={{
           flex: panelState === "collapsed" ? 1 : "none",
           height: panelState === "collapsed" ? undefined : panelState === "expanded" ? 160 : "38vh",
           minHeight: panelState === "collapsed" ? 0 : panelState === "expanded" ? 160 : undefined,
@@ -660,7 +732,7 @@ export function V21Cabinet3DStudio({
         </div>
 
         {/* Bottom Collapsible Settings Sheet */}
-        <div style={{
+        <div className="v21-studio-panel" style={{
           flex: panelState === "collapsed" ? "none" : 1,
           height: panelState === "collapsed" ? 48 : undefined,
           background: "#f8fafc",

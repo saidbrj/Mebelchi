@@ -14,8 +14,8 @@ import { DEFAULT_SUN } from "../three/lighting";
 import { ConstructorPlan, type PlanEdit } from "../components/ConstructorPlan";
 import { ElevationGrid, type EditDim } from "../components/ElevationGrid";
 import { locate, type CellRef, type RowKind } from "../model/grid";
-import { FurnitureEditor, emptyCfg, type PartCfg } from "../components/FurnitureEditor";
 import { V21Cabinet3DStudio } from "../components/V21Cabinet3DStudio";
+import { QuickEditBar } from "../components/QuickEditBar";
 import { FillEditor } from "../components/FillEditor";
 import { DimSlider, DimControls, GlyphW, GlyphH, GlyphD, GlyphShelf } from "../components/DimControls";
 import { JourneyBar } from "../components/JourneyBar";
@@ -25,7 +25,8 @@ import { openCells } from "../model/sheet";
 import { resolveLayout } from "../model/resolve";
 import { cabDepth, cornerShapeOf, cornerArm, maxCabH, MIN_H, D_MIN, D_MAX } from "../model/bands";
 import { dockAll, cabFootprints, objectOverlapIds } from "../model/footprint";
-import { FRONT_PROFILES, HANDLES, frontOf, defaultHandlePos, mk, type Cabinet, type FrontProfile, type FinishKey, type DoorOpening, type HandlePos } from "../model/cabinet";
+import { FRONT_PROFILES, HANDLES, frontOf, defaultHandlePos, mk, type Cabinet, type FrontProfile, type FinishKey, type DoorOpening, type HandlePos, type BackPanelMethod } from "../model/cabinet";
+import { constructionOf, shopConstruction, overridesOf, resetToShop, backMountPatch, backSetbackOf } from "../model/construction";
 import { hexToInt } from "../model/materials";
 import { materialsFor } from "../model/catalog";
 import { PART_FINISH } from "../model/parts";
@@ -188,6 +189,7 @@ export function ConfigScreen() {
   const price = useDesignPrice(cabs); // USD, per the active pricing mode
   const selIdx = useStore((s) => s.selIdx);
   const mode = useStore((s) => s.mode);
+  const constructionRev = useStore((s) => s.constructionRev);
   const runLayout = useStore((s) => s.runLayout);
   const runStyle = useStore((s) => s.runStyle);
   const points = useStore((s) => s.roomPoints);
@@ -331,10 +333,9 @@ export function ConfigScreen() {
   const [replaceId, setReplaceId] = useState<string | null>(null);
   const [ctlMenu, setCtlMenu] = useState<null | "view" | "mode">(null);
   const [menuClosing, setMenuClosing] = useState(false);
-  const [collapsed, setCollapsed] = useState(false);
-  // per-module editor selections (materials / add-ons / toggles), kept for the
-  // session so they survive closing + reopening the editor
-  const [partCfg, setPartCfg] = useState<Record<string, PartCfg>>({});
+  // «Конструкция» disclosure in the Размер panel — shut by default: the shop standard answers it
+  // for ~every module, and the eight controls behind it were most of that sheet's weight
+  const [conOpen, setConOpen] = useState(false);
   // inline dimension editor for the front view (tap a measurement number)
   const [feEdit, setFeEdit] = useState<{ x: number; y: number; apply: (v: number) => void } | null>(null);
   const [feVal, setFeVal] = useState("");
@@ -390,31 +391,6 @@ export function ConfigScreen() {
     closeMenu();
   };
 
-  // grip: tap toggles; drag down collapses, drag up expands (mirrors the room editor)
-  const gripStart = useRef<number | null>(null);
-  const onGripDown = (e: React.PointerEvent) => {
-    gripStart.current = e.clientY;
-    try {
-      (e.target as Element).setPointerCapture(e.pointerId);
-    } catch {
-      /* ignore */
-    }
-  };
-  const onGripMove = (e: React.PointerEvent) => {
-    if (gripStart.current == null) return;
-    const dy = e.clientY - gripStart.current;
-    if (dy > 28) {
-      setCollapsed(true);
-      gripStart.current = null;
-    } else if (dy < -28) {
-      setCollapsed(false);
-      gripStart.current = null;
-    }
-  };
-  const onGripUp = () => {
-    if (gripStart.current != null) setCollapsed((c) => !c);
-    gripStart.current = null;
-  };
 
   // NOTE: no early return when `cabs` is empty — deleting the last module must keep the
   // constructor (and the room) on screen so the user can add more. An early return here
@@ -437,6 +413,14 @@ export function ConfigScreen() {
   // the edit panels (from the left stack) are NON-MODAL: no backdrop, so the 3D keeps rotating and
   // the left buttons stay tappable to switch panels. The catalog / full editor stay modal.
   const panelOpen = sheet === "resize" || sheet === "style";
+  // THE QUICK EDIT BAR — width + finish for ONE selected module, floating on the scene's bottom
+  // edge. Only for a single selection (a width stepper over several modules can't say which one it
+  // means) and only while nothing else owns the bottom of the screen. It claims the full-width
+  // strip, so the round controls there lift and the camera-walk joystick stands down: that slot
+  // walks the camera when nothing is selected and edits the module when something is.
+  // It lives in the toolbar head, which an open panel covers anyway — so it tracks the SELECTION
+  // alone. Gating it on the panel too would flip the head back to «Добавить шкаф» underneath.
+  const quickBar = view === "3d" && !!sel;
   // tapping a left-stack button opens its panel, or closes it if already open (a toggle)
   const openPanel = (k: Sheet) => setSheet((cur) => (cur === k ? null : k));
 
@@ -612,11 +596,6 @@ export function ConfigScreen() {
     setSheet(target);
   };
 
-  // the editor config for the active module + an updater
-  const curId = cabs[i]?.id ?? "";
-  const curCfg = partCfg[curId] ?? emptyCfg();
-  const updateCfg = (updater: (c: PartCfg) => PartCfg) => setPartCfg((m) => ({ ...m, [curId]: updater(m[curId] ?? emptyCfg()) }));
-
   const openSheet = (kind: Sheet) => setSheet(kind);
   // the user's reusable "My cabinets" library (shown atop the cabinet picker)
   const savedCabs = sheet === "pickCab" ? listSavedCabs() : [];
@@ -626,6 +605,22 @@ export function ConfigScreen() {
     if (!sel) return;
     selectCab(selIndex);
     setSheet("editor");
+  };
+  // TAP A DOOR, OPEN THAT DOOR — tap it again and it shuts. Only on the module that is already
+  // SELECTED: returning false hands the tap back to selection, so the first tap on a cabinet still
+  // picks it up rather than swinging something. `openIds` holds either a bare module id (the
+  // right-rail button opens everything) or one front's `cabId#n`, so both live in the same list.
+  const toggleFront = (key: string): boolean => {
+    const cabId = key.includes("#") ? key.slice(0, key.indexOf("#")) : key;
+    if (!selIds.includes(cabId)) return false;
+    setOpenIds((cur) => {
+      const rest = cur.filter((k) => k !== cabId && k !== key);
+      // whole module already open (via the rail button) → a tap on any of its fronts shuts it,
+      // which is what closing "the thing you can see standing open" should do
+      if (cur.includes(cabId)) return rest;
+      return cur.includes(key) ? rest : [...rest, key];
+    });
+    return true;
   };
   // toggle the WHOLE selection's doors/drawers open ↔ closed (if any is closed, open all; else close all)
   const openSel = () => {
@@ -836,6 +831,8 @@ export function ConfigScreen() {
             style={runStyle}
             cabs={cabs}
             mode={mode}
+            // redraw when «Стандарт цеха» changes — the build isn't stored on the cabinets
+            constructionRev={constructionRev}
             magnet={g3dMagnet}
             light="day"
             ao={false}
@@ -876,6 +873,9 @@ export function ConfigScreen() {
             onGroupW={onGroupW3d}
             onGroupDim={onGroupDim3d}
             onSelectCab={pick3d}
+            // tap a front on the SELECTED module to swing it open / shut; declines (→ selection)
+            // for any other module, so picking a cabinet up still works on the first tap
+            onOpenFront={toggleFront}
             onMovePlan={moveCabPlan}
             onBeginEdit={beginCabEdit}
             onMountY={(id, mountY) => {
@@ -1175,42 +1175,34 @@ export function ConfigScreen() {
         )}
       </div>
 
-      {/* bottom toolbar — furniture categories, or per-module actions when selected */}
-      <div className={`toolbar${collapsed ? " collapsed" : ""}`}>
-        <button
-          className="toolbar-grip"
-          onPointerDown={onGripDown}
-          onPointerMove={onGripMove}
-          onPointerUp={onGripUp}
-          onPointerCancel={onGripUp}
-          aria-label={t.config.collapse}
-          type="button"
-        />
-        {/* THE PLACE PANEL — five band chips (Нижние / Навесные / Антресоль / Пеналы / Свободно), shown
-            only when NOTHING is selected (add mode). Tapping a chip arms that band and lights its wall
-            cells; «Свободно» opens the free-standing picker. When a module IS selected the panel makes
-            way for the swap strip below, which is already filtered to that module's row. */}
-        {selIds.length === 0 && !sheet && (
-          <div className="place-panel">
-            <div className="place-chips">
-              {PLACE_ROWS.map((row) => (
-                <button
-                  key={row.key}
-                  className={`place-chip${row.key !== "extra" && placeRow === row.key ? " on" : ""}`}
-                  onClick={() => (row.key === "extra" ? openSheet("extra") : pickPlaceRow(row.key))}
-                  type="button"
-                >
-                  <AddThumb id={row.png} glyph={row.items[0]?.glyph ?? "▢"} />
-                  <span className="place-chip-name">{row.label}</span>
-                </button>
-              ))}
-            </div>
-          </div>
-        )}
-        {/* QUICK SWAP — change the SELECTED module(s), filtered to ITS ROW: a base shows base cabinets +
-            base appliances, a wall unit shows wall cabinets + hood, etc. Also how you turn the end
-            cabinet into a CORNER (its band's «Угловой» leads the strip). */}
-        {selIds.length >= 1 && swapItems.length > 0 && (
+      {/* ── BOTTOM TOOLBAR ── TWO fixed rows, so its height never changes and the 3D canvas above
+          never resizes under your finger (the old layout swapped a hint box for a swap strip to
+          fake that; now it's structural):
+            row 1 — «Добавить шкаф» when nothing is selected, the QUICK EDIT BAR when one module is
+            row 2 — the five band chips, ALWAYS. Adding is the constant job on this screen, so the
+                    way to add never disappears just because something is selected.
+          The drag-grip is gone (with it the collapse gesture): it read as a sheet you were meant to
+          pull, and the toolbar is not a sheet — it's the screen's own furniture. */}
+      <div className="toolbar">
+        <div className="toolbar-head">
+          {quickBar ? (
+            <QuickEditBar
+              cab={sel!}
+              style={runStyle}
+              onStyle={() => openPanel("style")}
+              onMore={() => openPanel("resize")}
+            />
+          ) : (
+            <span className="toolbar-title">{t.config.addCab}</span>
+          )}
+        </div>
+
+        {/* Row 2 follows what row 1 is talking about: nothing selected → the five ADD bands;
+            a module selected → what that module could become instead. */}
+        {selIds.length >= 1 && swapItems.length > 0 ? (
+          /* QUICK SWAP — swap the selected module(s) for another type, filtered to ITS ROW: a base
+             offers base cabinets + base appliances, a wall unit offers wall cabinets + hood. Also
+             how the end cabinet becomes a CORNER (its band's «Угловой» leads the strip). */
           <div className="swap-strip" aria-label={t.fe.replace}>
             {swapItems.map((tpl) => {
               const on = isCurrent(tpl);
@@ -1227,23 +1219,29 @@ export function ConfigScreen() {
                 </button>
               );
             })}
-            <button
-              key="__more__"
-              className="swap-chip swap-more"
-              onClick={() => openSheet("cabinets")}
-              type="button"
-            >
+            <button key="__more__" className="swap-chip swap-more" onClick={() => openSheet("cabinets")} type="button">
               <span className="swap-more-icon">⋯</span>
-              <span className="swap-name">Ещё</span>
+              <span className="swap-name">{t.config.more}</span>
             </button>
           </div>
-        )}
-        {/* The hint text is gone (asked for), but its BOX stays. It fills the space the swap strip
-            takes when a module IS selected, so the toolbar keeps one height across select/deselect —
-            without it the 3D canvas resizes under your finger every time you pick something up. */}
-        {selIds.length === 0 && !sheet && (
-          <div className="place-hint ghost" aria-hidden>
-            <span className="place-hint-txt">&nbsp;</span>
+        ) : (
+          /* THE PLACE PANEL — five band chips (Нижние / Навесные / Антресоль / Пеналы / Свободно).
+             Tapping a chip arms that band and lights its wall cells; «Свободно» opens the
+             free-standing picker. */
+          <div className="place-panel">
+            <div className="place-chips">
+              {PLACE_ROWS.map((row) => (
+                <button
+                  key={row.key}
+                  className={`place-chip${row.key !== "extra" && placeRow === row.key ? " on" : ""}`}
+                  onClick={() => (row.key === "extra" ? openSheet("extra") : pickPlaceRow(row.key))}
+                  type="button"
+                >
+                  <AddThumb id={row.png} glyph={row.items[0]?.glyph ?? "▢"} />
+                  <span className="place-chip-name">{row.label}</span>
+                </button>
+              ))}
+            </div>
           </div>
         )}
       </div>
@@ -1323,21 +1321,30 @@ export function ConfigScreen() {
                   <div className="sheet-title">Размер</div>
                   <button className="sheet-x" onClick={closeSheet} type="button" aria-label={t.config.close}>✕</button>
                 </div>
+                {sel && !sel.furniture && (
+                  <div className="cab-actions">
+                    <button className="cab-act" onClick={() => { saveCab(sel.id, labelFor(sel)); flash(t.fe.savedCab); }} type="button">
+                      <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M12 2l2.9 6.3 6.9.6-5.2 4.6 1.6 6.8L12 17.3 5.8 20.9l1.6-6.8L2.2 8.9l6.9-.6z" /></svg>
+                      {t.fe.saveDo}
+                    </button>
+                  </div>
+                )}
+                {/* Размер is ONLY about size — swapping the module for another type is the toolbar's
+                    job, one row below, and having it in both places made this panel a second menu. */}
                 <div className="cfg-sheet-body dim-panel">
                   {sel ? (
                     <>
-                      {/* INTERNAL CLEARANCE READOUT */}
+                      {/* INTERNAL CLEARANCE READOUT. Every number here comes from constructionOf —
+                          it used to compute the groove setback at 10мм while the 3D drew it at 12,
+                          so the depth quoted to the seller was 2мм short of what got built. */}
                       {(() => {
-                        const boardT = sel.boardThickness ?? 16;
-                        const intW = Math.max(0, sel.w - 2 * boardT);
-                        const intH = Math.max(0, sel.h - 2 * boardT);
-                        const curD = cabDepth(sel);
-                        const isGroove = (sel.hasBack ?? true) && (sel.backMount ?? "groove") === "groove";
-                        const setback = isGroove ? (sel.grooveSetback ?? 10) + 4 : 0;
-                        const intD = Math.max(0, curD - setback);
+                        const con = constructionOf(sel);
+                        const intW = Math.max(0, sel.w - 2 * con.boardThickness);
+                        const intH = Math.max(0, sel.h - 2 * con.boardThickness);
+                        const intD = Math.max(0, cabDepth(sel) - backSetbackOf(sel));
                         return (
                           <div style={{ background: "rgba(0,169,97,0.08)", border: "1px solid rgba(0,169,97,0.25)", borderRadius: 8, padding: "8px 12px", marginBottom: 12, fontSize: 13, color: "#1b4d3e" }}>
-                            <strong>Чистый габарит:</strong> {intW} × {intH} × {intD} мм <span style={{ opacity: 0.75 }}>(ЛДСП {boardT} мм)</span>
+                            <strong>{t.shop.clear}:</strong> {intW} × {intH} × {intD} мм <span style={{ opacity: 0.75 }}>(ЛДСП {con.boardThickness} мм)</span>
                           </div>
                         );
                       })()}
@@ -1358,48 +1365,80 @@ export function ConfigScreen() {
                         📐 Живой чертёж и узлы V21
                       </button>
 
-                      {/* FULL INLINE CONSTRUCTION SETTINGS */}
-                      <div style={{ borderTop: "1px solid #eee", marginTop: 14, paddingTop: 12, marginBottom: 8 }}>
-                        <div className="cfg-field-lbl" style={{ fontWeight: 600, color: "#333", fontSize: 13 }}>Конструкция и фальш-панели:</div>
-                        
-                        {/* Board Thickness */}
-                        <div style={{ marginTop: 8 }}>
-                          <span style={{ fontSize: 12, color: "#666" }}>Толщина корпуса (ЛДСП):</span>
-                          <div className="pillrow" style={{ marginTop: 4 }}>
-                            <button className={`chip${(sel.boardThickness ?? 16) === 16 ? " sel" : ""}`} onClick={() => patchCab(selIndex, { boardThickness: 16 })} type="button">16 мм (Стандарт)</button>
-                            <button className={`chip${(sel.boardThickness ?? 16) === 18 ? " sel" : ""}`} onClick={() => patchCab(selIndex, { boardThickness: 18 })} type="button">18 мм (Усиленный)</button>
-                          </div>
-                        </div>
+                      {/* ── КОНСТРУКЦИЯ ── These eight controls used to sit open in this sheet, asked of
+                          every cabinet. They are not design decisions: a shop that builds 16мм / задняя
+                          в паз / накладное дно builds that way on every cabinet for years, so they are
+                          answered ONCE in Настройки → Стандарт цеха and inherited here. What is left is
+                          a single row saying which build this module follows — tapped open only for the
+                          rare module that must differ. See model/construction.ts. */}
+                      {(() => {
+                        const shop = shopConstruction();
+                        const over = overridesOf(sel);
+                        const con = constructionOf(sel);
+                        /** picking the shop's own value CLEARS the override rather than pinning it, so
+                         *  the module keeps following the shop if the standard later changes */
+                        const pick = <K extends keyof typeof shop>(k: K, v: (typeof shop)[K]) =>
+                          patchCab(selIndex, { [k]: v === shop[k] ? undefined : v } as Partial<Cabinet>);
+                        return (
+                          <div style={{ borderTop: "1px solid #eee", marginTop: 14, paddingTop: 12, marginBottom: 8 }}>
+                            <button className="con-row" type="button" onClick={() => setConOpen((o) => !o)} aria-expanded={conOpen}>
+                              <span className="con-row-lbl">{t.shop.construction}</span>
+                              <span className={`con-row-val${over.length ? " changed" : ""}`}>
+                                {over.length ? t.shop.changedN(over.length) : t.shop.standard}
+                              </span>
+                              <span className={`con-row-caret${conOpen ? " open" : ""}`} aria-hidden>›</span>
+                            </button>
 
-                        {/* Back Panel Mounting */}
-                        <div style={{ marginTop: 10 }}>
-                          <span style={{ fontSize: 12, color: "#666" }}>Задняя стенка (ХДФ):</span>
-                          <div className="pillrow" style={{ marginTop: 4 }}>
-                            <button className={`chip${(sel.hasBack ?? true) && (sel.backMount ?? "groove") === "groove" ? " sel" : ""}`} onClick={() => patchCab(selIndex, { hasBack: true, backMount: "groove" })} type="button">В паз (4×8 мм)</button>
-                            <button className={`chip${(sel.hasBack ?? true) && sel.backMount === "overlay" ? " sel" : ""}`} onClick={() => patchCab(selIndex, { hasBack: true, backMount: "overlay" })} type="button">Внахлёст (16 мм)</button>
-                            <button className={`chip${sel.hasBack === false || sel.backMount === "none" ? " sel" : ""}`} onClick={() => patchCab(selIndex, { hasBack: false, backMount: "none" })} type="button">Без задника</button>
-                          </div>
-                        </div>
+                            {conOpen && (
+                              <div className="con-body">
+                                <p className="con-hint">{t.shop.editedInSettings}</p>
 
-                        {/* Scribe / Filler Panels */}
-                        <div style={{ marginTop: 10 }}>
-                          <span style={{ fontSize: 12, color: "#666" }}>Доборные фальш-панели (мм):</span>
-                          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 8, marginTop: 4 }}>
-                            <label style={{ fontSize: 11, color: "#666", display: "flex", flexDirection: "column" }}>
-                              Слева:
-                              <input type="number" className="set-input" style={{ padding: "4px 6px", marginTop: 2, fontSize: 12 }} value={sel.fillerLeft ?? 0} onChange={(e) => patchCab(selIndex, { fillerLeft: Math.max(0, parseInt(e.target.value, 10) || 0) })} />
-                            </label>
-                            <label style={{ fontSize: 11, color: "#666", display: "flex", flexDirection: "column" }}>
-                              Справа:
-                              <input type="number" className="set-input" style={{ padding: "4px 6px", marginTop: 2, fontSize: 12 }} value={sel.fillerRight ?? 0} onChange={(e) => patchCab(selIndex, { fillerRight: Math.max(0, parseInt(e.target.value, 10) || 0) })} />
-                            </label>
-                            <label style={{ fontSize: 11, color: "#666", display: "flex", flexDirection: "column" }}>
-                              Сверху:
-                              <input type="number" className="set-input" style={{ padding: "4px 6px", marginTop: 2, fontSize: 12 }} value={sel.fillerTop ?? 0} onChange={(e) => patchCab(selIndex, { fillerTop: Math.max(0, parseInt(e.target.value, 10) || 0) })} />
-                            </label>
+                                <span className="con-lbl">{t.shop.boardThickness}</span>
+                                <div className="pillrow" style={{ marginTop: 4 }}>
+                                  {([16, 18] as const).map((v) => (
+                                    <button key={v} className={`chip${con.boardThickness === v ? " sel" : ""}`} onClick={() => pick("boardThickness", v)} type="button">
+                                      {v} мм{v === shop.boardThickness ? ` · ${t.shop.standardShort}` : ""}
+                                    </button>
+                                  ))}
+                                </div>
+
+                                <span className="con-lbl">{t.shop.backPanel}</span>
+                                <div className="pillrow" style={{ marginTop: 4 }}>
+                                  {(["groove", "overlay", "none"] as BackPanelMethod[]).map((m) => (
+                                    <button key={m} className={`chip${con.backMount === m ? " sel" : ""}`} onClick={() => patchCab(selIndex, backMountPatch(m))} type="button">
+                                      {t.shop.back[m]}{m === shop.backMount ? ` · ${t.shop.standardShort}` : ""}
+                                    </button>
+                                  ))}
+                                </div>
+
+                                {/* фальш-панели are genuinely per-module (they fill THIS gap), so they
+                                    stay a per-cabinet field — but they belong behind the disclosure
+                                    with the rest of the carcass detail, not in the seller's face. */}
+                                <span className="con-lbl">{t.shop.fillers}</span>
+                                <div className="con-fillers">
+                                  {([["fillerLeft", t.shop.left], ["fillerRight", t.shop.right], ["fillerTop", t.shop.top2]] as const).map(([k, lbl]) => (
+                                    <label key={k}>
+                                      {lbl}
+                                      <input
+                                        type="number"
+                                        className="set-input"
+                                        value={sel[k] ?? 0}
+                                        onChange={(e) => patchCab(selIndex, { [k]: Math.max(0, parseInt(e.target.value, 10) || 0) })}
+                                      />
+                                    </label>
+                                  ))}
+                                </div>
+
+                                {over.length > 0 && (
+                                  <button className="con-reset" type="button" onClick={() => patchCab(selIndex, resetToShop())}>
+                                    ↺ {t.shop.resetToStandard}
+                                  </button>
+                                )}
+                              </div>
+                            )}
                           </div>
-                        </div>
-                      </div>
+                        );
+                      })()}
                     </>
                   ) : (
                     // several selected → H / D / shelves apply to ALL; width is NOT a slider (it would
@@ -1413,6 +1452,12 @@ export function ConfigScreen() {
                         onBegin={beginCabEdit}
                         onLive={(v) => dimSelected({ depth: v }, true)}
                         onCommit={(v) => dimSelected({ depth: v })} />
+                      {selCabs.some((c) => c.kind === "upper") && (
+                        <DimSlider icon={<GlyphH />} label="Высота от пола" value={selCabs[0].mountY ?? 1520} min={800} max={ceiling - selCabs[0].h} step={10}
+                          onBegin={beginCabEdit}
+                          onLive={(v) => applyToSelected({ mountY: v })}
+                          onCommit={(v) => applyToSelected({ mountY: v })} />
+                      )}
                       <DimSlider icon={<GlyphShelf />} label="Полок" value={selCabs[0].count ?? 0} min={0} max={8} step={1} unit=""
                         onBegin={beginCabEdit}
                         onLive={(v) => applyToSelected({ count: v })}
@@ -1453,6 +1498,14 @@ export function ConfigScreen() {
               const curColor = pc.finish?.[key] ?? (runStyle as unknown as Record<string, number>)[key];
               return (
                 <>
+                  {sel && !sel.furniture && (
+                    <div className="cab-actions">
+                      <button className="cab-act" onClick={() => { saveCab(sel.id, labelFor(sel)); flash(t.fe.savedCab); }} type="button">
+                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" aria-hidden><path d="M12 2l2.9 6.3 6.9.6-5.2 4.6 1.6 6.8L12 17.3 5.8 20.9l1.6-6.8L2.2 8.9l6.9-.6z" /></svg>
+                        {t.fe.saveDo}
+                      </button>
+                    </div>
+                  )}
                   {/* 4 part tabs: inactive = icon-only circle; ACTIVE = icon + its name (so a first-time
                       user learns what each does), the label truncated to 7 chars so it never overflows */}
                   <div className="style-tabs">

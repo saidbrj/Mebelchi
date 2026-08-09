@@ -20,7 +20,7 @@ import { buildRig, type LightPreset, type QualityTier } from "./lighting";
 import { buildMirror, type Mirror } from "./reflect";
 import { autoTier, pixelRatioFor, startingTier, tierSpec, type QualityPref } from "./quality";
 import { buildPost } from "./post";
-import { buildKitchen, groupBackOffM } from "./kitchen3d";
+import { buildKitchen, groupBackOffM, moveFront, tagOpenFronts } from "./kitchen3d";
 import type { Grids } from "../model/sheet";
 import { openCells } from "../model/sheet";
 import { colEdges, rowEdges, ROW_MIN } from "../model/grid";
@@ -437,6 +437,7 @@ export function VariantScene({
   style,
   cabs,
   mode = "real",
+  constructionRev = 0,
   view = "3d",
   magnet = true,
   nav = false,
@@ -486,6 +487,11 @@ export function VariantScene({
   cabs: Cabinet[];
   /** constructor render style — defaults to realistic (other screens omit it) */
   mode?: RenderMode;
+  /** Bumped when «Стандарт цеха» changes (store.constructionRev). The carcass geometry reads the
+   *  shop standard from model/construction.ts rather than from `cabs`, so without this the scene
+   *  would keep drawing 16мм after the seller switched the shop to 18мм — nothing in the deps
+   *  below would have changed. Not used in the body; it exists to invalidate the rebuild. */
+  constructionRev?: number;
   /** camera framing — 3/4 orbit or top-down plan (constructor only) */
   view?: KitchenView;
   /** snap moves/rotations to walls, neighbours and 45°/90° (constructor only) */
@@ -538,9 +544,14 @@ export function VariantScene({
   /** tap a module → its id (or null when tapping empty space) */
   onSelectCab?: (id: string | null) => void;
   /** TAP A DOOR OR DRAWER → its own key (`cabId#n`). Feed the key back through `openIds` to swing it.
-   *  Takes precedence over `onSelectCab`, which is what the Рендер step wants: there is nothing to
-   *  select there, only cabinets to open and look inside. */
-  onOpenFront?: (key: string) => void;
+   *  Takes precedence over `onSelectCab` — which is what the Рендер step wants: there is nothing to
+   *  select there, only cabinets to open and look inside.
+   *
+   *  Return `false` to DECLINE the tap and let it fall through to selection. That is what the
+   *  constructor does for a module that isn't selected yet: the first tap on a cabinet has to pick
+   *  it up, not swing its door; once it IS selected, its own fronts open on tap. Anything else
+   *  (including void) counts as handled, so the Рендер step needs no change. */
+  onOpenFront?: (key: string) => boolean | void;
   /** commit a free plan transform (move/rotate) — same path the 2D plan uses */
   onMovePlan?: (id: string, patch: { px?: number; pz?: number; rot?: number; cornerFace?: Pt }) => void;
   /** snapshot before a gesture so the whole move/rotate is one undo step */
@@ -1659,16 +1670,8 @@ export function VariantScene({
       invalidate(false);
     };
 
-    // open/close a module's doors + drawers (amount 0..1): hinge doors, slide drawers
-    /** swing/slide ONE openable subgroup */
-    const moveFront = (o: THREE.Object3D, amount: number) => {
-      const od = o.userData.openable as { kind: string; axis?: string; rad?: number; maxRad?: number; maxZ?: number };
-      if (od.kind === "door") {
-        const rad = od.rad ?? -(od.maxRad ?? 0); // legacy maxRad = left hinge (−y)
-        if (od.axis === "x") o.rotation.x = amount * rad; // top/bottom hydraulic lift
-        else o.rotation.y = amount * rad;
-      } else o.position.z = amount * (od.maxZ ?? 0);
-    };
+    // open/close a module's doors + drawers (amount 0..1) — `moveFront` lives in three/kitchen3d.ts,
+    // beside the builders that author `userData.openable`, and the studio animates the same way
 
     /**
      * Open something. The key is EITHER a module id (everything on it swings) OR one front's own
@@ -2173,11 +2176,7 @@ export function VariantScene({
       // name every door and drawer, so one of them can be tapped on its own
       for (const grp of kitchen.children) {
         const cabId = grp.userData.cabId as string | undefined;
-        if (!cabId) continue;
-        let n = 0;
-        grp.traverse((o) => {
-          if (o.userData.openable) o.userData.openKey = `${cabId}#${n++}`;
-        });
+        if (cabId) tagOpenFronts(grp, cabId);
       }
       applyMode(kitchen, propsRef.current.mode); // honour the current render style
       // red overlap warning (editor only) for modules clashing with a same-layer one
@@ -2933,12 +2932,15 @@ export function VariantScene({
       // TAP A DOOR, OPEN THAT DOOR. Walk up from whatever the ray struck to the nearest openable
       // subgroup — so the drawer you touched is the drawer that slides, not its fifteen neighbours.
       if (cbRef.current.onOpenFront) {
-        for (const h of hits) {
+        // labelled so a DECLINE stops the search: the nearest front already answered "not mine",
+        // and walking on to whatever is behind it would open some other cabinet's door
+        openSearch: for (const h of hits) {
           let o: THREE.Object3D | null = h.object;
           while (o) {
             if (o.userData.openKey) {
-              cbRef.current.onOpenFront(o.userData.openKey as string);
-              return;
+              // `false` = "not mine" → fall through and let the tap select the module instead
+              if (cbRef.current.onOpenFront(o.userData.openKey as string) !== false) return;
+              break openSearch;
             }
             o = o.parent;
           }
@@ -3202,7 +3204,7 @@ export function VariantScene({
   // fresh materials pick up the current render mode + highlight)
   useEffect(() => {
     apiRef.current?.setKitchen(cabs, style);
-  }, [cabs, style, layout, mode]);
+  }, [cabs, style, layout, mode, constructionRev]);
 
   // The render style also re-skins the ROOM (line-art vs photoreal) and flips the paper background —
   // both live in buildRoom, which the kitchen rebuild above doesn't touch.

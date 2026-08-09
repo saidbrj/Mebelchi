@@ -28,7 +28,10 @@ export function DimSlider(props: {
       <input
         className="dim-slider" type="range" min={min} max={max} step={step} value={value}
         onPointerDown={onBegin}
-        onChange={(e) => onLive(clamp(Number(e.target.value)))}
+        onChange={(e) => {
+          const v = clamp(Number(e.target.value));
+          if (v !== value) onLive(v);
+        }}
         onPointerUp={(e) => onCommit(clamp(Number((e.target as HTMLInputElement).value)))}
         onKeyUp={(e) => onCommit(clamp(Number((e.target as HTMLInputElement).value)))}
         onContextMenu={(e) => e.preventDefault()}

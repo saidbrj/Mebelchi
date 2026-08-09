@@ -68,7 +68,7 @@ export function UserScreen() {
 
   return (
     <section className="screen set-screen">
-      <div className="qnum"><Logo height={22} /></div>
+      <div className="qnum"><Logo height={14} /></div>
       <h1 className="h1">{t.user.title}</h1>
       <p className="sub">{t.user.sub}</p>
 

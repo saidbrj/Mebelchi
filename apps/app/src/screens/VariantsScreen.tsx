@@ -96,21 +96,68 @@ export function VariantsScreen() {
           whose kitchen this is now, so the type moved down here beside the price, where it reads as
           a caption for the kitchen on the stage. (When the room supports one shape this is the
           strategy name instead — generateVariants sets `name` accordingly.) */}
-      <div className="var-caption">
-        <span className="var-kind">{cur.name}</span>
-        {showPricing && (
-          <span className="var-price">
-            {money(pricingItems || !pricingSqm ? priceCabs(cur.cabs, rates) : sqmPrice(cur.cabs, sqmRate))}
-          </span>
-        )}
+      <div className={`var-main-content${opts ? " opts-open" : ""}`}>
+        <div className="var-stage-wrap">
+          <div className="var-caption">
+            <span className="var-kind">{cur.name}</span>
+            {showPricing && (
+              <span className="var-price">
+                {money(pricingItems || !pricingSqm ? priceCabs(cur.cabs, rates) : sqmPrice(cur.cabs, sqmRate))}
+              </span>
+            )}
+          </div>
+
+          <div className="var-stage">
+            <VariantScene
+              points={points}
+              ceiling={ceiling}
+              reveal={reveal}
+              openings={openings}
+              coveringColor={coveringColor}
+              floorId={floorId}
+              interiorWalls={interiorWalls}
+              fittings={fittings}
+              wallSurfaces={wallSurfaces}
+              waterWall={waterWall}
+              layout={cur.layout}
+              style={cur.style}
+              cabs={cur.cabs}
+            />
+            <button className="var-gear" onClick={() => setOpts(true)} type="button">
+              <IconTabSettings /> {t.variants.options}
+            </button>
+            <button className="var-regen" onClick={run} type="button">{t.variants.again}</button>
+            <span className="var-hint">{t.variants.rotate}</span>
+          </div>
+        </div>
+
+        <div className="var-controls-sidebar">
+          <div className="var-blurb">{cur.blurb}</div>
+
+          <div className="var-steps">
+            {genVariants.map((v, i) => (
+              <button
+                key={v.id}
+                className={`var-step${i === variant ? " on" : ""}`}
+                onClick={() => selectVariant(i)}
+                type="button"
+                aria-label={v.name}
+              >
+                {i + 1}
+              </button>
+            ))}
+          </div>
+
+          <button className="var-scratch" onClick={startBlank} type="button">
+            <span className="var-scratch-name">{t.variants.scratch} →</span>
+            <span className="var-scratch-sub">{t.variants.scratchSub}</span>
+          </button>
+        </div>
       </div>
 
-      {/* the questions, in a sheet over the kitchen they change. Closing regenerates. */}
       {opts && (
         <div className="var-opts-sheet" onClick={() => { setOpts(false); run(); }}>
           <div className="var-opts-card" onClick={(e) => e.stopPropagation()}>
-            {/* No «↻ Заново» in here: the stage carries one, and closing this sheet regenerates
-                anyway — three buttons for one action was two too many. */}
             <button className="sheet-x" onClick={() => { setOpts(false); run(); }} type="button" aria-label={t.fe.close}>✕</button>
             <QuizScreen />
             <button className="btn btn-next var-opts-apply" onClick={() => { setOpts(false); run(); }} type="button">
@@ -119,54 +166,6 @@ export function VariantsScreen() {
           </div>
         </div>
       )}
-
-      <div className="var-stage">
-        <VariantScene
-          points={points}
-          ceiling={ceiling}
-          reveal={reveal}
-          openings={openings}
-          coveringColor={coveringColor}
-          floorId={floorId}
-          interiorWalls={interiorWalls}
-          fittings={fittings}
-          wallSurfaces={wallSurfaces}
-          waterWall={waterWall}
-          layout={cur.layout}
-          style={cur.style}
-          cabs={cur.cabs}
-        />
-        {/* the two things you do TO the layouts sit on the stage itself, one in each top corner:
-            the questions that drive the generator on the left, regenerate on the right */}
-        <button className="var-gear" onClick={() => setOpts(true)} type="button">
-          <IconTabSettings /> {t.variants.options}
-        </button>
-        <button className="var-regen" onClick={run} type="button">{t.variants.again}</button>
-        <span className="var-hint">{t.variants.rotate}</span>
-      </div>
-
-      <div className="var-blurb">{cur.blurb}</div>
-
-      <div className="var-steps">
-        {genVariants.map((v, i) => (
-          <button
-            key={v.id}
-            className={`var-step${i === variant ? " on" : ""}`}
-            onClick={() => selectVariant(i)}
-            type="button"
-            aria-label={v.name}
-          >
-            {i + 1}
-          </button>
-        ))}
-      </div>
-
-      {/* the ALTERNATIVE path: skip the generated options and build on a bare room. The seller who
-          is going to rebuild everything anyway takes this instead of clearing an auto-layout first. */}
-      <button className="var-scratch" onClick={startBlank} type="button">
-        <span className="var-scratch-name">{t.variants.scratch} →</span>
-        <span className="var-scratch-sub">{t.variants.scratchSub}</span>
-      </button>
     </section>
   );
 }

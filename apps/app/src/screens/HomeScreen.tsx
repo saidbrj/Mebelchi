@@ -99,7 +99,7 @@ export function HomeScreen() {
     <section className="screen home home-grid-screen">
       {/* header */}
       <div className="qblock">
-        <div className="qnum"><Logo height={24} /></div>
+        <div className="qnum"><Logo height={14} /></div>
         <h1 className="h1">{hello}</h1>
         <p className="sub">{t.home.sub}</p>
       </div>

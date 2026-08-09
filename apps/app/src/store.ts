@@ -259,6 +259,9 @@ export interface AppState {
   offcutsRev: number;
   // global user/app settings (profile · company · preferences), Supabase-ready
   settings: Settings;
+  /** Bumped on every «Стандарт цеха» change so the open 3D redraws — the carcass build is read
+   *  from model/construction.ts, not from `cabs`, so no cabinet identity changes when it does. */
+  constructionRev: number;
   // auth (Supabase). authReady = session checked; authUser = null when signed out.
   // The app is GUEST-FIRST: no login wall at launch — sign in from the menu / the nudge.
   authReady: boolean;
@@ -674,6 +677,7 @@ export const useStore = create<AppState>((set, get) => ({
   catalogRev: 0,
   offcutsRev: 0,
   settings: loadSettings(),
+  constructionRev: 0,
   // if Supabase isn't configured, auth is skipped (app runs on localStorage)
   authReady: !isSupabaseConfigured,
   authUser: null,
@@ -756,8 +760,9 @@ export const useStore = create<AppState>((set, get) => ({
       case "handoff":
         // actually run the export/share (send SWJ008 + DXF + CSV to production) — not just
         // flip a flag. Re-runnable, so a second tap shares again instead of doing nothing.
-        runExport();
-        if (!s.exported) set({ exported: true });
+        // only stamp the deal "exported" when files actually went out — the handoff screen refuses
+        // when a module is drawn too small for its own hardware (model/minSize.ts)
+        if (runExport() && !s.exported) set({ exported: true });
         break;
     }
   },
@@ -1331,7 +1336,19 @@ export const useStore = create<AppState>((set, get) => ({
     set((s) => {
       const ids = new Set(s.selIds);
       if (!ids.size) return {};
-      return { ...cabHist(s), cabs: s.cabs.map((c) => (ids.has(c.id) ? { ...c, ...patch } : c)) };
+      let changed = false;
+      const next = s.cabs.map((c) => {
+        if (!ids.has(c.id)) return c;
+        let diff = false;
+        for (const k in patch) {
+          if ((c as any)[k] !== (patch as any)[k]) { diff = true; break; }
+        }
+        if (!diff) return c;
+        changed = true;
+        return { ...c, ...patch };
+      });
+      if (!changed) return {};
+      return { ...cabHist(s), cabs: next };
     }),
   applyFinishToSelected: (finish) =>
     set((s) => {
@@ -1403,22 +1420,39 @@ export const useStore = create<AppState>((set, get) => ({
     set((s) => {
       const ids = new Set(s.selIds);
       if (!ids.size) return {};
-      // same per-module rules as patchCabDims (height skips bases, corner re-seats), applied to all
+      const d = patch.depth != null ? Math.max(D_MIN, Math.min(D_MAX, Math.round(patch.depth))) : null;
+
+      let changed = false;
       const next = s.cabs.map((c) => {
         if (!ids.has(c.id)) return c;
-        const d = patch.depth != null ? Math.max(D_MIN, Math.min(D_MAX, Math.round(patch.depth))) : null;
         const p: Partial<Cabinet> = {};
-        if (patch.h != null && c.kind !== "base") p.h = Math.max(MIN_H, Math.min(maxCabH(c, s.ceiling), Math.round(patch.h)));
+        if (patch.h != null && c.kind !== "base") {
+          const newH = Math.max(MIN_H, Math.min(maxCabH(c, s.ceiling), Math.round(patch.h)));
+          if (newH !== c.h) p.h = newH;
+        }
+        if (d != null && cabDepth(c) !== d) {
+          p.depth = d;
+        }
+
         if (c.corner) {
-          if (d == null) return Object.keys(p).length ? { ...c, ...p } : c;
-          // an OUTER corner re-seats as a reverse-L at the run depth — NOT the big inner square, which
-          // is what turned it into an "Угловой 880" pinned to a wall vertex.
+          if (d == null) {
+            if (!Object.keys(p).length) return c;
+            changed = true;
+            return { ...c, ...p };
+          }
+          if (c.armDepth === d && !Object.keys(p).length) return c;
+          changed = true;
           if (c.cornerShape === "outer") return seatOuterCorner({ ...c, ...p, armDepth: d }, s.roomPoints, s.waterWall, s.runLayout, s.openings, s.cabs);
           return seatCorner({ ...c, ...p, armDepth: d }, s.roomPoints, s.waterWall, s.runLayout, s.openings);
         }
-        if (d != null) p.depth = d;
-        return Object.keys(p).length ? { ...c, ...p } : c;
+
+        if (!Object.keys(p).length) return c;
+        changed = true;
+        return { ...c, ...p };
       });
+
+      if (!changed) return {};
+
       // a base's height goes through the counter rule (one worktop line for the whole kitchen)
       const anyBase = s.cabs.some((c) => ids.has(c.id) && c.kind === "base");
       const withCounter = patch.h != null && anyBase ? (setBasesH(next, patch.h) ?? next) : next;
@@ -2423,13 +2457,18 @@ export const useStore = create<AppState>((set, get) => ({
   updateSettings: (patch) =>
     set((s) => {
       const settings = { ...s.settings, ...patch };
-      saveSettings(settings);
+      saveSettings(settings); // also republishes «Стандарт цеха» to model/construction.ts
       if (s.authUser) {
         clearTimeout(profileTimer); // debounce cloud push while typing
         const uid = s.authUser.id;
         profileTimer = setTimeout(() => trackSync(pushProfile(uid, useStore.getState().settings)), 800);
       }
-      return { settings };
+      // The carcass geometry reads the shop standard from a module cache, not from `cabs` — so
+      // nothing in the 3D's rebuild deps changes when the standard does. This counter is what
+      // tells the open scene to redraw; without it a seller switching to 18мм ЛДСП would see the
+      // kitchen keep its 16мм build until they happened to nudge a cabinet.
+      const conChanged = patch.construction != null && patch.construction !== s.settings.construction;
+      return conChanged ? { settings, constructionRev: s.constructionRev + 1 } : { settings };
     }),
 
   openAuth: () => set((s) => ({ screen: "auth", authReturn: s.screen === "auth" ? s.authReturn : s.screen, loginNudge: false, menuOpen: false })),

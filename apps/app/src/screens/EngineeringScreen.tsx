@@ -9,7 +9,7 @@ import { useT } from "../i18n/useT";
 import { machiningReport, type Part } from "../model/machining";
 import { production, cabLabel } from "../model/cncExport";
 import { CarcassBoxes, mergeableRows, mergedSummary } from "../components/CarcassBoxes";
-import { reinforcementReport, REINFORCE_SPAN_MM } from "../model/reinforce";
+import { reinforcementReport } from "../model/reinforce";
 
 /** Count fittings from the solved drill operations (by diameter, in mm10). */
 function joints(parts: Part[]) {
@@ -116,7 +116,7 @@ export function EngineeringScreen() {
             <div className="eng-row"><span>{t.eng.reinWidest}</span><span>{rein.widest} мм</span></div>
           </>
         ) : (
-          <div className="eng-row"><span>{t.eng.reinNone}</span><span>{t.eng.reinNoneVal(REINFORCE_SPAN_MM)}</span></div>
+          <div className="eng-row"><span>{t.eng.reinNone}</span><span>{t.eng.reinNoneVal(rein.limit)}</span></div>
         )}
       </div>
 

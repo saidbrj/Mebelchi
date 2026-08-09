@@ -11,13 +11,15 @@
 // Everything here is per-device (localStorage). A material edited here changes every picker
 // and every future quote — but never a past one, because a project stores the material id and
 // the quote is recomputed from the live catalog when it is opened.
-import { useState, useMemo, useCallback } from "react";
+import { useState, useMemo, useCallback, useEffect } from "react";
 import { useStore } from "../store";
 import { useT } from "../i18n/useT";
 import { useMoney } from "../useMoney";
 import { listMaterials, describeMaterial, newMaterialId, isSeedMaterial } from "../model/catalog";
 import { MATERIAL_KINDS, type EmanMaterial } from "../model/materials";
-import { listSavedCabs, type SavedCab } from "../model/savedCabs";
+import { listSavedCabs, replaceAllSavedCabs, type SavedCab } from "../model/savedCabs";
+import { captureCabinetThumbnail } from "../lib/cabThumb";
+import type { Cabinet } from "../model/cabinet";
 import { matSwatchStyle, TEX_KEYS } from "../three/pbr";
 import { IconSearch } from "../components/icons";
 
@@ -226,6 +228,26 @@ function SavedCabList({
 }) {
   const [renaming, setRenaming] = useState<SavedCab | null>(null);
   const [name, setName] = useState("");
+
+  useEffect(() => {
+    let updated = false;
+    const style = useStore.getState().runStyle;
+    const nextList = cabs.map((sc) => {
+      if (sc.cab.kind === "upper") {
+        const fullCab = { ...sc.cab, id: sc.id, kind: "upper" } as Cabinet;
+        const newThumb = captureCabinetThumbnail(fullCab, style);
+        if (newThumb && newThumb !== sc.thumbnail) {
+          updated = true;
+          return { ...sc, thumbnail: newThumb };
+        }
+      }
+      return sc;
+    });
+    if (updated) {
+      replaceAllSavedCabs(nextList);
+      useStore.setState((s) => ({ savedCabsRev: s.savedCabsRev + 1 }));
+    }
+  }, []);
 
   if (!cabs.length) return <p className="sub" style={{ marginTop: 16 }}>{t.catalog.emptyCabinets}</p>;
 

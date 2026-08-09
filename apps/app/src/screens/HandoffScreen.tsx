@@ -18,6 +18,7 @@ import { partsList } from "../model/partsList";
 import { partsXlsx, type PartsXlsxLabels, type PartsXlsxMeta } from "../model/partsXlsx";
 import { drawPartsListPdf, type PartsPdfLabels } from "../model/partsListPdf";
 import { machiningReport, runSWJ008 } from "../model/machining";
+import { minSizeFindings } from "../model/minSize";
 import { CutMap } from "../components/CutMap";
 import { drawCutPdf } from "../model/cutPdf";
 import { drawDrawingsPdf, drawOneDrawing, type DrawingsData, type DrawingsLabels, type DrawingSel } from "../model/drawingsPdf";
@@ -57,8 +58,16 @@ export function HandoffScreen() {
   // is assigned below (past the early return) with the real `shareFiles`; the Footer calls
   // it via store.next() → runExport(). (Hooks must sit above the early return.)
   const shareRef = useRef<(() => void) | null>(null);
+  // read by the registerExport closure below, which is installed once and would otherwise close over
+  // the first render's value
+  const blockedRef = useRef(false);
   useEffect(() => {
-    registerExport(() => shareRef.current?.());
+    // `shareFiles` itself owns the refusal (and says why); this only reports the verdict back to the
+    // journey so a blocked run does not get stamped "Готово · Поделиться" with nothing sent.
+    registerExport(() => {
+      shareRef.current?.();
+      return !blockedRef.current;
+    });
     return () => registerExport(null);
   }, []);
 
@@ -121,6 +130,29 @@ export function HandoffScreen() {
   };
   // run the drilling solver + safety gate over the whole run (the machine-ready plan)
   const machining = useMemo(() => machiningReport(cabs), [cabs]);
+  // COMPARTMENTS TOO SMALL FOR WHAT IS IN THEM (model/minSize.ts). Warned about in the Fill Editor
+  // while drawing; here — the last honest moment before a panel is cut — they BLOCK. Producing a
+  // front and a drilling pattern for a drawer that no runner on the market fits into is not a file
+  // anyone can use, it is a fitter's wasted afternoon.
+  const tooSmall = useMemo(() => minSizeFindings(cabs), [cabs]);
+  const blocked = tooSmall.length > 0;
+  blockedRef.current = blocked;
+  // ONE line per module, not one per drawer: a nine-drawer module that is wrong is one thing wrong
+  // nine times, and printing the identical sentence nine times reads like nine separate problems.
+  const tooSmallByCab = useMemo(() => {
+    const m = new Map<string, { name: string; n: number; worst: number; need: number }>();
+    for (const f of tooSmall) {
+      const c = cabs.find((x) => x.id === f.cabId);
+      const row = m.get(f.cabId);
+      if (row) {
+        row.n++;
+        row.worst = Math.min(row.worst, f.haveMm);
+      } else {
+        m.set(f.cabId, { name: c ? cabLabel(c) : f.cabId, n: 1, worst: f.haveMm, need: f.needMm });
+      }
+    }
+    return [...m.values()];
+  }, [tooSmall, cabs]);
   // shared module numbering (same order as the cut list) so a module has ONE number
   // across the cut list, FacePlan and TopPlan
   const numberOf = useMemo(() => {
@@ -222,6 +254,13 @@ export function HandoffScreen() {
   // the real .xml/.dxf extension the factory needs) and filter to only the files THIS device
   // will accept; anything it won't share is downloaded so nothing is lost.
   const shareFiles = async () => {
+    // The footer's «Экспорт на ЧПУ →» reaches this through runExport(), so the min-size gate has to
+    // hold HERE too — disabling the individual download buttons would otherwise leave the journey's
+    // own final CTA as an open side door onto the same files.
+    if (blocked) {
+      flash(t.handoff.minSizeTitle);
+      return;
+    }
     // The Раскрой files follow the on-screen toggle: CNC → the finished-size parts list (Excel +
     // PDF, the router nests itself), manual → the nested cut plan (PDF + DXF). The CNC drilling
     // file + CSV spec ride along only when "advanced" is on (most shops don't need them).
@@ -545,6 +584,23 @@ export function HandoffScreen() {
         )}
       </div>
 
+      {/* МИНИМАЛЬНЫЙ ПРОЁМ — a compartment drawn smaller than the mechanism that has to go in it.
+          The Fill Editor already marked it amber while drawing; here it blocks, because everything
+          below this line is a file somebody cuts metal and board against. */}
+      {blocked && (
+        <div className="ho-preflight bad">
+          <div className="ho-pf-head">
+            <span className="ho-pf-icon">!</span>
+            <span>{t.handoff.minSizeTitle}</span>
+          </div>
+          <ul className="ho-pf-list">
+            {tooSmallByCab.slice(0, 8).map((r) => (
+              <li key={r.name + r.worst}>{t.handoff.minSizeRow(r.name, r.n, r.worst, r.need)}</li>
+            ))}
+          </ul>
+        </div>
+      )}
+
       {/* Раскрой листов — the nested cut plan (saves material by packing parts economically) */}
       {nestResult.sheets.length > 0 && (
         <>
@@ -565,8 +621,8 @@ export function HandoffScreen() {
                 <div className="ho-stat"><span className="ho-stat-n">{pl.boardM2}</span><span className="ho-stat-l">{t.handoff.boardM2}</span></div>
               </div>
               <div className="ho-actions">
-                <button className="ho-download" onClick={downloadPartsXlsx} type="button">{t.handoff.xlsxParts}</button>
-                <button className="ho-download ho-download-2" onClick={downloadPartsListPDF} type="button">{t.handoff.pdfParts}</button>
+                <button className="ho-download" disabled={blocked} onClick={downloadPartsXlsx} type="button">{t.handoff.xlsxParts}</button>
+                <button className="ho-download ho-download-2" disabled={blocked} onClick={downloadPartsListPDF} type="button">{t.handoff.pdfParts}</button>
               </div>
             </>
           )}
@@ -629,8 +685,8 @@ export function HandoffScreen() {
             ))}
           </div>
           <div className="ho-actions">
-            <button className="ho-download" onClick={downloadCutPDF} type="button">{t.handoff.pdfCut}</button>
-            <button className="ho-download ho-download-2" onClick={downloadDXF} type="button">{t.handoff.dxfNest}</button>
+            <button className="ho-download" disabled={blocked} onClick={downloadCutPDF} type="button">{t.handoff.pdfCut}</button>
+            <button className="ho-download ho-download-2" disabled={blocked} onClick={downloadDXF} type="button">{t.handoff.dxfNest}</button>
           </div>
           </>
           )}
@@ -661,7 +717,7 @@ export function HandoffScreen() {
           )}
           <button
             className="ho-download ho-cnc"
-            disabled={!machining.ok || !machining.parts.length}
+            disabled={blocked || !machining.ok || !machining.parts.length}
             onClick={downloadSWJ008}
             type="button"
           >

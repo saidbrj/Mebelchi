@@ -61,7 +61,7 @@ export function Menu() {
         <div className="menu-head">
           {/* the wordmark is the way home — the same thing it does in most apps */}
           <button className="brand menu-brand" onClick={() => nav(() => goTo("home"))} type="button" aria-label={t.menu.home}>
-            <Logo height={22} />
+            <Logo height={14} />
           </button>
           <button className="menu-x" onClick={closeMenu} aria-label={t.menu.close} type="button">
             ✕

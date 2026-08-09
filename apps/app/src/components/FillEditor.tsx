@@ -9,6 +9,8 @@ import { useEffect, useRef, useState } from "react";
 import { useT } from "../i18n/useT";
 import { cabinetLayout, cellSizes, isLeaf, type Cabinet, type Cell, type CombinedDoor, type DoorOpening, type HandlePos } from "../model/cabinet";
 import { maxCabH, MIN_H } from "../model/bands";
+import { constructionOf } from "../model/construction";
+import { drawerFindings } from "../model/minSize";
 import type { KitchenStyle } from "../model/layout";
 import { CabinetPreview3D } from "./CabinetPreview3D";
 import { OrganizerEditor } from "./OrganizerEditor";
@@ -44,8 +46,11 @@ interface Props {
 }
 
 export type Tool = "draw" | "move" | "door" | "drawer";
-const T = 18, PAD = 110, EDGE_STEP = 10, MIN_CELL = 0.12;
+const PAD = 110, EDGE_STEP = 10, MIN_CELL = 0.12;
 const LINE = "#c7b593", ACCENT = "#00a961", DOORBG = "#e7ddc9", DRAWBG = "#e4d7bb", OPENBG = "#f6f2e8", HANDLE = "#9a8b6e";
+/** amber — a compartment too small for what has been put in it (model/minSize.ts). Warns here,
+ *  blocks at export: mid-gesture is the wrong moment to stop someone. */
+const WARN = "#c8791a";
 
 // ── tool icons (from the user's SVGs) ──
 const Ico = ({ d }: { d: string }) => (<svg viewBox="0 0 32 32" width="26" height="26" fill="none"><path d={d} fill="currentColor" /></svg>);
@@ -167,6 +172,9 @@ export function FillEditor({ cab, index, name, style, patchCab, patchCabLive, be
   const dragRef = useRef<Drag | null>(null);
 
   const W = cab.w, H = cab.h;
+  // the drawn carcass is the SHOP's board, not a decorative 18 — the mm read-outs on every cell come
+  // off this, and they have to be the millimetres the shop actually builds
+  const T = constructionOf(cab).boardThickness;
   const interiorW = W - 2 * T, interiorH = H - 2 * T;
   const vbW = W + PAD * 2, vbH = H + PAD * 2;
   const x0 = PAD + T, y0 = PAD + T, iw = W - 2 * T, ih = H - 2 * T;
@@ -174,6 +182,12 @@ export function FillEditor({ cab, index, name, style, patchCab, patchCabLive, be
   const root = flatten(cabinetLayout(cab)); // always a flat tree → siblings, no nesting bug
   const cds = cab.combinedDoors ?? [];
   const { leaves, divs } = layoutTree(root);
+  // compartments drawn too small for the mechanism inside them. Keyed by rect, not by path: the
+  // findings walk the cab's own tree while `leaves` walks the flattened one, and only the rectangles
+  // are guaranteed to be the same in both.
+  const rectKey = (r: { fx0: number; fy0: number; fx1: number; fy1: number }) =>
+    `${r.fx0.toFixed(3)}:${r.fy0.toFixed(3)}:${r.fx1.toFixed(3)}:${r.fy1.toFixed(3)}`;
+  const tooSmall = new Map(drawerFindings(cab).map((f) => [rectKey(f), f]));
   const selCell = sel?.kind === "cell" && leaves.find((l) => samePath(sel.path, l.path)) ? getCell(root, sel.path) : null;
   const selCd = sel?.kind === "cdoor" && cds[sel.idx] ? cds[sel.idx] : null;
   // grid lines (for snapping a door edge) + is a separator behind a combined door (dashed)
@@ -418,11 +432,18 @@ export function FillEditor({ cab, index, name, style, patchCab, patchCabLive, be
               const front = l.cell.front;
               const bg = front === "door" ? DOORBG : front === "drawer" ? DRAWBG : OPENBG;
               const wmm = Math.round(interiorW * (l.fx1 - l.fx0) / 10), hmm = Math.round(interiorH * (l.fy1 - l.fy0) / 10);
+              const small = tooSmall.get(rectKey(l));
+              const cx = (xL + svgX(l.fx1)) / 2, cy = (yT + svgY(l.fy0)) / 2;
               return (
                 <g key={l.path.join("-") || "root"} onPointerDown={(e) => onLeafDown(l, e)}>
-                  <rect x={xL + 3} y={yT + 3} width={w - 6} height={h - 6} rx={front ? 8 : 2} fill={bg} stroke={on ? ACCENT : front ? LINE : "none"} strokeWidth={on ? 7 : front ? 3 : 0} />
+                  <rect x={xL + 3} y={yT + 3} width={w - 6} height={h - 6} rx={front ? 8 : 2} fill={bg} stroke={small ? WARN : on ? ACCENT : front ? LINE : "none"} strokeWidth={small ? 7 : on ? 7 : front ? 3 : 0} strokeDasharray={small && !on ? "16 10" : undefined} />
                   {front && handleMark(l, l.cell.handle ?? (front === "drawer" ? "top" : (l.cell.opening === "left" ? "right" : l.cell.opening === "right" ? "left" : l.cell.opening === "top" ? "bottom" : "top")))}
-                  <text x={(xL + svgX(l.fx1)) / 2} y={(yT + svgY(l.fy0)) / 2} textAnchor="middle" dominantBaseline="middle" fontSize={30} fontFamily="Inter, sans-serif" fontWeight={on ? 700 : 500} fill={on ? ACCENT : "#8a7c5f"} pointerEvents="none">{wmm}×{hmm}</text>
+                  {/* a flagged compartment says the ONE thing that matters — the millimetres it has
+                      against the millimetres it needs — on a single line. Two lines collide with the
+                      handle mark in exactly the short cells this warning appears in. */}
+                  <text x={cx} y={cy} textAnchor="middle" dominantBaseline="middle" fontSize={small ? 26 : 30} fontFamily="Inter, sans-serif" fontWeight={small || on ? 700 : 500} fill={small ? WARN : on ? ACCENT : "#8a7c5f"} pointerEvents="none">
+                    {small ? t.fe.tooSmall(small.haveMm, small.needMm) : `${wmm}×${hmm}`}
+                  </text>
                 </g>
               );
             })}

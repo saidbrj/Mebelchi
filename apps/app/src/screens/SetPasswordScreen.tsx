@@ -31,7 +31,7 @@ export function SetPasswordScreen() {
   return (
     <section className="screen auth-screen">
       <form className="auth-box" onSubmit={submit}>
-        <div className="qnum"><Logo height={22} /></div>
+        <div className="qnum"><Logo height={14} /></div>
         <h1 className="h1">{t.setpw.title}</h1>
         <p className="sub">{t.setpw.sub}</p>
 

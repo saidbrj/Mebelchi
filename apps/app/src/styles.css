@@ -872,45 +872,29 @@ body {
   display: flex;
   flex-direction: column;
   align-items: center;
-  /* CONTENT-DRIVEN, with a stable floor. The band chips are always shown; when a module is selected
-     the swap strip appears below them and the chips collapse to a slim pill row, so the two states
-     come out within ~10px of each other — no meaningful "panel jump" (the big 3D-resizing jump we
-     fixed before was 100px). A fixed height risked clipping the swap strip once the safe-area inset
-     ate into it, so we clamp with min/max instead. */
-  min-height: 148px;
-  height: 130px;
-  max-height: 280px;
-  overflow: hidden;
-  transition: max-height 0.28s ease;
+  /* TWO FIXED ROWS — a contextual head («Добавить шкаф» / the quick edit bar) over the band chips,
+     which are always shown. Both rows are always present, so the height is structurally stable and
+     the 3D canvas above cannot resize under your finger. That used to be faked by swapping a
+     ghost hint box in for the swap strip; it doesn't need faking now, so the height is simply
+     content-driven with no clamps to keep in sync. */
+  padding: 14px 0 0;
   padding-bottom: env(safe-area-inset-bottom);
   z-index: 1;
   box-shadow: #f5f5f5 0px -8px 15px 13px;
 }
 
-.toolbar.collapsed {
-  min-height: 0;
-  max-height: 38px;
-}
-
-.toolbar-grip {
-  flex: 0 0 auto;
-  width: 72px;
-  height: 26px;
-  margin-top: 8px;
-  background: none;
-  border: none;
-  cursor: pointer;
+/* row 1 — «Добавить шкаф», or the quick edit bar when a module is selected. One height either way. */
+.toolbar-head {
+  width: 100%;
+  min-height: 52px;
   display: flex;
   align-items: center;
-  justify-content: center;
+  padding: 0 16px 10px;
 }
 
-.toolbar-grip::after {
-  content: "";
-  width: 44px;
-  height: 5px;
-  border-radius: 5px;
-  background: #d4d4d4;
+.toolbar-title {
+  font: 650 20px/1.2 var(--sans);
+  color: #111;
 }
 
 .toolbar-row {
@@ -920,35 +904,8 @@ body {
   padding: 4px 0 18px;
 }
 
-/* tap-to-place hint — what a wall tap will drop */
-.place-hint {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
-  margin: 2px auto 8px;
-  padding: 7px 14px;
-  max-width: max-content;
-  border-radius: 999px;
-  background: rgba(0, 172, 122, 0.12);
-  color: #04966b;
-  font-size: 13px;
-  font-weight: 600;
-}
-
-/* the hint is retired — the box only holds the toolbar's height (see ConfigScreen) */
-.place-hint.ghost {
-  visibility: hidden;
-}
-
-.place-hint-ico {
-  font-size: 15px;
-  line-height: 1;
-}
-
-.place-hint-txt {
-  white-space: nowrap;
-}
+/* .place-hint is gone with its markup: the hint text was retired long ago and its invisible box
+   only existed to hold the toolbar's height. The toolbar's two fixed rows do that structurally now. */
 
 /* the tap-to-place panel: band tabs + a strip of items for the active band */
 .place-panel {
@@ -1195,6 +1152,25 @@ body {
 .bottom-sheet.closing {
   animation: sheetDown 0.23s ease forwards;
 }
+
+@keyframes sheetSlideLeft {
+  from {
+    transform: translateX(100%);
+  }
+  to {
+    transform: translateX(0);
+  }
+}
+
+@keyframes sheetSlideRightOut {
+  from {
+    transform: translateX(0);
+  }
+  to {
+    transform: translateX(100%);
+  }
+}
+
 
 @keyframes menuDown {
   from {
@@ -2165,6 +2141,96 @@ body {
   gap: 10px;
 }
 
+/* ── QUICK EDIT BAR ────────────────────────────────────────────────────────────────────
+   Width + finish for one selected module. It IS the toolbar's top row — it takes the place
+   of the «Добавить шкаф» heading while something is selected, so the band chips below it
+   never move and the toolbar keeps one height. */
+.quick-bar {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  animation: fadeIn 0.16s ease;
+}
+
+/* the width stepper eats the free space; the swatch and ⋯ keep their size at the right */
+.qb-w {
+  flex: 1;
+  min-width: 0;
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.qb-step {
+  flex: 0 0 auto;
+  width: 46px;
+  height: 46px;
+  border-radius: 23px;
+  border: none;
+  background: #f2f2f2;
+  color: #1c1c1e;
+  font: 500 24px/1 var(--sans);
+  cursor: pointer;
+}
+
+.qb-step:disabled {
+  opacity: 0.35;
+  cursor: default;
+}
+
+/* the number is the loudest thing on the row — it's what the seller is actually setting */
+.qb-num {
+  flex: 1;
+  min-width: 52px;
+  width: 100%;
+  border: none;
+  background: none;
+  text-align: center;
+  font: 700 24px/1 var(--sans);
+  color: #000;
+  padding: 0;
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.qb-num::-webkit-outer-spin-button,
+.qb-num::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.qb-unit {
+  flex: 0 0 auto;
+  font: 500 12px/1 var(--sans);
+  color: var(--muted);
+  margin-right: 2px;
+}
+
+/* the current facade finish, as a shortcut into the full Стиль panel — not a picker itself */
+.qb-swatch {
+  flex: 0 0 auto;
+  width: 46px;
+  height: 46px;
+  border-radius: 23px;
+  border: 1px solid var(--line);
+  cursor: pointer;
+  background-size: cover;
+  background-position: center;
+}
+
+.qb-more {
+  flex: 0 0 auto;
+  width: 46px;
+  height: 46px;
+  border-radius: 23px;
+  border: 1px solid var(--line);
+  background: #fff;
+  color: #1c1c1e;
+  font: 600 21px/1 var(--sans);
+  cursor: pointer;
+}
+
 .round-ctl {
   width: 46px;
   height: 46px;
@@ -2306,6 +2372,102 @@ body {
   flex: 0 0 auto;
   font-size: 13px;
   color: #8b929c;
+}
+
+/* ── «Конструкция» disclosure in the Размер panel ────────────────────────────────────
+   Eight carcass controls used to sit open here on every module. They now live behind this
+   one row, because the shop standard (Настройки → Стандарт цеха) already answers them —
+   the row exists to SAY so, and to be the way in for the rare module that must differ. */
+.con-row {
+  width: 100%;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 10px 0;
+  border: none;
+  background: none;
+  font: inherit;
+  cursor: pointer;
+  text-align: left;
+}
+
+.con-row-lbl {
+  font: 600 13px/1 var(--sans);
+  color: #333;
+}
+
+/* "стандарт цеха" reads as settled; "изменено: 2" has to read as a deliberate exception */
+.con-row-val {
+  margin-left: auto;
+  font: 500 12px/1 var(--sans);
+  color: var(--muted);
+}
+
+.con-row-val.changed {
+  color: var(--accent);
+  font-weight: 650;
+}
+
+.con-row-caret {
+  font-size: 17px;
+  line-height: 1;
+  color: var(--muted);
+  transform: rotate(90deg);
+  transition: transform 0.18s ease;
+}
+
+.con-row-caret.open {
+  transform: rotate(-90deg);
+}
+
+.con-body {
+  padding-bottom: 4px;
+  animation: fadeIn 0.18s ease;
+}
+
+.con-hint {
+  margin: 0 0 10px;
+  font: 400 11px/1.4 var(--sans);
+  color: var(--muted);
+}
+
+.con-lbl {
+  display: block;
+  margin-top: 10px;
+  font-size: 12px;
+  color: #666;
+}
+
+.con-fillers {
+  display: grid;
+  grid-template-columns: 1fr 1fr 1fr;
+  gap: 8px;
+  margin-top: 4px;
+}
+
+.con-fillers label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 11px;
+  color: #666;
+}
+
+.con-fillers .set-input {
+  padding: 4px 6px;
+  font-size: 12px;
+}
+
+.con-reset {
+  margin-top: 12px;
+  width: 100%;
+  padding: 10px;
+  border: 1px solid var(--line);
+  border-radius: 12px;
+  background: none;
+  color: var(--muted);
+  font: 600 13px/1 var(--sans);
+  cursor: pointer;
 }
 
 .dim-fill {
@@ -4912,6 +5074,27 @@ body {
   animation: fade 0.3s;
 }
 
+.var-main-content {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+  gap: 10px;
+}
+
+.var-stage-wrap {
+  display: flex;
+  flex-direction: column;
+  flex: 1;
+  min-height: 0;
+}
+
+.var-controls-sidebar {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
 /* the top bar uses the shared cfg-bar layout (☰ left · layout type centred · ⚙ Параметры right).
    cfg-bar only sets position/padding — the flex row itself lives here (the stepbar class supplies it
    on the other bars, which var-bar doesn't carry). */
@@ -6350,6 +6533,17 @@ body {
 .set-pref-val {
   font: 600 15px/1 var(--sans);
   color: #000;
+}
+
+/* a preference whose choices are too wide to sit beside the label — «Стандарт цеха» stacks them */
+.set-pref-col {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+
+.set-pref-col > .set-label {
+  align-self: flex-start;
 }
 
 .set-lang {
@@ -8304,4 +8498,390 @@ body {
   width: 100%;
   height: auto;
   max-height: 260px;
+}
+
+/* ── LANDSCAPE MODE & DESKTOP ─────────────────────────────────────────────────
+   Right-side panels are `position: fixed` and cover the full viewport height.
+   To prevent them from overlapping the top bar and content, we shrink the
+   `.app` wrapper itself with `margin-right`, so EVERYTHING (top bar, scenes,
+   footers, all content) shifts left and the right panels sit in clear space.
+   ──────────────────────────────────────────────────────────────────────────── */
+@media (orientation: landscape), screen and (min-width: 600px) {
+
+  /* ── BASE: push the whole app left by the width of whatever panel is on the right ── */
+
+  /* Hub screens → TabBar (88px) */
+  .app:has(.tabbar) {
+    margin-right: 88px !important;
+  }
+
+  /* Room Editor → toolbar (240px) */
+  .app:has(.roomscene .toolbar) {
+    margin-right: 240px !important;
+  }
+  /* Room Editor → when a drawer is also open, the drawer (380px) is wider */
+  .app:has(.roomscene .bottom-sheet) {
+    margin-right: 380px !important;
+  }
+
+  /* Render Screen → rnd-tabbar (110px) */
+  .app:has(.rnd-tabbar) {
+    margin-right: 110px !important;
+  }
+
+  /* Variants Screen → var-controls-sidebar (280px) */
+  .app:has(.var-controls-sidebar) {
+    margin-right: 280px !important;
+  }
+  /* Variants → when the options sheet is open */
+  .app:has(.var-opts-sheet) {
+    margin-right: 380px !important;
+  }
+
+  /* Engineering / Cost / Handoff — no right panel, no margin */
+
+  @media (max-width: 844px) {
+    .app:has(.tabbar) {
+      margin-right: 88px !important;
+    }
+    .app:has(.roomscene .toolbar) {
+      margin-right: 30vw !important;
+    }
+    .app:has(.roomscene .bottom-sheet) {
+      margin-right: 45vw !important;
+    }
+    .app:has(.rnd-tabbar) {
+      margin-right: 110px !important;
+    }
+    .app:has(.var-controls-sidebar) {
+      margin-right: 35vw !important;
+    }
+    .app:has(.var-opts-sheet) {
+      margin-right: 45vw !important;
+    }
+  }
+
+  /* ── DRAWERS / BOTTOM SHEETS → right-side drawers ── */
+  .bottom-sheet {
+    position: fixed !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    right: 0 !important;
+    left: auto !important;
+    width: 380px !important;
+    max-width: 45vw !important;
+    height: 100vh !important;
+    max-height: 100vh !important;
+    border-radius: 24px 0 0 24px !important;
+    box-shadow: -6px 0 24px rgba(0, 0, 0, 0.18) !important;
+    padding: 20px 20px calc(20px + env(safe-area-inset-bottom)) calc(20px + env(safe-area-inset-right)) !important;
+    animation: sheetSlideLeft 0.26s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    overflow-y: auto !important;
+    z-index: 90 !important;
+    background: #ffffff !important;
+  }
+
+  .bottom-sheet.tall,
+  .bottom-sheet.panel,
+  .bottom-sheet:not(.tall) {
+    max-height: 100vh !important;
+    height: 100% !important;
+  }
+
+  .bottom-sheet.closing {
+    animation: sheetSlideRightOut 0.23s ease forwards !important;
+  }
+
+  .sheet-grip {
+    display: none !important;
+  }
+
+  .sheet-backdrop {
+    z-index: 85 !important;
+  }
+
+  /* ── STEP C: Constructor (`ConfigScreen` / `.roomscene`) ── */
+  .roomscene {
+    display: flex !important;
+    flex-direction: column !important;
+    width: 100% !important;
+    height: 100vh !important;
+    overflow: hidden !important;
+    position: relative !important;
+  }
+
+  .scene-area {
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    height: 100% !important;
+    position: relative !important;
+  }
+
+  .toolbar {
+    position: fixed !important;
+    right: 0 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: auto !important;
+    width: 240px !important;
+    max-width: 30vw !important;
+    height: 100vh !important;
+    background: #ffffff !important;
+    border-left: 1px solid var(--line) !important;
+    border-radius: 20px 0 0 20px !important;
+    padding: 16px 14px calc(16px + env(safe-area-inset-bottom)) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    overflow-y: auto !important;
+    z-index: 25 !important;
+    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.08) !important;
+  }
+
+  .place-panel {
+    flex: 1 !important;
+    display: flex !important;
+    flex-direction: column !important;
+  }
+
+  .place-chips {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .place-chip {
+    width: 100% !important;
+    justify-content: flex-start !important;
+    padding: 10px 12px !important;
+    border-radius: 14px !important;
+  }
+
+  .swap-strip {
+    flex-direction: column !important;
+    gap: 8px !important;
+    overflow-y: auto !important;
+    max-height: 100% !important;
+  }
+
+  .swap-chip {
+    width: 100% !important;
+    justify-content: flex-start !important;
+    padding: 8px 12px !important;
+    border-radius: 12px !important;
+  }
+
+  /* Canvas floating controls — stay inside the visible scene area */
+  .left-stack {
+    left: 20px !important;
+    bottom: 20px !important;
+  }
+
+  .item-stack {
+    right: 20px !important;
+    bottom: 20px !important;
+  }
+
+  .left-stack.raised {
+    bottom: 20px !important;
+    z-index: 30 !important;
+  }
+
+  .item-stack.raised {
+    bottom: 20px !important;
+    right: 20px !important;
+    z-index: 30 !important;
+  }
+
+  .cfg-sheet-body {
+    flex: 1 1 auto !important;
+    overflow-y: auto !important;
+  }
+
+  /* ── STEP A: Room Editor (`RoomScene`) ── */
+  .toolbar-row {
+    flex-direction: column !important;
+    gap: 8px !important;
+  }
+
+  .tool-btn {
+    width: 100% !important;
+    flex-direction: row !important;
+    justify-content: flex-start !important;
+    padding: 10px 14px !important;
+    gap: 10px !important;
+    border-radius: 12px !important;
+    background: #f8fafc !important;
+  }
+
+  .toolbar-grip {
+    display: none !important;
+  }
+
+  .addwall-bar {
+    position: fixed !important;
+    right: 20px !important;
+    bottom: 20px !important;
+    z-index: 30 !important;
+  }
+
+  /* ── STEP B: Variants (`VariantsScreen`) ── */
+  .var-screen-3d {
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100vh !important;
+    overflow: hidden !important;
+  }
+
+  .var-main-content {
+    display: flex !important;
+    flex-direction: row !important;
+    flex: 1 !important;
+    min-height: 0 !important;
+    overflow: hidden !important;
+    position: relative !important;
+  }
+
+  .var-stage-wrap {
+    flex: 1 1 0% !important;
+    min-width: 0 !important;
+    display: flex !important;
+    flex-direction: column !important;
+    height: 100% !important;
+  }
+
+  .var-stage {
+    flex: 1 !important;
+    height: 100% !important;
+    margin: 0 10px 10px 10px !important;
+    position: relative !important;
+  }
+
+  .var-controls-sidebar {
+    position: fixed !important;
+    right: 0 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    width: 280px !important;
+    max-width: 35vw !important;
+    height: 100vh !important;
+    display: flex !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    gap: 14px !important;
+    padding: 20px 16px !important;
+    background: #ffffff !important;
+    border-left: 1px solid var(--line) !important;
+    border-radius: 20px 0 0 20px !important;
+    box-shadow: -4px 0 20px rgba(0, 0, 0, 0.08) !important;
+    z-index: 10 !important;
+    overflow-y: auto !important;
+  }
+
+  .var-steps {
+    display: flex !important;
+    flex-direction: row !important;
+    flex-wrap: wrap !important;
+    justify-content: center !important;
+    gap: 10px !important;
+    padding: 4px 0 !important;
+  }
+
+  .var-opts-sheet {
+    position: fixed !important;
+    inset: 0 !important;
+    z-index: 90 !important;
+    background: rgba(0, 0, 0, 0.35) !important;
+    display: flex !important;
+    justify-content: flex-end !important;
+  }
+
+  .var-opts-card {
+    position: fixed !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    right: 0 !important;
+    left: auto !important;
+    width: 380px !important;
+    max-width: 45vw !important;
+    height: 100vh !important;
+    border-radius: 24px 0 0 24px !important;
+    z-index: 91 !important;
+    animation: sheetSlideLeft 0.26s cubic-bezier(0.2, 0.8, 0.2, 1) !important;
+    overflow-y: auto !important;
+    margin: 0 !important;
+  }
+
+  /* ── STEP D: Renders (`RenderScreen`) ── */
+  .rnd-tabbar {
+    position: fixed !important;
+    right: 0 !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    left: auto !important;
+    width: 110px !important;
+    height: 100vh !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    gap: 8px !important;
+    border-radius: 20px 0 0 20px !important;
+    z-index: 25 !important;
+    margin: 0 !important;
+    padding: 14px 8px !important;
+    background: #f5f5f5 !important;
+    border-left: 1px solid var(--line) !important;
+  }
+
+  .rnd-panel {
+    right: 125px !important;
+    bottom: 20px !important;
+    z-index: 30 !important;
+  }
+
+  /* ── Hub Navigation TabBar ── */
+  .tabbar {
+    position: fixed !important;
+    top: 0 !important;
+    bottom: 0 !important;
+    right: 0 !important;
+    left: auto !important;
+    width: 88px !important;
+    height: 100vh !important;
+    flex-direction: column !important;
+    justify-content: center !important;
+    gap: 12px !important;
+    border-radius: 24px 0 0 24px !important;
+    padding: 20px 6px !important;
+    z-index: 35 !important;
+    background: #f5f5f5 !important;
+    border-left: 1px solid var(--line) !important;
+  }
+
+  .tab-item {
+    padding: 6px 0 !important;
+  }
+
+  /* Hub screens: swap bottom padding for right padding already handled by .app margin */
+  .body-tabbed {
+    padding-bottom: 0 !important;
+  }
+
+  /* ── Cabinet Studio ── */
+  .v21-studio-body {
+    flex-direction: row !important;
+  }
+
+  .v21-studio-viewport {
+    flex: 1 !important;
+    height: 100% !important;
+  }
+
+  .v21-studio-panel {
+    width: 340px !important;
+    max-width: 40vw !important;
+    height: 100% !important;
+    border-left: 1px solid #e2e8f0 !important;
+    border-top: none !important;
+  }
 }

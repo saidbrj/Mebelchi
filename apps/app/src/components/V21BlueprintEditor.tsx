@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import type { Cabinet, BackPanelMethod } from "../model/cabinet";
+import { constructionOf, shopConstruction } from "../model/construction";
 import type { Settings } from "../model/settings";
 import { GolaSidePanel } from "./GolaSidePanel";
 
@@ -56,17 +57,20 @@ export interface KSlot {
 const KPALETTE = ["#2f6fe4", "#12a5a0", "#8b5cf6", "#c8781f", "#c0392b"];
 
 export function defaultV21State(cab?: Cabinet, settings?: Settings): V21State {
+  // the shop's standing build (Настройки → Стандарт цеха) with this module's overrides on top,
+  // so opening the studio on an untouched cabinet shows what the shop actually builds
+  const con = cab ? constructionOf(cab) : shopConstruction();
   return {
-    backMode: cab?.backMount ?? (cab?.hasBack === false ? "none" : "groove"),
+    backMode: con.backMount,
     grooveW: 4,
     grooveD: 8,
-    grooveOff: cab?.grooveSetback ?? 12,
+    grooveOff: con.grooveSetback,
     grooveT: 3,
-    bottomMode: cab?.bottomMode ?? "nakladnoe",
-    bottomT: cab?.boardThickness ?? 16,
-    topMode: cab?.topMode ?? "full",
+    bottomMode: con.bottomMode,
+    bottomT: con.boardThickness,
+    topMode: con.topMode,
     topCw: 80,
-    plinthMode: cab?.plinthMode ?? "box",
+    plinthMode: con.plinthMode,
     plinthH: 120,
     plinthOff: 0,
     shelfSb: 0,

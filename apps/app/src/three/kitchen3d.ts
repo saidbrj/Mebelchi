@@ -12,6 +12,7 @@ import type { KitchenStyle } from "../model/layout";
 import { cabinetLayout, cellSizes, isLeaf, frontOf, type Cabinet, type Cell, type HandlePos, type DoorOpening, type FrontProfile } from "../model/cabinet";
 import { cabBand, cabDepth } from "../model/resolve";
 import { golaSpec } from "../model/gola";
+import { constructionOf, shopConstruction } from "../model/construction";
 import { cornerShapeOf, cornerArm } from "../model/bands";
 import { chamferRing } from "../model/outerCorner";
 import { frontFace, hasBody, makeGlassMat } from "./frontFace";
@@ -478,7 +479,11 @@ export function buildKitchen(cabs: Cabinet[], runs: RunRef[], style: KitchenStyl
         if (!outer) doors(PLINTH + h / 2, h);
       }
       // the footprint on the floor: an inner corner is a square (w × w), an end unit is w × the run depth
-      if (!isUpper) contactShadow(g, wM, outer ? cabDepth(c) / 1000 : wM, { centred: true });
+      if (isUpper) {
+        if (bandY0 < 1.8) contactShadow(g, wM, outer ? cabDepth(c) / 1000 : wM, { centred: true, y: Math.min(WORKTOP_TOP, carcassBot), opacity: 0.4 });
+      } else {
+        contactShadow(g, wM, outer ? cabDepth(c) / 1000 : wM, { centred: true });
+      }
       seatModule(root, g);
       continue;
     }
@@ -614,7 +619,7 @@ export function buildKitchen(cabs: Cabinet[], runs: RunRef[], style: KitchenStyl
       buildModuleInterior(add, handle, c, wM, h, dM, yc, style, M, true, g);
     // the shade a wall unit throws on the counter — only for a row hanging at the normal height
     // (an antresol sits above a column, and there is no counter under it to darken)
-    if (bandY0 < 1.8) contactShadow(g, wM, dM, { y: WORKTOP_TOP, opacity: 0.4 });
+    if (bandY0 < 1.8) contactShadow(g, wM, dM, { y: Math.min(WORKTOP_TOP, carcassBot), opacity: 0.4 });
       seatModule(root, g);
       continue;
     }
@@ -920,7 +925,7 @@ export function buildCabinetSolo(c: Cabinet, style: KitchenStyle, opts: CabinetS
 
   const wM = c.w / 1000;
   const dM = cabDepth(c) / 1000;
-  const t = (c.boardThickness ?? 16) / 1000;
+  const t = constructionOf(c).boardThickness / 1000;
   const band = cabBand(c);
 
   const M = makeMats(c.finish, style);
@@ -1067,7 +1072,9 @@ interface Bay {
 // on the boundary) unless it is the last. Four bays → 1 + 4 = 5 verticals, exactly the 5 the cut
 // list bills. Rendering it any other way would put the seller's 3D and the factory's DXF at odds.
 function hollowCarcass(add: AddFn, wM: number, h: number, dM: number, yc: number, m: () => THREE.Material, bay?: Bay, cab?: Cabinet) {
-  const t = (cab?.boardThickness ?? 16) / 1000;
+  // the shop's standing build, with this module's own overrides on top (model/construction.ts)
+  const con = cab ? constructionOf(cab) : shopConstruction();
+  const t = con.boardThickness / 1000;
   // GOLA (handleless): the outer sides are NOTCHED at the front edge where each horizontal profile
   // runs, and a metal profile sits in the notch. Merged bays keep plain sides for now (v1). A plain
   // side is a full-depth box; a notched side is the same box with a shallower slice at each profile.
@@ -1104,12 +1111,11 @@ function hollowCarcass(add: AddFn, wM: number, h: number, dM: number, yc: number
   }
 
   // Bottom board — respect vkladnoe (inset between sides) vs nakladnoe (full width)
-  const bMode = cab?.bottomMode ?? "nakladnoe";
-  const btmW = bMode === "vkladnoe" ? wM - 2 * t : wM;
+  const btmW = con.bottomMode === "vkladnoe" ? wM - 2 * t : wM;
   add(btmW, t, dM, 0, yc - h / 2 + t / 2, dM / 2, m());
 
   // Top board — respect topMode: "full" lid, "stretchers" (two 80mm rails), or "none"
-  const topMode = cab?.topMode ?? "full";
+  const topMode = con.topMode;
   if (topMode === "stretchers") {
     // Two stretcher rails (80mm deep) at front and back
     const stD = 0.08;
@@ -1121,14 +1127,13 @@ function hollowCarcass(add: AddFn, wM: number, h: number, dM: number, yc: number
   }
 
   // Real Back Panel Rendering (groove vs overlay vs none)
-  const hasBack = cab?.hasBack ?? (cab?.backMount !== "none");
-  if (hasBack) {
-    if (cab?.backMount === "overlay") {
+  if (con.backMount !== "none") {
+    if (con.backMount === "overlay") {
       // 16mm solid LDSP back panel
       add(wM, h, t, 0, yc, t / 2, m());
     } else {
-      // 3mm HDF in 12mm Groove
-      const grooveOff = (cab?.grooveSetback ?? 12) / 1000;
+      // 3mm HDF in a groove, set back by the shop's groove offset
+      const grooveOff = con.grooveSetback / 1000;
       const bw = bay ? wM : wM - t * 2;
       const bh = h - t * 2;
       add(bw, bh, 0.003, 0, yc, grooveOff + 0.0015, m());
@@ -1299,6 +1304,43 @@ function buildModuleInterior(add: AddFn, handle: BarFn, c: Cabinet, wM: number, 
   buildCells(add, handle, cabinetLayout(c), wM, h, dM, yc, style, M, isUpper, profile, g, undefined, golaGapM);
   for (const cd of c.combinedDoors ?? [])
     buildFront(add, handle, "door", cd.opening, cd.handle, undefined, wM, h, dM, yc, style, M, isUpper, profile, g, { fx0: cd.fx0, fy0: cd.fy0, fx1: cd.fx1, fy1: cd.fy1 }, golaGapM);
+}
+
+// ── OPENING A FRONT ───────────────────────────────────────────────────────────────────────────
+// The front builders above stamp `userData.openable` on each door / drawer subgroup. What that
+// data MEANS lives here, next to the code that writes it, because two viewers now animate it —
+// the room scene (three/VariantScene.tsx) and the isolated module studio
+// (components/V21Cabinet3DStudio.tsx). A second private copy of the swing maths is exactly how a
+// door ends up hinging one way in the kitchen and the other way in the studio.
+
+/** What a front builder stores on an openable subgroup. */
+export interface OpenableData {
+  kind: string;
+  axis?: string;
+  rad?: number;
+  maxRad?: number;
+  maxZ?: number;
+}
+
+/** Swing / slide ONE openable subgroup. `amount` 0 = shut, 1 = fully open. */
+export function moveFront(o: THREE.Object3D, amount: number): void {
+  const od = o.userData.openable as OpenableData | undefined;
+  if (!od) return;
+  if (od.kind === "door") {
+    const rad = od.rad ?? -(od.maxRad ?? 0); // legacy maxRad = left hinge (−y)
+    if (od.axis === "x") o.rotation.x = amount * rad; // top/bottom hydraulic lift
+    else o.rotation.y = amount * rad;
+  } else o.position.z = amount * (od.maxZ ?? 0);
+}
+
+/** Name every door and drawer under `root` so one of them can be tapped on its own. Keys are
+ *  handed out in BUILD ORDER (`<prefix>#0`, `#1`, …), which is deterministic — so which front is
+ *  open survives a rebuild after an edit. */
+export function tagOpenFronts(root: THREE.Object3D, prefix: string): void {
+  let n = 0;
+  root.traverse((o) => {
+    if (o.userData.openable) o.userData.openKey = `${prefix}#${n++}`;
+  });
 }
 
 /** Carve a facade onto the front of a carcass: drawers / a (glass) door / open.
