@@ -54,7 +54,10 @@ function decalTexture(): THREE.Texture {
 /** `?ao=0.7` scales every contact shadow — the same tuning back door the light presets have, because
  *  how dark this should be is a matter of taste and you can only judge it by looking. */
 function aoScale(): number {
-  if (typeof location === "undefined") return 1;
+  // DEV ONLY. `import.meta.env.DEV` is replaced by `false` in a production build, so this
+  // whole branch — and the URL read with it — is dropped from the shipped bundle. An app store
+  // reviewer must not be able to change how the app behaves with a query string.
+  if (!import.meta.env.DEV || typeof location === "undefined") return 1;
   const v = Number.parseFloat(new URLSearchParams(location.search).get("ao") ?? "");
   return Number.isFinite(v) ? v : 1;
 }

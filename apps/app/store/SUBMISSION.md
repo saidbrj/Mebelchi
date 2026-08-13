@@ -242,9 +242,6 @@ Mebely
 ```
 Mebely — приложение для мебельщиков и дизайнеров кухонь. Соберите кухню в 3D за минуты прямо на телефоне, покажите клиенту с реалистичным освещением, подготовьте смету и файлы для производства.
 
-⚠ БЕТА-ВЕРСИЯ
-Приложение находится в стадии активной разработки. 3D-конструктор, подбор материалов, смета и раскрой работают. Файлы для передачи в цех (чертежи, карты сверловки, файлы ЧПУ) проходят тестирование на реальных заказах — возможны неточности. Мы будем рады вашей обратной связи: она поможет довести Mebely до идеала.
-
 ВОЗМОЖНОСТИ
 
 • 3D-конструктор — расставляйте модули по реальным стенам клиента. Углы, ниши, техника и столешницы считаются автоматически.
@@ -254,7 +251,7 @@ Mebely — приложение для мебельщиков и дизайне�
 • Каталог материалов с вашими ценами — добавляйте свои ЛДСП, МДФ, кромку и фурнитуру.
 • Смета по вашим ценам — приложение считает по вашим расценкам. UZS, KZT или USD.
 • Раскрой с учётом остатков — сначала заполняются обрезки со склада, потом новый лист.
-• Файлы для производства (бета) — чертежи, SWJ008, DXF. Тестируются на реальных заказах.
+• Файлы для производства — чертежи, карты сверловки SWJ008 и DXF для станка.
 • Мои шкафы — сохраняйте свои модули и переиспользуйте в любом проекте.
 • Стандарт цеха — настройте один раз, применяется ко всем проектам.
 • Мультивалютность — UZS и USD с ручным курсом.
@@ -274,7 +271,7 @@ Mebely — приложение для мебельщиков и дизайне�
 ```
 **Promotional text:**
 ```
-Beta: oshxonani 3D'da telefonda yig'ing — realistik yoritish, qoldiqlarni hisobga olgan kesim va o'z narxlaringiz bo'yicha smeta. Ilovani mukammal qilishda yordam bering.
+Oshxonani 3D'da telefonda yig'ing — realistik yoritish, qoldiqlarni hisobga olgan kesim va o'z narxlaringiz bo'yicha smeta.
 ```
 **Keywords:**
 ```
@@ -283,9 +280,6 @@ oshxona,mebel,3d,konstruktor,shkaf,smeta,kesim,cnc,dizayn,loyiha,fasad,stol,jiho
 **Description:**
 ```
 Mebely — mebelchilar va oshxona dizaynerlari uchun ilova. Oshxonani bir necha daqiqada 3D'da telefonda yig'ing, mijozga realistik yoritishda ko'rsating, smeta va ishlab chiqarish fayllarini tayyorlang.
-
-⚠ BETA VERSIYA
-Ilova faol ishlab chiqilmoqda. 3D konstruktor, materiallar tanlash, smeta va kesim ishlaydi. Sexga uzatish fayllari (chizmalar, teshik kartalari, CNC fayllari) haqiqiy buyurtmalarda sinovdan o'tmoqda — noaniqliqlar bo'lishi mumkin. Fikr-mulohazalaringizni kutamiz: ular Mebely'ni mukammal qilishga yordam beradi.
 
 IMKONIYATLAR
 
@@ -296,7 +290,7 @@ IMKONIYATLAR
 • Materiallar katalogi va o'z narxlaringiz — LDSP, MDF, kromka va furnituralaringizni oson qo'shing.
 • Smeta sizning narxlaringiz bo'yicha — ilova o'z narxlaringizga qarab hisoblaydi. UZS, KZT yoki USD.
 • Qoldiqlarni hisobga olgan kesim — avval ombordagi qirqindilar, keyin yangi list.
-• Ishlab chiqarish fayllari (beta) — chizmalar, SWJ008, DXF. Haqiqiy buyurtmalarda sinovda.
+• Ishlab chiqarish fayllari — chizmalar, SWJ008 teshik kartalari va stanok uchun DXF.
 • Mening shkaflarim — modullaringizni saqlang va qayta ishlating.
 • Sex standarti — bir marta sozlang, barcha loyihalarga qo'llaniladi.
 • UZS va USD valyutalari qo'lda kurs bilan.

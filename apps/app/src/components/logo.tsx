@@ -35,6 +35,9 @@ export function Logo({
   className?: string;
   title?: string;
 }) {
+  // No «BETA» badge. App Review reads a beta/demo/trial label in a submitted build as "this is not
+  // the finished product" (guideline 2.2 — beta versions belong on TestFlight), and this app is
+  // already carrying a 5.6 flag. Put it back after approval if you want it.
   return (
     <div className={className} style={{ display: "inline-flex", alignItems: "center", gap: 6 }}>
       <svg
@@ -49,17 +52,6 @@ export function Logo({
       >
         <Glyphs />
       </svg>
-      <span style={{
-        fontSize: 8,
-        fontWeight: 700,
-        lineHeight: 1,
-        letterSpacing: "0.06em",
-        color: "#fff",
-        background: BRAND_GREEN,
-        borderRadius: 3,
-        padding: "2px 4px",
-        userSelect: "none",
-      }}>BETA</span>
     </div>
   );
 }

@@ -154,7 +154,10 @@ const SPEC: Record<LightPreset, PresetSpec> = {
  * normal use; whatever wins here gets written back into SPEC above.
  */
 function urlTune(): Partial<PresetSpec> {
-  if (typeof location === "undefined") return {};
+  // DEV ONLY. `import.meta.env.DEV` is replaced by `false` in a production build, so this
+  // whole branch — and the URL read with it — is dropped from the shipped bundle. An app store
+  // reviewer must not be able to change how the app behaves with a query string.
+  if (!import.meta.env.DEV || typeof location === "undefined") return {};
   const q = new URLSearchParams(location.search);
   const n = (k: string): number | undefined => {
     const v = q.get(k);

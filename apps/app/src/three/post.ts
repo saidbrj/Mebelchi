@@ -30,7 +30,10 @@ import { SMAAPass } from "three/examples/jsm/postprocessing/SMAAPass.js";
 
 /** `?ssao=0` forces it off, `?ssao=1` forces it on regardless of tier — for the device test. */
 function forced(): boolean | null {
-  if (typeof location === "undefined") return null;
+  // DEV ONLY. `import.meta.env.DEV` is replaced by `false` in a production build, so this
+  // whole branch — and the URL read with it — is dropped from the shipped bundle. An app store
+  // reviewer must not be able to change how the app behaves with a query string.
+  if (!import.meta.env.DEV || typeof location === "undefined") return null;
   const v = new URLSearchParams(location.search).get("ssao");
   if (v == null) return null;
   return v !== "0" && v !== "false";
@@ -39,7 +42,7 @@ function forced(): boolean | null {
 /** `?aor=0.4` — the occlusion radius in METRES. How far from a surface we look for something blocking
  *  it: small = a tight dark line in the crevices, large = broad soft shading. */
 function radiusOverride(): number | null {
-  if (typeof location === "undefined") return null;
+  if (!import.meta.env.DEV || typeof location === "undefined") return null;
   const v = Number.parseFloat(new URLSearchParams(location.search).get("aor") ?? "");
   return Number.isFinite(v) ? v : null;
 }

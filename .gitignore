@@ -6,3 +6,9 @@ joint_decisions*.json
 dist/
 .vite/
 packages/*/dist/
+
+# Secrets. apps/app/.env.local holds a LIVE kie.ai key and the Supabase credentials — it was
+# untracked but unignored, so a single `git add -A` would have published it. `.example` stays.
+.env
+.env.*
+!.env.*.example

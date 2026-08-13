@@ -509,18 +509,6 @@ body {
 }
 
 /* ---- placeholder ---- */
-.ph-box {
-  margin-top: 20px;
-  height: 200px;
-  border: 1px dashed var(--line);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  color: var(--muted);
-  font: 600 14px var(--sans);
-  background: #fafafa;
-}
-
 /* ---- room design scene (Figma "12") ---- */
 .roomscene {
   flex: 1 1 auto;

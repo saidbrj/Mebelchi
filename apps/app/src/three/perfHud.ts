@@ -9,7 +9,9 @@ import type * as THREE from "three";
 
 /** `?perf=1` in the URL. */
 export const PERF_HUD =
-  typeof location !== "undefined" && new URLSearchParams(location.search).has("perf");
+  // DEV ONLY — folds to `false` in a production build, so the HUD and its URL read are dropped
+  // from the shipped bundle entirely.
+  import.meta.env.DEV && typeof location !== "undefined" && new URLSearchParams(location.search).has("perf");
 
 export interface PerfHud {
   /** call immediately AFTER renderer.render() */

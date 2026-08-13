@@ -20,7 +20,10 @@ import { Reflector } from "three/examples/jsm/objects/Reflector.js";
 
 /** `?refl=0.5` — how mirrored the floor is. Taste, and only judgeable by looking. */
 function strengthOverride(): number | null {
-  if (typeof location === "undefined") return null;
+  // DEV ONLY. `import.meta.env.DEV` is replaced by `false` in a production build, so this
+  // whole branch — and the URL read with it — is dropped from the shipped bundle. An app store
+  // reviewer must not be able to change how the app behaves with a query string.
+  if (!import.meta.env.DEV || typeof location === "undefined") return null;
   const v = Number.parseFloat(new URLSearchParams(location.search).get("refl") ?? "");
   return Number.isFinite(v) ? v : null;
 }
