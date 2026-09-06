@@ -133,3 +133,19 @@ export function catalogByColor(colorInt: number | undefined, part: EmanMaterial[
   if (colorInt == null) return undefined;
   return listMaterials().find((m) => m.part === part && hexToInt(m.color) === colorInt);
 }
+
+/**
+ * The decor a colour names, WHATEVER part it was filed under.
+ *
+ * `catalogByColor` asks "which worktop is this colour" — right when the colour came from the
+ * worktop picker. It is wrong for the wall panels: a фартук can be given any decor in the catalog
+ * («Свой»), so looking it up under "worktop" alone found nothing for an oak or a walnut and the
+ * panel fell back to tinted marble — the colour changed, the MATERIAL never did. `prefer` keeps the
+ * natural part first so a colour that exists in two lists still resolves the obvious way.
+ */
+export function catalogByColorAny(colorInt: number | undefined, prefer?: EmanMaterial["part"]): EmanMaterial | undefined {
+  if (colorInt == null) return undefined;
+  const hits = listMaterials().filter((m) => hexToInt(m.color) === colorInt);
+  if (!hits.length) return undefined;
+  return (prefer && hits.find((m) => m.part === prefer)) ?? hits.find((m) => m.tex) ?? hits[0];
+}

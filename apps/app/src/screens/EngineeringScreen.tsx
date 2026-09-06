@@ -4,7 +4,7 @@
 
 import { useMemo } from "react";
 import { useStore, type HwGrade } from "../store";
-import { useProduction } from "../pricing/usePrice";
+import { useProduction, useDesignPanels, useBackCutouts } from "../pricing/usePrice";
 import { useT } from "../i18n/useT";
 import { machiningReport, type Part } from "../model/machining";
 import { production, cabLabel } from "../model/cncExport";
@@ -47,7 +47,10 @@ export function EngineeringScreen() {
   // the shop's build conventions (hangers per carcass) — the hardware list must show what
   // this workshop actually fits, and a merged row hangs on one set, not one per cabinet
   const shop = useProduction();
-  const prod = useMemo(() => production(cabs, shop), [cabs, shop]);
+  // the flat wall panels ride with the run — the engineering readout counts real boards
+  const wallPanels = useDesignPanels();
+  const backCuts = useBackCutouts();
+  const prod = useMemo(() => production(cabs, shop, wallPanels, backCuts), [cabs, shop, wallPanels, backCuts]);
 
   const GRADES: { id: HwGrade; name: string; note: string }[] = [
     { id: "eco", name: t.eng.gradeEco, note: t.eng.gradeEcoNote },

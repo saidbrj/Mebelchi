@@ -7,8 +7,10 @@
 // logic that walks it in @mebelchi/pricing, because production has to read the same tree the 3D
 // draws. This file re-exports both so the view layer's imports are unchanged.
 
-import type { Cell, CombinedDoor, DoorOpening, HandlePos, FrontProfile } from "@mebelchi/schema";
+import type { Cell, CombinedDoor, DoorOpening, HandlePos, FrontProfile, PanelPart, PanelOverride } from "@mebelchi/schema";
 import { deriveLayout, cellSizes, isLeaf, evenFractions, defaultHandlePos, frontOf, mullionsFor } from "@mebelchi/pricing";
+// type-only, so the sink model can import Cabinet back without a runtime cycle
+import type { SinkSpec } from "./sink";
 
 export type { Cell, CombinedDoor, DoorOpening, HandlePos, FrontProfile };
 export { cellSizes, isLeaf, evenFractions, defaultHandlePos, frontOf, mullionsFor };
@@ -99,6 +101,15 @@ export interface Cabinet {
   handlePos?: HandlePos;
   /** Built-in appliance this module carries (sink/hob/fridge…), default none. */
   appliance?: ApplianceKind;
+  /** THE SINK — how its bowl meets the counter, and how big it is. Only the EDITS are stored, so a
+   *  spec that grows a field does not have to migrate every project. Absent → the shop default
+   *  (model/sink.ts `DEFAULT_SINK`); read it through `sinkOf(c)`, never directly, because a
+   *  project saved before this existed still has a sink. */
+  sink?: Partial<SinkSpec>;
+  /** PER-ROLE PANEL OVERRIDES — depth today, material and edge banding next. Keyed by what a panel
+   *  IS (schema `PanelPart`), because a shop decides that SHELVES are 500, not that this one is.
+   *  Read it through `panelDepthOf(c, part)`, never directly. */
+  panels?: Partial<Record<PanelPart, PanelOverride>>;
   /** Height of appliance opening (mm, e.g. 580). Default 580. */
   applianceH?: number;
   /** Height of bottom edge of appliance above floor (mm, e.g. 850). Default 850. */
@@ -137,6 +148,20 @@ export interface Cabinet {
    *  wall units as well as base ones. Absent → the historic default, which was hardcoded off the
    *  kind: a wall unit was always diagonal, a base one always L. */
   cornerShape?: "diagonal" | "l" | "outer";
+  /** WHICH WAY THE GRAIN RUNS on THIS module's fronts, overriding the kitchen-wide setting.
+   *  A wide drawer bank is often laid across while the doors beside it run up. Absent → the
+   *  kitchen's `KitchenStyle.grainHorizontal`. */
+  grainHorizontal?: boolean;
+  /** HOW MANY LEAVES an L-shaped corner unit carries.
+   *
+   *  `single` is one L-shaped door hinged at one outer end — cheap, and what this app used to build
+   *  unconditionally. `pair` is two ordinary doors, one on each arm, each hinged at ITS OWN outer
+   *  end and opening its own way. That second body is at least as common in real shops: two small
+   *  leaves need no clearance for a metre-wide L to sweep through, and an L-shaped door is an
+   *  awkward thing to cut, edge and hang. Absent → `single`, so nothing already drawn changes.
+   *
+   *  Only meaningful on `cornerShape: "l"` — a diagonal corner has ONE face, so it has one door. */
+  cornerDoors?: "single" | "pair";
   /** OUTER corner only — a world point (mm) the cut corner looks toward, so the angled face lands on
    *  the EXPOSED front corner (the open end of the run) instead of the room-centre one, which is
    *  right for inner corners but meaningless for an end unit. Set when the unit is seated; absent →
@@ -198,7 +223,7 @@ export interface Cabinet {
   topMode?: "full" | "stretchers" | "none";
   /** Base support: a `box` plinth, `sides` (the side panels run to the floor), or `legs`.
    *  Absent → "box". Render-only for now (see the V21 construction editor). */
-  plinthMode?: "box" | "sides" | "legs";
+  plinthMode?: "box" | "sides" | "legs" | "none";
   /** HANDLELESS / GOLA — an aluminium profile replaces handles. Presence enables it; the object
    *  tunes the profile geometry (absent fields use GOLA_DEFAULTS). The profiles, the front grip gaps
    *  and the side-panel notches are all DERIVED from the layout by model/gola.ts. */

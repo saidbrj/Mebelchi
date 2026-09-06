@@ -157,7 +157,14 @@ export const DEFAULT_SETTINGS: Settings = {
   currency: "UZS",
   fxRates: { ...DEFAULT_FX_RATES },
   language: "uz", // Uzbekistan market default; user can switch to Русский in Настройки
-  showPricing: false,
+  // ON by default. This was deliberately opt-in so a seller never showed a client a price
+  // computed from rates they hadn't set yet — but the App Store listing advertises «Смета по
+  // вашим ценам» and «Мультивалютность», and with this false the Смета step is stripped out of
+  // FLOW (store.ts) AND out of the progress menu (Menu.tsx). An advertised feature that is
+  // entirely absent from the UI on a fresh install is, from App Review's seat, a feature hidden
+  // during review — guideline 5.6. The default rate table (DEFAULT_RATE_OVERRIDES) produces a
+  // sensible estimate, and the seller can still turn this off in Настройки.
+  showPricing: true,
   pricingItems: true, // the itemised calc is the default mode when pricing is shown
   pricingSqm: false,
   sqmRate: DEFAULT_SQM_RATE,
@@ -171,7 +178,10 @@ export const DEFAULT_SETTINGS: Settings = {
   hangingSpanMm: 0, // one set per box however wide — the mounting-rail build
   jointFamily: "confirmat",
   jointSetbackMm: 65,
-  advancedExport: false,
+  // ON, for the same reason as showPricing above: the listing advertises «карты сверловки
+  // SWJ008 и DXF для станка», and this gates exactly that output in HandoffScreen. Advertised
+  // and invisible-on-a-fresh-install is the pattern that reads as a hidden feature.
+  advancedExport: true,
   quality: "auto",
 };
 

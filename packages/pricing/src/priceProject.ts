@@ -46,7 +46,10 @@ function resolveRate(
     }
     case "hardware": {
       const h = hardwareBySku.get(line.ref);
-      return h ? h.pricePerUnit : missingRate(line.kind, line.ref);
+      if (!h) return missingRate(line.kind, line.ref);
+      // hardware sold off a reel is priced by the metre, and the LINE's unit is what says so
+      if (line.unit === "m") return h.pricePerM ?? missingRate(line.kind, line.ref);
+      return h.pricePerUnit;
     }
     case "operation": {
       const r = numberField(rates.operations, line.ref);

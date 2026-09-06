@@ -125,6 +125,61 @@ export interface KitchenStyle {
   worktop: number;
   handle: number;
   glassUppers: boolean;
+  /** WHICH WAY THE GRAIN RUNS on the fronts. Absent / false = vertical, which is how a door is
+   *  normally hung; true lays the board across, which is what a wide drawer bank often wants.
+   *  Optional so every project saved before the fronts were slab-mapped still loads. */
+  grainHorizontal?: boolean;
+  /** HOW THIS SHOP BUILDS ITS L CORNERS — one L-shaped leaf, or two doors opening opposite ways.
+   *  A shop does all of them the same way, so it is a kitchen-wide default; a single module can
+   *  still differ via `Cabinet.cornerDoors`. Absent → "single", the historic body. */
+  cornerDoors?: "single" | "pair";
+}
+
+/**
+ * WHAT THE KITCHEN IS ACTUALLY MADE OF.
+ *
+ * `KitchenStyle` is the run-wide finish, but the material picker's «Применить ко всем» writes a
+ * per-cabinet `finish` and never touches it — so a kitchen whose fronts are all walnut can still
+ * carry a `style.facade` of the pale oak it was generated with. Anything that has to MATCH the
+ * cabinets (the ceiling-closing panel takes the fronts' decor, the plane under the wall units takes
+ * the carcass) has to ask what they are wearing, not what the run was born with.
+ *
+ * The tally is the same question `catalogRates.dominantMaterial` asks to price the kitchen — most
+ * common value wins, appliances excluded, because a fridge's steel panel is not a statement about
+ * the facade.
+ */
+export function effectiveStyle(cabs: Cabinet[], style: KitchenStyle): KitchenStyle {
+  if (!cabs.length) return style;
+  const dominant = (part: "facade" | "carcass" | "worktop", fallback: number): number => {
+    // count what each module WEARS — an explicit override, or the run style it inherits
+    const tally = new Map<number, { n: number; picked: boolean }>();
+    for (const c of cabs) {
+      if (c.furniture || (c.appliance && c.appliance !== "none" && c.appliance !== "filler")) continue;
+      const picked = c.finish?.[part] != null;
+      const v = c.finish?.[part] ?? fallback;
+      const e = tally.get(v) ?? { n: 0, picked: false };
+      tally.set(v, { n: e.n + 1, picked: e.picked || picked });
+    }
+    // Majority wins, and a TIE goes to the decor somebody actually chose. Without that rule a
+    // kitchen where half the modules were re-finished keeps the colour nobody asked for.
+    let best = fallback;
+    let bestN = -1;
+    let bestPicked = false;
+    for (const [v, e] of tally) {
+      if (e.n > bestN || (e.n === bestN && e.picked && !bestPicked)) {
+        bestN = e.n;
+        best = v;
+        bestPicked = e.picked;
+      }
+    }
+    return best;
+  };
+  return {
+    ...style,
+    facade: dominant("facade", style.facade),
+    carcass: dominant("carcass", style.carcass),
+    worktop: dominant("worktop", style.worktop),
+  };
 }
 
 export interface GenVariant {

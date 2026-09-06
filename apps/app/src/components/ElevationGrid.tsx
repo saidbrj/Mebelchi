@@ -22,6 +22,9 @@ import type { Cabinet } from "../model/cabinet";
 import { resolveLayout, wallFeatures, type Room, type ResolvedCab } from "../model/resolve";
 import { colEdges, rowEdges, ROW_MIN, type WallGrid, type CellRef, type RowKind } from "../model/grid";
 import { openCells, inSheet } from "../model/sheet";
+import { wallPanels, type PanelSpecs, type PanelBand } from "../model/wallPanels";
+import { ledStrips, type LedSpec } from "../model/ledStrips";
+import type { KitchenStyle } from "../model/layout";
 import type { Fitting } from "../model/room";
 import { C, moduleLocal, interiorLocal } from "./elevationDraw";
 import { useSvgZoom } from "./useSvgZoom";
@@ -82,6 +85,9 @@ export function ElevationGrid({
   fittings,
   run,
   ceiling,
+  panels,
+  led,
+  style,
   selectedId,
   selectedIds,
   mode = "real",
@@ -104,6 +110,15 @@ export function ElevationGrid({
   fittings: Fitting[];
   run: number;
   ceiling: number;
+  /** THE ФАРТУК + the ceiling closer + the plane under the wall units. The elevation is where a
+   *  seller does most of the editing, so a panel that only ever appeared in the 3D was, from here,
+   *  a switch that did nothing. Omitted → none drawn. */
+  panels?: PanelSpecs;
+  /** THE LED SPEC. Drawn here as well as in the 3D on purpose: this is the surface a seller
+   *  actually works on, and a switch whose effect is only visible in another view reads as broken. */
+  led?: LedSpec;
+  /** the kitchen's finish — the panels take their colour from it (model/wallPanels panelColor) */
+  style?: KitchenStyle;
   selectedId: string | null;
   /** the whole selection set — every member is highlighted, so a multi-select reads in the front view
    *  exactly as it does in the 3D. Falls back to `selectedId` when absent. */
@@ -134,6 +149,18 @@ export function ElevationGrid({
   // ── THE MODEL ─────────────────────────────────────────────────────────────────────
   const L = useMemo(() => resolveLayout(cabs, room), [cabs, room]);
   const cells = useMemo(() => L.elevation(run), [L, run]);
+  // the SAME derivation the 3D and the quote read — the elevation draws it, it does not re-decide it
+  const bands = useMemo(
+    () =>
+      panels && style
+        ? wallPanels({ L, ceiling, specs: panels, style, openings: room.openings, fittings }).filter((b) => b.run === run)
+        : ([] as PanelBand[]),
+    [panels, style, L, ceiling, room.openings, fittings, run],
+  );
+  const strips = useMemo(
+    () => (led ? ledStrips(L, led).filter((x) => x.run === run) : []),
+    [led, L, run],
+  );
   const wallLen = grid?.wallLen ?? L.wallLen(run);
 
   // each band's own column edges, and the row edges
@@ -463,6 +490,74 @@ export function ElevationGrid({
         {ys.map((y, j) => (
           <line key={`h${j}`} x1={0} y1={Y(y)} x2={wallLen} y2={Y(y)} stroke={GRID} strokeWidth={2 * s} />
         ))}
+      </g>
+
+      {/* ── THE FLAT PANELS ── the фартук, the strip to the ceiling, the plane under the wall
+          units. Drawn BEFORE the modules so the cabinets paint over them, which is the real
+          stacking: the panel is on the wall and the box stands in front of it. */}
+      <g opacity={alpha} pointerEvents="none">
+        {bands.map((b, i) => {
+          const hex = `#${b.color.toString(16).padStart(6, "0")}`;
+          return (
+            <g key={`pan${i}`}>
+              <rect
+                x={b.x0}
+                y={Y(b.y1)}
+                width={b.x1 - b.x0}
+                height={b.y1 - b.y0}
+                fill={wire ? "none" : hex}
+                stroke={wire ? WIRE_LINE : C.facadeLine}
+                strokeWidth={(wire ? 2 : 1.5) * s}
+              />
+              {/* the sockets it is cut around — a hole in the drawing, because it is a hole in the
+                  panel, and the shop has to see it before it cuts */}
+              {b.cuts.map((c) => (
+                <rect
+                  key={c.id}
+                  x={b.x0 + c.x}
+                  y={Y(b.y0 + c.y + c.h)}
+                  width={c.w}
+                  height={c.h}
+                  fill={wire ? "none" : "#fff"}
+                  stroke={wire ? WIRE_LINE : FITL}
+                  strokeWidth={1.5 * s}
+                />
+              ))}
+            </g>
+          );
+        })}
+      </g>
+
+      {/* ── THE LIGHT ── a lit line under the wall units, along the plinth, over the cornice. Drawn
+          at its own colour with a soft halo under it, because at this scale a 10mm strip is a
+          hairline and a hairline reads as a drawing artefact rather than as light. */}
+      <g opacity={alpha} pointerEvents="none">
+        {strips.map((st, i) => {
+          const hex = `#${st.color.toString(16).padStart(6, "0")}`;
+          return (
+            <g key={`led${i}`}>
+              <line
+                x1={st.x0}
+                y1={Y(st.y)}
+                x2={st.x1}
+                y2={Y(st.y)}
+                stroke={hex}
+                strokeWidth={22 * s}
+                strokeLinecap="round"
+                opacity={0.28}
+              />
+              <line
+                x1={st.x0}
+                y1={Y(st.y)}
+                x2={st.x1}
+                y2={Y(st.y)}
+                stroke={wire ? WIRE_LINE : hex}
+                strokeWidth={7 * s}
+                strokeLinecap="round"
+              />
+            </g>
+          );
+        })}
       </g>
 
       {/* ── THE MODULES ── */}

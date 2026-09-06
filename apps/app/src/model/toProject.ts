@@ -4,12 +4,122 @@
 // entries; that's where a real material→SKU mapping will later plug in.
 
 import { priceProject, seedRateTable, groupCarcasses, DEFAULT_PRODUCTION } from "@mebelchi/pricing";
-import type { Project, Module, MaterialSelection, ProductionOpts, Quote, QuoteGroup, RateTable } from "@mebelchi/schema";
+import type { Project, Module, MaterialSelection, ProductionOpts, Quote, QuoteGroup, RateTable, FlatPanel, ProjectLighting, WorktopCut } from "@mebelchi/schema";
 import type { AppState } from "../store";
-import { cabinetInterior, frontOf, type Cabinet } from "./cabinet";
+import { cabinetInterior, frontOf, type Cabinet, type Cell } from "./cabinet";
 import { cabDepth } from "./resolve";
+import { isFloating } from "./bands";
 import { productionFrom } from "./settings";
 import { hardeningPresets } from "./reinforce";
+import { resolveLayout, type ResolvedLayout } from "./resolve";
+import { effectiveStyle } from "./layout";
+import { catalogByColorAny } from "./catalog";
+import { wallPanels, panelW, panelH, type PanelBand } from "./wallPanels";
+import { ledStrips, ledMetres, psuCount } from "./ledStrips";
+import { worktopCuts } from "./sink";
+
+/** Which stock a derived band is cut from. The фартук follows its decor: «как столешница» really is
+ *  the counter slab, so it bills like one; a facade/carcass decor is sheet goods. A closer is always
+ *  the fronts' board. */
+function stockOf(b: PanelBand, decor: string): FlatPanel["stock"] {
+  if (b.kind === "closer") return "facade";
+  return decor === "carcass" ? "carcass" : decor === "worktop" ? "worktop" : "facade";
+}
+
+/** What deriving the wall panels actually needs. Spelled out rather than taking `AppState`, so the
+ *  ticker's hook can assemble one from the slices it subscribes to (and so this stays testable).
+ *  `AppState` satisfies it structurally, which is why `toProject(s)` can still just pass `s`. */
+export interface PanelInput {
+  cabs: Cabinet[];
+  roomPoints: AppState["roomPoints"];
+  waterWall: AppState["waterWall"];
+  runLayout: AppState["runLayout"];
+  openings: AppState["openings"];
+  reveal: number;
+  ceiling: number;
+  fittings: AppState["fittings"];
+  splash: AppState["splash"];
+  closer: AppState["closer"];
+  underside: AppState["underside"];
+  led: AppState["led"];
+  runStyle: AppState["runStyle"];
+}
+
+/** THE DERIVED BANDS, plus the layout they were measured against.
+ *
+ *  Separate from `panelsFor` because two very different consumers need this: the quote wants the
+ *  priceable flat panels, while the PDF elevation wants the geometry — and the drawing measures
+ *  from the RUN's zero, so it also needs the layout to convert. Deriving twice would be two answers
+ *  to one question. */
+export function bandsFor(s: PanelInput): { L: ResolvedLayout; bands: PanelBand[] } | null {
+  const cabs = s.cabs.filter((c) => !c.furniture);
+  if (!cabs.length) return null;
+  const L = resolveLayout(cabs, {
+    points: s.roomPoints,
+    waterWall: s.waterWall,
+    layout: s.runLayout,
+    openings: s.openings,
+    reveal: s.reveal,
+  });
+  const bands = wallPanels({
+    L,
+    ceiling: s.ceiling,
+    specs: { splash: s.splash, closer: s.closer, underside: s.underside },
+    style: effectiveStyle(cabs, s.runStyle),
+    openings: s.openings,
+    fittings: s.fittings,
+  });
+  return { L, bands };
+}
+
+/**
+ * THE LIGHT BUILT INTO THE CABINETRY, measured.
+ *
+ * The engine prices metres and counts; it has no idea where a cabinet is, and the layout is exactly
+ * what decides how much strip there is. So the measuring happens here — the same split `panelsFor`
+ * makes for the flat panels.
+ *
+ * The PROFILE is the same length as the strip: it is the channel the strip sits in, not an extra.
+ * One SENSOR per lit run, when they were asked for — that is what a sensor switches.
+ */
+export function lightingFor(s: PanelInput): ProjectLighting | undefined {
+  const derived = bandsFor(s);
+  if (!derived) return undefined;
+  const strips = ledStrips(derived.L, s.led);
+  if (!strips.length) return undefined;
+  const metres = ledMetres(strips);
+  return {
+    metres: round(metres),
+    profileM: round(metres),
+    psu: psuCount(metres),
+    sensors: s.led.sensor ? new Set(strips.map((x) => x.run)).size : 0,
+  };
+}
+
+const round = (m: number) => Math.round(m * 100) / 100;
+
+/** The derived wall panels, as the priceable flat panels the BOM charges for. */
+export function panelsFor(s: PanelInput): FlatPanel[] {
+  const derived = bandsFor(s);
+  if (!derived) return [];
+  return derived.bands
+    // the underside plane is a DRAWING of the bottom boards the modules already bill, not another
+    // panel — pricing it here would charge the row's bottom twice
+    .filter((b): b is PanelBand & { kind: "splash" | "closer" } => b.kind !== "underside")
+    .map((b, i) => ({
+    id: `panel-${b.kind}-${i}`,
+    kind: b.kind,
+    w: Math.round(panelW(b)),
+    h: Math.round(panelH(b)),
+    t: b.t,
+    stock: stockOf(b, s.splash.decor),
+    decor: catalogByColorAny(b.color)?.name,
+    wall: b.run + 1,
+    cutouts: b.cuts.length
+      ? b.cuts.map((c) => ({ x: Math.round(c.x), y: Math.round(c.y), w: Math.round(c.w), h: Math.round(c.h), label: c.label }))
+      : undefined,
+  }));
+}
 
 const HANDLE_TYPE = ["bar", "profile", "knob", "none"] as const;
 
@@ -77,7 +187,27 @@ function inBuildOrder(cabs: Cabinet[]): Cabinet[] {
   return out;
 }
 
-export function cabToModule(c: Cabinet): Module {
+/** A two-leaf corner's interior, for pricing.
+ *
+ *  The 3D builds an L corner's doors itself (three/kitchen3d), so nothing about the cell tree
+ *  reaches that geometry. But the QUOTE reads the tree — `cutFronts` counts leaves and
+ *  `hingeCount` hinges off it — and a corner with two doors on it really is two doors and two sets
+ *  of hinges. Without this the pair would be drawn and billed as one leaf.
+ *
+ *  Split down the middle: the two arms of an L corner are the same length by construction. */
+function cornerPairLayout(c: Cabinet, kitchen: "single" | "pair" = "single"): Cell | null {
+  if (!c.corner || (c.cornerDoors ?? kitchen) !== "pair" || (c.cornerShape ?? "l") !== "l") return null;
+  // each arm is its own door leaf — that is the whole difference from the single L-shaped one
+  return {
+    split: "cols",
+    children: [
+      { front: "door", opening: "left" },
+      { front: "door", opening: "right" },
+    ],
+  };
+}
+
+export function cabToModule(c: Cabinet, cornerDoors: "single" | "pair" = "single"): Module {
   return {
     id: c.id,
     kind: c.kind,
@@ -86,6 +216,12 @@ export function cabToModule(c: Cabinet): Module {
     // canonical depth — this used to ignore `c.depth`, so a 400mm-deep base was PRICED and
     // CUT as 560 (the plan + 3D honoured the override, pricing didn't)
     d: cabDepth(c),
+    // WHAT CARRIES IT. A base lifted off the floor hangs on навесы like a wall unit does, and the
+    // quote has to buy them — see model/bands.ts `isFloating`.
+    ...(isFloating(c) ? { hung: true } : {}),
+    // per-role panel overrides travel to the engine, so the cut list orders the shallow shelf the
+    // 3D draws (packages/pricing parts.ts `panelDepth`)
+    ...(c.panels && Object.keys(c.panels).length ? { panels: c.panels } : {}),
     fill: c.fill,
     count: c.count,
     dividers: c.div,
@@ -97,7 +233,7 @@ export function cabToModule(c: Cabinet): Module {
     // tree otherwise — so pricing sees the same interior every view draws. Without this, a cabinet
     // edited in the Fill Editor was priced and cut from its STALE pre-edit `fill`/`count` (the
     // editor only ever patches `layout`).
-    layout: cabinetInterior(c),
+    layout: cornerPairLayout(c, cornerDoors) ?? cabinetInterior(c),
     combinedDoors: c.combinedDoors,
     // SHARED CARCASS — modules carrying the same tag are built (and priced) as one box. Without
     // this line the merge toggle would change the 3D and nothing else: the quote, the cut list and
@@ -111,7 +247,14 @@ export function cabToModule(c: Cabinet): Module {
 
 /** Shared Project skeleton — pricing reads only `run` + `materials` + `production`, so a neutral
  *  space is fine when we just need a quote (e.g. previewing a variant's cabs). */
-function makeProject(run: Module[], space: Project["space"], prod: ProductionOpts = DEFAULT_PRODUCTION): Project {
+function makeProject(
+  run: Module[],
+  space: Project["space"],
+  prod: ProductionOpts = DEFAULT_PRODUCTION,
+  panels: FlatPanel[] = [],
+  lighting?: ProjectLighting,
+  cuts: WorktopCut[] = [],
+): Project {
   const now = new Date().toISOString();
   return {
     id: "local-project",
@@ -123,6 +266,9 @@ function makeProject(run: Module[], space: Project["space"], prod: ProductionOpt
     schemaVersion: 1,
     space,
     run,
+    ...(panels.length ? { panels } : {}),
+    ...(lighting ? { lighting } : {}),
+    ...(cuts.length ? { worktopCuts: cuts } : {}),
     materials: pickMaterials(),
     // HOW THIS SHOP BUILDS A BOX (hangers per carcass, hanger span). Travels on the project, so a
     // quote reprices under the conventions it was quoted with.
@@ -140,9 +286,11 @@ export function toProject(s: AppState): Project {
   // does not reinforce a kitchen, it reinforces a SHELF, and only because the shelf is too wide to
   // carry a load. That is a fact about the span, so every shelf that needs it gets it and nothing
   // else does. `s.hardened` is no longer read; old projects still carry the field harmlessly.
+  const cornerDoors = s.runStyle.cornerDoors ?? "single";
   const run = cabs.map((c) => {
     const hardening = hardeningPresets(c);
-    return hardening ? { ...cabToModule(c), hardening } : cabToModule(c);
+    const m = cabToModule(c, cornerDoors);
+    return hardening ? { ...m, hardening } : m;
   });
   return makeProject(
     run,
@@ -157,23 +305,43 @@ export function toProject(s: AppState): Project {
         .filter((x): x is NonNullable<typeof x> => Boolean(x)),
     },
     productionFrom(s.settings),
+    panelsFor(s),
+    lightingFor(s),
+    worktopCuts(cabs),
   );
 }
 
 /** A priceable Project from a bare cabinet run (no room state) — used to quote the
  *  generated Phase-B variants before one is committed to the editable run. */
-export function projectFromCabs(cabs: Cabinet[], prod: ProductionOpts = DEFAULT_PRODUCTION): Project {
+export function projectFromCabs(
+  cabs: Cabinet[],
+  prod: ProductionOpts = DEFAULT_PRODUCTION,
+  panels: FlatPanel[] = [],
+  lighting?: ProjectLighting,
+): Project {
+  const real = inBuildOrder(cabs.filter((c) => !c.furniture));
   return makeProject(
-    inBuildOrder(cabs.filter((c) => !c.furniture)).map(cabToModule),
+    real.map((c) => cabToModule(c)),
     { source: "manual", shape: "i", wallLength: 0, ceilingHeight: 2700, waterWall: "none", constraints: [] },
     prod,
+    panels,
+    lighting,
+    // DERIVED FROM THE CABS, not passed in: a sink's opening is a fact about the sink, so every
+    // caller that prices a run gets it without having to remember to ask for it.
+    worktopCuts(real),
   );
 }
 
 /** Total price of a cabinet run against the seller's rate table (falls back to the seed
  *  when none is passed — e.g. non-reactive callers). Returns USD (the base currency). */
-export function priceCabs(cabs: Cabinet[], rates: RateTable = seedRateTable, prod: ProductionOpts = DEFAULT_PRODUCTION): number {
-  return cabs.length ? priceProject(projectFromCabs(cabs, prod), rates).total : 0;
+export function priceCabs(
+  cabs: Cabinet[],
+  rates: RateTable = seedRateTable,
+  prod: ProductionOpts = DEFAULT_PRODUCTION,
+  panels: FlatPanel[] = [],
+  lighting?: ProjectLighting,
+): number {
+  return cabs.length ? priceProject(projectFromCabs(cabs, prod, panels, lighting), rates).total : 0;
 }
 
 /** Total facade (front) area of the cabinetry in m² — width×height of every module,
@@ -221,10 +389,15 @@ export function costBreakdown(
   cabs: Cabinet[],
   rates: RateTable = seedRateTable,
   prod: ProductionOpts = DEFAULT_PRODUCTION,
+  panels: FlatPanel[] = [],
+  lighting?: ProjectLighting,
 ): { quote: Quote; perBox: BoxCost[] } | null {
   const real = cabs.filter((c) => !c.furniture);
   if (!real.length) return null;
-  const project = projectFromCabs(real, prod);
+  // the panels and the lighting ride on the WHOLE-project quote only. `perBox` below prices each
+  // carcass on its own, and a фартук — or a strip running the length of a row — belongs to no one
+  // carcass; charging it to one would be an invented line on that box.
+  const project = projectFromCabs(real, prod, panels, lighting);
   const quote = priceProject(project, rates);
 
   const byId = new Map(real.map((c) => [c.id, c]));

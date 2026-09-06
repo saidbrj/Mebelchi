@@ -2347,6 +2347,20 @@ body {
   background: #fff;
 }
 
+/* The browser's spinner arrows reserve ~14px inside a 58px field, so a 4-digit value (a 1000mm
+   height, an 800mm gap limit) was clipped on the right. Nobody taps a spinner on a phone — the
+   slider beside it IS the coarse control — so drop them, exactly as .qb-num does. */
+.dim-num {
+  appearance: textfield;
+  -moz-appearance: textfield;
+}
+
+.dim-num::-webkit-outer-spin-button,
+.dim-num::-webkit-inner-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
 .dim-num.wide {
   flex-basis: 84px;
   width: 84px;
@@ -2513,6 +2527,49 @@ body {
   font-size: 13px;
   font-weight: 600;
   white-space: nowrap;
+}
+
+/* ── ОТДЕЛКА sheet — the фартук + the strip to the ceiling ───────────────── */
+/* Each is a switch with its own one-line explanation: neither is a term every seller
+   uses the same way, and a bare toggle labelled «Фартук» teaches nothing. */
+.fin-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 14px;
+  padding: 12px 0;
+}
+
+.fin-label {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  min-width: 0;
+}
+
+.fin-name {
+  font-size: 15px;
+  font-weight: 600;
+  color: #2b2f36;
+}
+
+.fin-sub {
+  font-size: 12.5px;
+  line-height: 1.35;
+  color: #8b929c;
+}
+
+.fin-sep {
+  height: 1px;
+  background: var(--line);
+  margin: 8px 0 4px;
+}
+
+/* the live readout under «Закрывать щель до» — what this kitchen's gap actually is */
+.fin-note {
+  font-size: 13px;
+  color: #8b929c;
+  padding: 2px 0 10px;
 }
 
 .style-applyall {
@@ -8338,8 +8395,13 @@ body {
   display: flex;
   background: #f5f5f5;
   border-radius: 22px 22px 0 0;
-  margin: 0 -12px calc(-10px - env(safe-area-inset-bottom));
-  padding: 14px;
+  /* The safe-area inset is PADDING, never a negative margin. It used to be a negative margin
+     cancelling .rnd-bar's own padding; that padding was later removed, leaving the margin to drag
+     the bar off the bottom of the screen by 10px + the inset. On Android that inset is the system
+     navigation bar (edge-to-edge is mandatory from targetSdk 35), so the labels landed underneath
+     it and the buttons stopped taking taps. As padding it does the opposite: it lifts the row
+     clear of the nav bar / home indicator on both platforms, and is 0 where there is neither. */
+  padding: 14px 14px calc(14px + env(safe-area-inset-bottom));
 }
 
 .rnd-tab {
@@ -8872,4 +8934,25 @@ body {
     border-left: 1px solid #e2e8f0 !important;
     border-top: none !important;
   }
+}
+/* THE LIGHT'S OWN COLOUR, on the temperature chips. A number in kelvin means nothing to most
+   people; the dot beside it is the actual answer to what they are choosing. */
+.led-dot {
+  display: inline-block;
+  width: 10px;
+  height: 10px;
+  border-radius: 50%;
+  margin-right: 6px;
+  vertical-align: -1px;
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.12), 0 0 6px currentColor;
+}
+
+/* A dimension row that carries a SWITCH rather than a slider — «На весу». The label and icon keep
+   the slider rows' rhythm so the toggle reads as one of the dimensions, which is what it is. */
+.dim-row.dim-toggle {
+  justify-content: flex-start;
+  gap: 10px;
+}
+.dim-row.dim-toggle .dim-lbl {
+  flex: 1;
 }

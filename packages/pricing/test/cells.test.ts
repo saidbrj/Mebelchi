@@ -131,12 +131,14 @@ function reachable(): Module[] {
 
 /** The panels as the SAW sees them — provenance stripped.
  *
- *  `moduleId` says which cabinet inside a merged box a panel belongs to; it is bookkeeping for the
- *  cut list, not a property of the part. `legacyPanels` below is a verbatim copy of the pre-tree
- *  code and predates the field, so parity is asserted on the geometry, which is the thing that must
- *  never move. */
+ *  `moduleId` says which cabinet inside a merged box a panel belongs to, and `part` restates what
+ *  the panel already IS in a typed form (the key per-role overrides hang off). Both are bookkeeping
+ *  about the part rather than properties of it. `legacyPanels` below is a verbatim copy of the
+ *  pre-tree code and predates both, so parity is asserted on the GEOMETRY — the thing that must
+ *  never move. A new field here is a deliberate addition; a moved dimension is a regression. */
 const cut = (panels: ReturnType<typeof modulePanels>) =>
-  panels.map(({ moduleId, ...p }) => p); // eslint-disable-line @typescript-eslint/no-unused-vars
+  // eslint-disable-next-line @typescript-eslint/no-unused-vars
+  panels.map(({ moduleId, part, ...p }) => p);
 
 describe("cell tree — parity with the pre-tree decomposition", () => {
   const shapes = reachable();

@@ -10,7 +10,7 @@ import { useStore } from "../store";
 import { useT } from "../i18n/useT";
 import { costBreakdown, facadeAreaM2, sqmPrice } from "../model/toProject";
 import { useMoney } from "../useMoney";
-import { useRateTable, useProduction } from "../pricing/usePrice";
+import { useRateTable, useProduction, useDesignPanels, useDesignLighting } from "../pricing/usePrice";
 import type { Cabinet } from "../model/cabinet";
 import type { QuoteGroup } from "@mebelchi/schema";
 
@@ -29,7 +29,14 @@ export function CostScreen() {
   const both = showItems && showSqm;
 
   const prod = useProduction();
-  const data = useMemo(() => (showItems ? costBreakdown(cabs, rates, prod) : null), [cabs, rates, prod, showItems]);
+  // the фартук and the strip to the ceiling are real material on this quote, so the Смета has to
+  // carry them — they are not cabinets, so nothing in `cabs` would have accounted for them
+  const panels = useDesignPanels();
+  const lighting = useDesignLighting();
+  const data = useMemo(
+    () => (showItems ? costBreakdown(cabs, rates, prod, panels, lighting) : null),
+    [cabs, rates, prod, panels, lighting, showItems],
+  );
   const real = useMemo(() => cabs.filter((c) => !c.furniture), [cabs]);
   const facadeM2 = useMemo(() => facadeAreaM2(cabs), [cabs]);
   const sqmTotal = sqmPrice(cabs, settings.sqmRate);

@@ -10,6 +10,7 @@
 import { cabinetLayout, cellSizes, isLeaf, frontOf, type Cabinet, type Cell, type FinishKey, type HandlePos, type FrontProfile } from "../model/cabinet";
 import { innerRect, mullionsFor, FLUTE_PITCH_MM, MULLION_MM } from "@mebelchi/pricing";
 import { GEOM } from "../model/layout";
+import { isFloating } from "../model/bands";
 
 /** a module's per-part finish colour (set in the editor) as a CSS hex, else fallback. In «Линии»
  *  the drawing is pure black-and-white, so a chosen facade/carcass colour is ignored — the fallback
@@ -206,8 +207,12 @@ export function moduleLocal(c: Cabinet, mountY: number, extLeft = 0, extRight = 
     return n;
   }
   if (c.kind === "tall") {
-    const b: Box = { x: 0, y: GEOM.plinth, w: c.w, h: c.h };
-    n.push(<rect key="pl" x={0} y={0} width={c.w} height={GEOM.plinth} fill={P.plinth} {...bandStroke} />);
+    // A HUNG BOX HAS NO PLINTH — it is drawn in its own frame from its bottom, and lifted off the
+    // floor that bottom IS the carcass. Drawing the toe-kick anyway would put a band of it inside
+    // the box (model/bands.ts `isFloating`).
+    const foot = isFloating(c) ? 0 : GEOM.plinth;
+    const b: Box = { x: 0, y: foot, w: c.w, h: c.h };
+    if (foot) n.push(<rect key="pl" x={0} y={0} width={c.w} height={foot} fill={P.plinth} {...bandStroke} />);
     if (c.appliance === "fridge") {
       n.push(carcass(b, "ca", P.steel, wire));
       const split = b.y + b.h * 0.62;
@@ -248,10 +253,11 @@ export function moduleLocal(c: Cabinet, mountY: number, extLeft = 0, extRight = 
   }
   // base
   const h = c.h;
-  const worktopY = GEOM.plinth + h;
+  const foot = isFloating(c) ? 0 : GEOM.plinth; // see the tall branch above
+  const worktopY = foot + h;
   const topY = worktopY + GEOM.worktop;
-  const b: Box = { x: 0, y: GEOM.plinth, w: c.w, h };
-  n.push(<rect key="pl" x={0} y={0} width={c.w} height={GEOM.plinth} fill={P.plinth} {...bandStroke} />);
+  const b: Box = { x: 0, y: foot, w: c.w, h };
+  if (foot) n.push(<rect key="pl" x={0} y={0} width={c.w} height={foot} fill={P.plinth} {...bandStroke} />);
   n.push(carcass(b, "ca", P.carcass, wire));
   n.push(<rect key="wt" x={-extLeft} y={worktopY} width={c.w + extLeft + extRight} height={GEOM.worktop} fill={finC(c, "worktop", P.worktop, wire)} {...bandStroke} />);
   if (c.appliance === "sink") {
@@ -260,7 +266,7 @@ export function moduleLocal(c: Cabinet, mountY: number, extLeft = 0, extRight = 
     n.push(<path key="fa" d={`M${c.w - 70} ${topY} q0 -150 60 -150`} fill="none" stroke={P.steelLine} strokeWidth={10} strokeLinecap="round" />);
   } else if (c.appliance === "hob" || c.appliance === "cooktop") {
     if (c.appliance === "hob") {
-      const oy = GEOM.plinth + 40;
+      const oy = foot + 40;
       n.push(<rect key="ov" x={16} y={oy} width={c.w - 32} height={h - 90} rx={8} fill={P.steel} stroke={P.steelLine} strokeWidth={4} />);
       n.push(<rect key="ovw" x={36} y={oy + 60} width={c.w - 72} height={h - 240} rx={6} fill={wire ? P.facade : "#3a3f44"} stroke={wire ? P.facadeLine : "none"} strokeWidth={wire ? 3 : 0} opacity={wire ? 1 : 0.85} />);
       n.push(<rect key="ovh" x={36} y={oy + 18} width={c.w - 72} height={12} rx={6} fill={P.handle} />);
@@ -270,12 +276,12 @@ export function moduleLocal(c: Cabinet, mountY: number, extLeft = 0, extRight = 
     const cy = worktopY + GEOM.worktop / 2;
     [0.3, 0.7].forEach((cxF, a) => [0.32, 0.68].forEach((cyF, b2) => n.push(<circle key={`hb${a}-${b2}`} cx={c.w * cxF} cy={cy + (cyF - 0.5) * (GEOM.worktop - 14)} r={9} fill={wire ? "none" : "#2c3035"} stroke={wire ? P.facadeLine : "none"} strokeWidth={wire ? 3 : 0} />)));
   } else if (c.appliance === "dishwasher") {
-    n.push(<rect key="dw" x={14} y={GEOM.plinth + 14} width={c.w - 28} height={h - 28} rx={6} fill={P.facade} stroke={P.facadeLine} strokeWidth={4} />);
-    n.push(<rect key="dwc" x={14} y={GEOM.plinth + h - 60} width={c.w - 28} height={18} rx={4} fill={P.steel} stroke={P.steelLine} strokeWidth={3} />);
+    n.push(<rect key="dw" x={14} y={foot + 14} width={c.w - 28} height={h - 28} rx={6} fill={P.facade} stroke={P.facadeLine} strokeWidth={4} />);
+    n.push(<rect key="dwc" x={14} y={foot + h - 60} width={c.w - 28} height={18} rx={4} fill={P.steel} stroke={P.steelLine} strokeWidth={3} />);
   } else if (c.appliance === "washer") {
-    const cx = c.w / 2, cyp = GEOM.plinth + h / 2 - 20, rp = Math.min(c.w, h) * 0.3;
-    n.push(<rect key="wm" x={14} y={GEOM.plinth + 14} width={c.w - 28} height={h - 28} rx={6} fill={c.builtin ? P.facade : wire ? P.facade : "#f2f2f0"} stroke={P.facadeLine} strokeWidth={4} />);
-    n.push(<rect key="wmc" x={14} y={GEOM.plinth + h - 66} width={c.w - 28} height={22} rx={4} fill={P.steel} stroke={P.steelLine} strokeWidth={3} />);
+    const cx = c.w / 2, cyp = foot + h / 2 - 20, rp = Math.min(c.w, h) * 0.3;
+    n.push(<rect key="wm" x={14} y={foot + 14} width={c.w - 28} height={h - 28} rx={6} fill={c.builtin ? P.facade : wire ? P.facade : "#f2f2f0"} stroke={P.facadeLine} strokeWidth={4} />);
+    n.push(<rect key="wmc" x={14} y={foot + h - 66} width={c.w - 28} height={22} rx={4} fill={P.steel} stroke={P.steelLine} strokeWidth={3} />);
     n.push(<circle key="wmd" cx={cx} cy={cyp} r={rp} fill="none" stroke={P.steelLine} strokeWidth={5} />);
     n.push(<circle key="wmg" cx={cx} cy={cyp} r={rp * 0.68} fill={wire ? "none" : "#2c3035"} stroke={wire ? P.facadeLine : "none"} strokeWidth={wire ? 3 : 0} opacity={wire ? 1 : 0.85} />);
   } else {
@@ -290,7 +296,7 @@ export function moduleLocal(c: Cabinet, mountY: number, extLeft = 0, extRight = 
 export function interiorLocal(c: Cabinet, mountY: number, wire = false): React.ReactNode[] {
   const ap = c.appliance && c.appliance !== "none" && c.appliance !== "filler";
   if (ap || c.furniture) return []; // appliances / furniture have no cabinet shelf interior
-  const y0 = c.kind === "upper" ? mountY : GEOM.plinth;
+  const y0 = c.kind === "upper" ? mountY : isFloating(c) ? 0 : GEOM.plinth;
   const h = c.h, w = c.w;
   const out: React.ReactNode[] = [];
   // «Линии» draws the internal shelves/dividers DASHED (hidden structure behind the front); the

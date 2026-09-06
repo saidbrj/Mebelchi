@@ -129,4 +129,62 @@ export interface Module {
    *
    *  Read off the box's FIRST module (see pricing/carcass.hangingCount). Absent → the rule applies. */
   hangings?: number;
+  /**
+   * THIS BOX HANGS ON THE WALL rather than standing on the floor.
+   *
+   * Always true of a wall unit, and now expressible for a base or a tall as well: lifted off the
+   * floor, one is carried by навесы exactly like an upper is. It matters to the quote — a hung box
+   * needs the brackets and a standing one does not — so it travels on the module rather than being
+   * guessed from the kind.
+   */
+  hung?: boolean;
+  /**
+   * PER-ROLE PANEL OVERRIDES — the first-class panel model, at the granularity that is actually
+   * useful.
+   *
+   * Every panel in a box has always been derived from the module (parts.ts `carcassPanels`), and
+   * every one of them took the carcass's own depth. That is right for a side and wrong for a shelf:
+   * shops routinely cut shelves shallower so a door closes clean over the front edge, and there was
+   * no way to say so — the cut list ordered a full-depth board and the 3D drew one.
+   *
+   * Keyed by ROLE, not by individual panel. A shop does not decide that THIS shelf is 500 and the
+   * one above it is 520; it decides that shelves are 500. Per-individual-panel control is a
+   * different, much larger feature and this is deliberately not it.
+   */
+  panels?: Partial<Record<PanelPart, PanelOverride>>;
 }
+
+/**
+ * WHAT A PANEL IS, structurally.
+ *
+ * This vocabulary already existed as a naming convention inside the cut list («shelf-2»,
+ * «side-left», «stile-1») and was re-parsed from strings wherever anyone needed it. Naming it makes
+ * it a key that per-role overrides — depth today, material and edge banding next — can hang off.
+ */
+export type PanelPart =
+  | "side"
+  | "stile"
+  | "bottom"
+  | "top"
+  | "back"
+  | "shelf"
+  | "divider"
+  | "door"
+  | "drawer"
+  | "glass"
+  | "mullion";
+
+export interface PanelOverride {
+  /** How deep this role's panels are cut (mm). Absent → the carcass's own depth. */
+  depthMm?: number;
+  /**
+   * WHICH EDGES OF THIS ROLE ARE BANDED. Absent → the role's own default.
+   *
+   * `front` is the ordinary answer for an interior board: the one edge you see when the door is
+   * open. `all` is what an open shelf unit gets, where every edge is on show. `none` is a shop
+   * that genuinely leaves them raw.
+   */
+  banding?: PanelBanding;
+}
+
+export type PanelBanding = "none" | "front" | "all";

@@ -7,6 +7,7 @@
 
 import { production } from "./cncExport";
 import type { Cabinet } from "./cabinet";
+import type { FlatPanel, PanelCutout } from "@mebelchi/schema";
 
 /** A single part to place. `grain` = orientation is locked (a wood-grain facade can't be
  *  rotated 90° or the grain runs the wrong way). */
@@ -21,6 +22,10 @@ export interface NestPanel {
   material: string;
   thickness: number;
   grain: boolean;
+  /** HOLES IN THIS PART, panel-local mm from its bottom-left — a back cut around a riser, a фартук
+   *  cut around its sockets. Carried through the nest so the cut plan and its DXF draw the panel
+   *  the shop will actually make, not a rectangle with a note attached. */
+  cutouts?: PanelCutout[];
 }
 
 export interface Placed {
@@ -160,8 +165,13 @@ function sheetCutLength(sheet: NestedSheet): number {
 }
 
 /** Build the packing panels from the run's real cut list (via `production`). */
-export function nestPanels(cabs: Cabinet[], respectGrain: boolean): NestPanel[] {
-  const prod = production(cabs);
+export function nestPanels(
+  cabs: Cabinet[],
+  respectGrain: boolean,
+  wallPanels: FlatPanel[] = [],
+  backCuts: Map<string, PanelCutout[]> = new Map(),
+): NestPanel[] {
+  const prod = production(cabs, undefined, wallPanels, backCuts);
   if (!prod) return [];
   // glass panes arrive cut to size from the glazier — nesting them onto a sheet would invent a
   // cutting plan for a part nobody saws (and buildBom already refuses to bill them a cut)
@@ -176,6 +186,7 @@ export function nestPanels(cabs: Cabinet[], respectGrain: boolean): NestPanel[] 
     material: p.material,
     thickness: p.thicknessMm,
     grain: respectGrain && p.thicknessMm >= 18, // facades (18mm) are grained → don't rotate
+    cutouts: p.cutouts,
   }));
 }
 

@@ -12,6 +12,7 @@ import { walkInterior, innerRect, mullionsFor, FLUTE_PITCH_MM, MULLION_MM } from
 import { cabinetInterior, frontOf, type Cabinet, type FrontProfile } from "./cabinet";
 import { GEOM } from "./layout";
 import { cabBand } from "./resolve";
+import type { PanelBand } from "./wallPanels";
 
 /** carcass board thickness (mm) — the interior a shelf spans is `w − 2·CARCASS_T` */
 const CARCASS_T = 16;
@@ -54,6 +55,9 @@ const CONTENT = { x: M + 6, y: 24, w: PAGE_W - 2 * (M + 6), h: PAGE_H - 24 - 30 
 
 // ---- data ----
 export interface DrawRun {
+  /** which RUN this is (index into the resolved layout) — what a panel band is keyed by */
+  run: number;
+  /** the sheet's 1-based wall NUMBER, for the title. Not the run index. */
   wall: number;
   cabs: Cabinet[];
   wallLen: number;
@@ -76,6 +80,10 @@ export interface DrawingsData {
   layout: KitchenLayout;
   /** filler «добор» gap (mm) — so the top-plan footprints inset exactly as the app does. */
   reveal?: number;
+  /** THE FLAT WALL PANELS (model/wallPanels), in wall space. Supplied rather than derived here:
+   *  this module is a renderer, and the same list the 3D draws and the shop cuts has to be the one
+   *  the drawing shows — a sheet that omits the фартук is a sheet the fitter will trust. */
+  panels?: PanelBand[];
   summary: { label: string; value: string }[];
   modules: ModuleRow[];
   project: string;
@@ -270,6 +278,21 @@ function elevation(sh: Sheet, run: DrawRun, d: DrawingsData, L: DrawingsLabels):
     .sort((a, b) => (a.x as number) - (b.x as number));
   const c = fit(drawBox, run.wallLen, d.ceiling, true, { b: 14, t: 8 });
   const { X, Y } = c;
+
+  // ── THE FLAT PANELS ── the фартук, the strip to the ceiling, the plane under the wall units.
+  // Drawn FIRST so the cabinets sit in front of them, and hatched rather than filled: this is a
+  // shop drawing, and a solid black band would read as a cabinet. The socket cut-outs are drawn as
+  // real holes — the fitter needs to see them before the wall is closed up.
+  for (const b of d.panels ?? []) {
+    if (b.run !== run.run) continue;
+    const w = (b.x1 - b.x0) * c.s;
+    const h = (b.y1 - b.y0) * c.s;
+    if (w <= 0.2 || h <= 0.2) continue;
+    sh.rect(X(b.x0), Y(b.y1), w, h, { stroke: INK, lw: 0.25, fill: "#f4f4f2" });
+    for (const cut of b.cuts) {
+      sh.rect(X(b.x0 + cut.x), Y(b.y0 + cut.y + cut.h), cut.w * c.s, cut.h * c.s, { stroke: INK, lw: 0.25, fill: "#ffffff" });
+    }
+  }
 
   for (const m of mods) {
     const x = m.x as number;

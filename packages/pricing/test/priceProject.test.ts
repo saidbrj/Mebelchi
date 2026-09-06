@@ -55,25 +55,29 @@ const kitchen: Project = {
 
 // Hand-checked totals, against the CURRENT seed rate table.
 //
-// The QUANTITIES below are the same ones this cabinet has always produced — 7 panels, 26 drilled
-// holes, 2.64m of visible + 2.64m of hidden edge, 0.6m of worktop. (packages/pricing/test/
-// cells.test.ts proves the cell-tree decomposition emits panels bit-identical to the flat one it
-// replaced, for every shape a project can contain.) What moved is the seed's RATES — edge went
-// 3500→5500 / 1200→3500 per m, drill 250→800 per hole, cut 4000→2200 per panel, edgeband 1800→0
-// per m — and these expectations were never updated with them, so they were failing before the
-// cell tree landed. Re-derived here:
+// 7 panels, 26 drilled holes, 0.6m of worktop, and — since 31 Aug 2026 — 3.208m of visible edge
+// where it used to be 2.64m. (packages/pricing/test/cells.test.ts proves the cell-tree
+// decomposition emits panels bit-identical to the flat one it replaced, for every shape a project
+// can contain, so the PANELS have not moved.)
+//
+// THE EXTRA 0.568m IS THIS CABINET'S ONE SHELF, and it is a correction rather than a change. An
+// interior board's front edge is banded by every shop — raw chipboard inside a cabinet swells and
+// looks unfinished — and this engine counted none of it: the visible tape was the fronts'
+// perimeter, the hidden tape was the box's front frame, and the boards between them fell through
+// the gap. The shelf spans 568mm (600 less two 16mm sides), which at 5500/m is the 3124 the total
+// moved by. Every quote before this was short by its shelves.
 //
 //   carcassFacade : panels 311982 + assembly 80000                     = 391982
-//   worktopEdge   : edge 2.64×5500 + 2.64×3500 + worktop 0.6×185000    = 134760
+//   worktopEdge   : edge 3.208×5500 + 2.64×3500 + worktop 0.6×185000   = 137884
 //   hardware      : hinge 24000 + dowel 2400 + cam 12000               =  38400
-//   cnc           : drill 26×800 + cut 7×2200 + edgeband 5.28×0        =  36200
+//   cnc           : drill 26×800 + cut 7×2200 + edgeband 5.848×0       =  36200
 //   delivery      : base 150000 + perModule 20000                      = 170000
-//   total                                                              = 771342
+//   total                                                              = 774466
 const EXPECTED = {
-  total: 771_342,
+  total: 774_466,
   groups: {
     carcassFacade: 391_982,
-    worktopEdge: 134_760,
+    worktopEdge: 137_884,
     hardware: 38_400,
     cnc: 36_200,
     delivery: 170_000,

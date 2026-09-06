@@ -5,10 +5,12 @@
 // Tapping a module in the scene selects + highlights it and swaps the bottom
 // toolbar to per-item actions (edit / open / duplicate / delete).
 import { useEffect, useMemo, useRef, useState } from "react";
-import { useStore } from "../store";
+import { useStore, usePanelSpecs } from "../store";
 import { useT } from "../i18n/useT";
 import { useMoney } from "../useMoney";
-import { useDesignPrice } from "../pricing/usePrice";
+import { useDesignPrice, useDesignLighting } from "../pricing/usePrice";
+import { LED_TEMPS, ledColor } from "../model/ledStrips";
+import { sinkOf, sinkHole, type SinkSpec } from "../model/sink";
 import { VariantScene } from "../three/VariantScene";
 import { DEFAULT_SUN } from "../three/lighting";
 import { ConstructorPlan, type PlanEdit } from "../components/ConstructorPlan";
@@ -23,7 +25,9 @@ import { planRuns } from "../model/runPlan";
 import { fillGapSpan } from "../model/fill";
 import { openCells } from "../model/sheet";
 import { resolveLayout } from "../model/resolve";
-import { cabDepth, cornerShapeOf, cornerArm, maxCabH, MIN_H, D_MIN, D_MAX } from "../model/bands";
+import { cabBand, cabDepth, cornerShapeOf, cornerArm, maxCabH, MIN_H, D_MIN, D_MAX } from "../model/bands";
+import type { PanelDecor } from "../model/wallPanels";
+import { GEOM, effectiveStyle } from "../model/layout";
 import { dockAll, cabFootprints, objectOverlapIds } from "../model/footprint";
 import { FRONT_PROFILES, HANDLES, frontOf, defaultHandlePos, mk, type Cabinet, type FrontProfile, type FinishKey, type DoorOpening, type HandlePos, type BackPanelMethod } from "../model/cabinet";
 import { constructionOf, shopConstruction, overridesOf, resetToShop, backMountPatch, backSetbackOf } from "../model/construction";
@@ -64,6 +68,9 @@ const isAppliance = (c: Cabinet) => !!c.appliance && c.appliance !== "none" && c
  *  RENDERED from itself, by the same capture «Сохранить» uses on a saved cabinet, in the kitchen's
  *  own colours (lib/cabThumb). The glyph survives only as the last resort, if that render fails
  *  (no WebGL). Rendering happens once per template and is cached across mounts. */
+/** Namespaces a «Мои шкафы» entry inside the AddTemplate id space. */
+const SAVED_PREFIX = "saved:";
+
 function AddThumb({ id, glyph, cab }: { id: string; glyph: string; cab?: Partial<Cabinet> }) {
   const style = useStore((s) => s.runStyle);
   const [src, setSrc] = useState<string | null>(`/furniture/${id}.png`);
@@ -87,7 +94,7 @@ function AddThumb({ id, glyph, cab }: { id: string; glyph: string; cab?: Partial
   );
 }
 
-type Sheet = null | "pickCab" | "pickAppl" | "editor" | "dining" | "extra" | "resize" | "style" | "cabinets";
+type Sheet = null | "pickCab" | "pickAppl" | "editor" | "dining" | "extra" | "resize" | "style" | "cabinets" | "finish";
 
 const MODES = [
   { v: "wire", Icon: IconLines },
@@ -134,6 +141,16 @@ const GlyphEdit = () => (
 );
 
 // style-panel part-tab glyphs (Фасад / Ручка / Столешница / Корпус)
+/** ОТДЕЛКА — a wall in section: the counter line, the panel on it, the row above. */
+const GlyphFinish = () => (
+  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden>
+    <path d="M3 4h18v4H3z" />
+    <path d="M3 15h18" />
+    <path d="M4.5 9.5v4.5M9 9.5v4.5M13.5 9.5v4.5M18 9.5v4.5" strokeWidth="1.1" />
+    <path d="M3 18h18v2H3z" />
+  </svg>
+);
+
 const StyleFront = () => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden><rect x="5" y="3" width="14" height="18" rx="1.5" /><circle cx="15.5" cy="12" r="0.9" fill="currentColor" stroke="none" /></svg>);
 const StyleHandle = () => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" strokeLinecap="round" aria-hidden><rect x="6" y="10.5" width="12" height="3" rx="1.5" /><path d="M8 10.5v-1M16 10.5v-1" /></svg>);
 const StyleWorktop = () => (<svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.6" aria-hidden><rect x="3" y="6" width="18" height="4" rx="1" /><path d="M6 10v8M18 10v8" /></svg>);
@@ -195,6 +212,22 @@ export function ConfigScreen() {
   const points = useStore((s) => s.roomPoints);
   const ceiling = useStore((s) => s.ceiling);
   const reveal = useStore((s) => s.reveal);
+  const panelSpecs = usePanelSpecs();
+  const led = useStore((s) => s.led);
+  const setSplash = useStore((st) => st.setSplash);
+  const setCloser = useStore((st) => st.setCloser);
+  const setUnderside = useStore((st) => st.setUnderside);
+  const setLed = useStore((st) => st.setLed);
+  const liftCab = useStore((st) => st.liftCab);
+  /** any zone switched on — what decides whether the colour/sensor controls are worth showing */
+  const ledLit = led.under || led.plinth || led.cornice || led.interior;
+  /** what the light actually came to on THIS kitchen: metres of strip and the drivers it needs */
+  const ledMeasured = useDesignLighting();
+  const setGrain = useStore((st) => st.setGrain);
+  const setCornerDoors = useStore((st) => st.setCornerDoors);
+  const splash = panelSpecs.splash;
+  const closer = panelSpecs.closer;
+  const underside = panelSpecs.underside;
   const openings = useStore((s) => s.openings);
   const interiorWalls = useStore((s) => s.interiorWalls);
   const fittings = useStore((s) => s.fittings);
@@ -214,7 +247,10 @@ export function ConfigScreen() {
   const duplicateCab = useStore((s) => s.duplicateCab);
   const saveCab = useStore((s) => s.saveCab);
   const removeSavedCab = useStore((s) => s.removeSavedCab);
-  useStore((s) => s.savedCabsRev); // re-render the "My cabinets" list on save/delete
+  const savedCabsRev = useStore((s) => s.savedCabsRev); // re-render the "My cabinets" list on save/delete
+  // Read the saved library ONCE per change instead of hitting localStorage on every render — this
+  // screen re-renders on every 3D interaction.
+  const savedLib = useMemo(() => listSavedCabs(), [savedCabsRev]);
   const resizeCab = useStore((s) => s.resizeCab);
   // the front sheet's live (no-undo) edits — one snapshot per gesture via beginCabEdit
   const resizeCabLive = useStore((s) => s.resizeCabLive);
@@ -544,9 +580,27 @@ export function ConfigScreen() {
           : null // a tall has no corner variant — don't lead with an off-band base corner
       : null;
   const cornerLead = cornerLeadId ? swapItemsRaw.find((t) => t.id === cornerLeadId) : undefined;
-  const swapItems: AddTemplate[] = cornerLead
-    ? [cornerLead, ...swapItemsRaw.filter((t) => t.id !== cornerLeadId)]
-    : swapItemsRaw;
+  // THE USER'S OWN CABINETS BELONG HERE TOO. «Мои шкафы» were reachable only from the full picker
+  // sheet, so a cabinet you had deliberately saved to reuse never appeared in the swap strip — you
+  // could save one and then never find it again while editing, which reads as the save having done
+  // nothing. Only real cabinets (furniture / islands / appliances have their own lists), and only
+  // ones of the same kind, so a saved base doesn't offer itself while you're swapping an upper.
+  const savedSwapItems: AddTemplate[] = useMemo(
+    () =>
+      !primary || primary.furniture || primary.island || isAppliance(primary)
+        ? []
+        : savedLib
+            .filter((sc) => (sc.cab.kind ?? "base") === primary.kind)
+            .map((sc) => ({ id: SAVED_PREFIX + sc.id, name: sc.name, sub: "", glyph: "▢", cab: sc.cab })),
+    [savedLib, primary],
+  );
+  // corner lead first (see above), then the user's own, then the built-ins — a saved cabinet buried
+  // past seven stock chips on a phone is the same as not being there.
+  const swapItems: AddTemplate[] = [
+    ...(cornerLead ? [cornerLead] : []),
+    ...savedSwapItems,
+    ...swapItemsRaw.filter((t) => t.id !== cornerLeadId),
+  ];
   // WHICH CHIP IS THIS MODULE ALREADY? Match on the template's defining traits, not width — the
   // user resizes modules, and a resized "Распашной" is still a "Распашной".
   //
@@ -555,6 +609,10 @@ export function ConfigScreen() {
   // up, and `swapTo` (which bails on `isCurrent`) refused to swap between them — so a corner cabinet
   // could not be changed into a different corner cabinet at all.
   const isCurrent = (tpl: AddTemplate) =>
+    // A saved cabinet is a SPECIFIC configuration (its own cells, sizes and fronts), not a type, so
+    // trait-matching would mark it "current" and swapTo() would refuse to apply it — the chip would
+    // sit there doing nothing. It is never "already this".
+    !tpl.id.startsWith(SAVED_PREFIX) &&
     !!primary &&
     (tpl.cab.kind ?? "base") === primary.kind &&
     (tpl.cab.appliance ?? "none") === (primary.appliance ?? "none") &&
@@ -598,7 +656,7 @@ export function ConfigScreen() {
 
   const openSheet = (kind: Sheet) => setSheet(kind);
   // the user's reusable "My cabinets" library (shown atop the cabinet picker)
-  const savedCabs = sheet === "pickCab" ? listSavedCabs() : [];
+  const savedCabs = sheet === "pickCab" ? savedLib : [];
 
   // selected-module toolbar actions
   const editSel = () => {
@@ -651,6 +709,20 @@ export function ConfigScreen() {
   const front = view === "front";
   // pass `cabs` so the "all" shape's corner zones follow the placed corners (dynamic corners) — the
   // run lengths/labels/fill spans this drives must match the grid the sheet builds. Ignored for i/l/u.
+  // WHAT THIS KITCHEN'S GAP ACTUALLY IS — the strip of bare wall between the top of the columns and
+  // the ceiling. It turns «Закрывать щель до» from an abstract limit into a readout the seller can
+  // act on: either there is no gap, or there is one and it is (or isn't) inside the limit.
+  const ceilGap = useMemo(() => {
+    // the BIGGEST gap, not the smallest. Taking the tallest column would report "no gap" for the
+    // whole kitchen the moment one пенал happens to reach the ceiling, while the wall units beside
+    // it still had 300mm of bare plaster above them — which is the exact case this panel is for.
+    const gaps = cabs
+      .filter((c) => !c.furniture && c.appliance !== "filler" && (c.kind === "tall" || (c.kind === "upper" && c.appliance !== "hood")))
+      .map((c) => ceiling - cabBand(c).y1)
+      .filter((g) => g > 2);
+    return gaps.length ? Math.max(...gaps) : null;
+  }, [cabs, ceiling]);
+
   const allRuns = useMemo(() => planRuns(points, waterWall, runLayout, openings, cabs, reveal).runs, [points, waterWall, runLayout, openings, cabs, reveal]);
   const runs = front ? allRuns : [];
   // THE canonical layout — the same resolve the 3D, the plan, the drawings and pricing read.
@@ -820,6 +892,8 @@ export function ConfigScreen() {
             points={points}
             ceiling={ceiling}
             reveal={reveal}
+            panels={panelSpecs}
+            led={led}
             openings={openings}
             coveringColor={coveringColor}
             floorId={floorId}
@@ -880,7 +954,16 @@ export function ConfigScreen() {
             onBeginEdit={beginCabEdit}
             onMountY={(id, mountY) => {
               const idx = cabs.findIndex((c) => c.id === id);
-              if (idx >= 0) patchCab(idx, { mountY });
+              if (idx < 0) return;
+              const c = cabs[idx];
+              if (c.kind === "upper") {
+                patchCab(idx, { mountY });
+                return;
+              }
+              // A FLOOR MODULE DRAGGED BACK DOWN IS STANDING, not floating a plinth's height off
+              // the ground. «Standing» is the ABSENCE of a mountY (model/bands.ts `isFloating`), so
+              // committing 120 here would leave a box that looks seated and is priced as hung.
+              liftCab(id, mountY <= GEOM.plinth ? null : mountY);
             }}
             onResize={(id, patch) => {
               const idx = cabs.findIndex((c) => c.id === id);
@@ -950,6 +1033,9 @@ export function ConfigScreen() {
             fittings={fittings}
             run={wall}
             ceiling={ceiling}
+            panels={panelSpecs}
+            led={led}
+            style={effectiveStyle(cabs, runStyle)}
             mode={mode}
             selectedId={sceneSelId}
             // tap toggles a module in/out of the selection set — the same batch-select as the 3D
@@ -1042,6 +1128,12 @@ export function ConfigScreen() {
           </button>
           <button className="round-ctl" onClick={() => toggleMenu("mode")} type="button" aria-label={t.config.display}>
             <ModeIcon />
+          </button>
+          {/* ОТДЕЛКА — the two things on a wall that are not cabinets: the фартук and the strip that
+              closes the row to the ceiling. Kitchen-wide, so it lives here beside view/display
+              rather than in the selection's Style panel. */}
+          <button className={`round-ctl${sheet === "finish" ? " active" : ""}`} onClick={() => openPanel("finish")} type="button" aria-label={t.config.finish}>
+            <GlyphFinish />
           </button>
         </div>
 
@@ -1251,7 +1343,7 @@ export function ConfigScreen() {
           {/* NON-modal edit panels (resize/style/cabinets) get NO backdrop — the 3D above stays live
               and the left buttons stay tappable. The catalog / full editor keep their dimming backdrop. */}
           {!panelOpen && <div className={`sheet-backdrop dim${sheetClosing ? " closing" : ""}`} onClick={closeSheet} />}
-          <div className={`bottom-sheet${panelOpen ? " panel" : ""}${sheet === "pickCab" || sheet === "pickAppl" || sheet === "dining" || sheet === "extra" || sheet === "editor" || sheet === "style" || sheet === "cabinets" || sheet === "resize" ? " tall" : ""}${sheetClosing ? " closing" : ""}`}>
+          <div className={`bottom-sheet${panelOpen ? " panel" : ""}${sheet === "pickCab" || sheet === "pickAppl" || sheet === "dining" || sheet === "extra" || sheet === "editor" || sheet === "style" || sheet === "cabinets" || sheet === "resize" || sheet === "finish" ? " tall" : ""}${sheetClosing ? " closing" : ""}`}>
             {/* the edit panels are attached (non-modal) — no drag-grip; the catalog/editor keep theirs */}
             {!panelOpen && <div className="sheet-grip" />}
 
@@ -1480,6 +1572,9 @@ export function ConfigScreen() {
                 { id: "front", name: "Фасад", icon: <StyleFront /> },
                 { id: "handle", name: "Ручка", icon: <StyleHandle /> },
                 ...(base ? [{ id: "worktop", name: "Столешница", icon: <StyleWorktop /> }] : []),
+                // only where there IS a sink — the mount is the one thing that distinguishes one
+                // sink from another, and it has nowhere else to be asked
+                ...(selCabs[0]?.appliance === "sink" ? [{ id: "sink", name: t.config.sinkTab, icon: <StyleWorktop /> }] : []),
                 { id: "carcass", name: "Корпус", icon: <StyleCarcass /> },
               ];
               const activeId = TABS.some((tb) => tb.id === stylePart) ? stylePart : "front";
@@ -1539,6 +1634,37 @@ export function ConfigScreen() {
                             <button key={o} className={`style-profile${curOpening === o ? " on" : ""}`} onClick={() => applyStyle({ opening: o })} type="button">{t.fe.opt[o]}</button>
                           ))}
                         </div>
+                        {/* THIS MODULE'S GRAIN — a wide drawer bank is often laid across while the
+                            doors beside it run up. Blank = whatever the kitchen says (Отделка). */}
+                        <div className="style-heading">{t.config.grainThis}</div>
+                        <div className="style-profiles">
+                          {([[undefined, t.config.grainInherit], [false, t.config.grainV], [true, t.config.grainH]] as const).map(([v, label]) => (
+                            <button
+                              key={String(v)}
+                              className={`style-profile${pc.grainHorizontal === v ? " on" : ""}`}
+                              onClick={() => applyStyle({ grainHorizontal: v })}
+                              type="button"
+                            >{label}</button>
+                          ))}
+                        </div>
+                        {/* AN L CORNER CAN CARRY TWO LEAVES — one per arm, each hinged at its own
+                            outer end. Only offered where it means something: a diagonal corner has
+                            one face, so it has one door. */}
+                        {pc.corner && cornerShapeOf(pc) === "l" && (
+                          <>
+                            <div className="style-heading">{t.config.cornerDoors}</div>
+                            <div className="style-profiles">
+                              {([["single", t.config.cornerSingle], ["pair", t.config.cornerPair]] as const).map(([v, label]) => (
+                                <button
+                                  key={v}
+                                  className={`style-profile${(pc.cornerDoors ?? "single") === v ? " on" : ""}`}
+                                  onClick={() => applyStyle({ cornerDoors: v })}
+                                  type="button"
+                                >{label}</button>
+                              ))}
+                            </div>
+                          </>
+                        )}
                       </>
                     )}
                     {/* РУЧКА: type + where it sits on the door */}
@@ -1558,6 +1684,52 @@ export function ConfigScreen() {
                         </div>
                       </>
                     )}
+                    {activeId === "sink" && (() => {
+                      const cur = sinkOf(pc)!;
+                      const hole = sinkHole(pc);
+                      const setSink = (patch: Partial<SinkSpec>) => applyStyle({ sink: { ...(pc.sink ?? {}), ...patch } });
+                      return (
+                        <>
+                          {/* THE MOUNT is the whole difference between one sink and another: it is
+                              where the bowl meets the slab's cut edge, and it is what the client
+                              sees. The app drew накладная for every sink until this existed. */}
+                          <div className="style-heading">{t.config.sinkMount}</div>
+                          <div className="style-profiles">
+                            {([
+                              ["inset", t.config.sinkInset],
+                              ["overmount", t.config.sinkOvermount],
+                              ["undermount", t.config.sinkUndermount],
+                              ["integrated", t.config.sinkIntegrated],
+                            ] as const).map(([m, label]) => (
+                              <button
+                                key={m}
+                                className={`style-profile${cur.mount === m ? " on" : ""}`}
+                                onClick={() => setSink({ mount: m })}
+                                type="button"
+                              >{label}</button>
+                            ))}
+                          </div>
+                          <div className="style-heading">{t.config.sinkBowls}</div>
+                          <div className="style-profiles">
+                            {([[1, t.config.sinkOne], [2, t.config.sinkTwo]] as const).map(([n, label]) => (
+                              <button
+                                key={n}
+                                className={`style-profile${cur.bowls === n ? " on" : ""}`}
+                                onClick={() => setSink({ bowls: n })}
+                                type="button"
+                              >{label}</button>
+                            ))}
+                          </div>
+                          {/* the opening is DERIVED — a rimmed mount cuts smaller than the bowl,
+                              a rimless one cuts it exactly, and both are held inside the rails */}
+                          <div className="fin-note">
+                            {hole ? t.config.sinkHole(hole.w, hole.d) : t.config.sinkNoHole}
+                          </div>
+                        </>
+                      );
+                    })()}
+                    {activeId !== "sink" && (
+                    <>
                     <div className="style-heading">Цвет</div>
                     <div className="style-grid">
                       {mats.map((m) => {
@@ -1575,6 +1747,246 @@ export function ConfigScreen() {
                         );
                       })}
                     </div>
+                    </>
+                    )}
+                  </div>
+                </>
+              );
+            })()}
+
+            {/* ── ОТДЕЛКА ── the two wall panels that are not cabinets. Neither needs a selection:
+                they are properties of the KITCHEN, and both are derived from whatever is standing
+                there (model/wallPanels.ts) — which is why there is nothing here to place or size
+                per wall, only what they are made of and how far they reach. */}
+            {sheet === "finish" && (() => {
+              const DECORS: { id: PanelDecor; label: string }[] = [
+                { id: "worktop", label: t.config.decorWorktop },
+                { id: "facade", label: t.config.decorFacade },
+                { id: "carcass", label: t.config.decorCarcass },
+                { id: "custom", label: t.config.decorCustom },
+              ];
+              // «Свой» — a фартук is often a decor of its own (скинали, a stone that isn't the
+              // counter). Without this the panel could only ECHO another part, which is why
+              // changing a material appeared to do nothing to it.
+              const splashMats = [...materialsFor("worktop"), ...materialsFor("facade")];
+              return (
+                <>
+                  <div className="sheet-head">
+                    <div className="sheet-title">{t.config.finish}</div>
+                    <button className="sheet-x" onClick={closeSheet} type="button" aria-label={t.config.close}>✕</button>
+                  </div>
+                  <div className="cfg-sheet-body style-body">
+                    {/* ФАРТУК */}
+                    <div className="fin-row">
+                      <div className="fin-label">
+                        <span className="fin-name">{t.config.splash}</span>
+                        <span className="fin-sub">{t.config.splashSub}</span>
+                      </div>
+                      <button
+                        className={`switch${splash.on ? " on" : ""}`}
+                        onClick={() => setSplash({ on: !splash.on })}
+                        type="button"
+                        aria-pressed={splash.on}
+                      ><span className="knob" /></button>
+                    </div>
+                    {splash.on && (
+                      <>
+                        <div className="style-heading">{t.config.splashDecor}</div>
+                        <div className="style-profiles">
+                          {DECORS.map((d) => (
+                            <button
+                              key={d.id}
+                              className={`style-profile${splash.decor === d.id ? " on" : ""}`}
+                              onClick={() => setSplash({ decor: d.id })}
+                              type="button"
+                            >{d.label}</button>
+                          ))}
+                        </div>
+                        <div className="style-heading">{t.config.splashMode}</div>
+                        <div className="style-profiles">
+                          <button className={`style-profile${splash.mode === "fill" ? " on" : ""}`} onClick={() => setSplash({ mode: "fill" })} type="button">{t.config.splashFill}</button>
+                          <button className={`style-profile${splash.mode === "fixed" ? " on" : ""}`} onClick={() => setSplash({ mode: "fixed" })} type="button">{t.config.splashFixed}</button>
+                        </div>
+                        {splash.decor === "custom" && (
+                          <div className="style-grid">
+                            {splashMats.map((m) => {
+                              const on = splash.color === hexToInt(m.color);
+                              return (
+                                <button key={m.id} className={`style-cell${on ? " on" : ""}`} onClick={() => setSplash({ color: hexToInt(m.color) })} type="button">
+                                  <div className="style-swatch-wrap">
+                                    <span className="style-swatch" style={{ background: m.color, display: "block", width: "100%", height: "100%" }} />
+                                    {m.code && <span className="mat-code-badge">{m.code}</span>}
+                                  </div>
+                                  <span className="style-name">{m.name}</span>
+                                  {m.desc && <span className="mat-spec-desc">{m.desc}</span>}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                        {splash.mode === "fixed" && (
+                          <DimSlider icon={<GlyphH />} label={t.config.splashMode} value={splash.h} min={200} max={1000} step={10}
+                            onLive={(v) => setSplash({ h: v })}
+                            onCommit={(v) => setSplash({ h: v })} />
+                        )}
+                      </>
+                    )}
+
+                    <div className="fin-sep" />
+
+                    {/* ДНО НАВЕСНЫХ — the plane under the wall units */}
+                    <div className="fin-row">
+                      <div className="fin-label">
+                        <span className="fin-name">{t.config.underside}</span>
+                        <span className="fin-sub">{t.config.undersideSub}</span>
+                      </div>
+                      <button
+                        className={`switch${underside.on ? " on" : ""}`}
+                        onClick={() => setUnderside({ on: !underside.on })}
+                        type="button"
+                        aria-pressed={underside.on}
+                      ><span className="knob" /></button>
+                    </div>
+
+                    <div className="fin-sep" />
+
+                    {/* ПОДСВЕТКА — LED built into the cabinetry. Four zones, because a designer
+                        specs them one at a time and each is a separate run of strip on the invoice.
+                        The readout says what it came to: nobody types a strip's length, it is the
+                        length of the row it is screwed to (model/ledStrips.ts). */}
+                    <div className="fin-row">
+                      <div className="fin-label">
+                        <span className="fin-name">{t.config.led}</span>
+                        <span className="fin-sub">{t.config.ledSub}</span>
+                      </div>
+                    </div>
+                    {([
+                      ["under", t.config.ledUnder, t.config.ledUnderSub],
+                      ["cornice", t.config.ledCornice, t.config.ledCorniceSub],
+                      ["plinth", t.config.ledPlinth, t.config.ledPlinthSub],
+                      ["inside", t.config.ledInside, t.config.ledInsideSub],
+                    ] as const).map(([zone, name, sub]) => {
+                      const key = zone === "inside" ? "interior" : zone;
+                      const on = led[key as "under" | "plinth" | "cornice" | "interior"];
+                      return (
+                        <div className="fin-row" key={zone}>
+                          <div className="fin-label">
+                            <span className="fin-name">{name}</span>
+                            <span className="fin-sub">{sub}</span>
+                          </div>
+                          <button
+                            className={`switch${on ? " on" : ""}`}
+                            onClick={() => setLed({ [key]: !on })}
+                            type="button"
+                            aria-pressed={on}
+                          ><span className="knob" /></button>
+                        </div>
+                      );
+                    })}
+                    {ledLit && (
+                      <>
+                        <div className="style-heading">{t.config.ledTemp}</div>
+                        <div className="style-profiles">
+                          {LED_TEMPS.map((k) => (
+                            <button
+                              key={k}
+                              className={`style-profile${led.temp === k ? " on" : ""}`}
+                              onClick={() => setLed({ temp: k })}
+                              type="button"
+                            >
+                              <span
+                                className="led-dot"
+                                style={{ background: `#${ledColor(k).toString(16).padStart(6, "0")}` }}
+                              />
+                              {k}K
+                            </button>
+                          ))}
+                        </div>
+                        <div className="fin-row">
+                          <div className="fin-label">
+                            <span className="fin-name">{t.config.ledSensor}</span>
+                            <span className="fin-sub">{t.config.ledSensorSub}</span>
+                          </div>
+                          <button
+                            className={`switch${led.sensor ? " on" : ""}`}
+                            onClick={() => setLed({ sensor: !led.sensor })}
+                            type="button"
+                            aria-pressed={led.sensor}
+                          ><span className="knob" /></button>
+                        </div>
+                        <div className="fin-note">
+                          {ledMeasured ? t.config.ledLen(ledMeasured.metres, ledMeasured.psu) : t.config.ledNone}
+                        </div>
+                      </>
+                    )}
+
+                    <div className="fin-sep" />
+
+                    {/* НАПРАВЛЕНИЕ ТЕКСТУРЫ — the fronts are mapped in slab space, so this turns
+                        the whole board rather than re-tiling each door */}
+                    <div className="fin-row">
+                      <div className="fin-label">
+                        <span className="fin-name">{t.config.grain}</span>
+                        <span className="fin-sub">{t.config.grainSub}</span>
+                      </div>
+                    </div>
+                    <div className="style-profiles">
+                      <button className={`style-profile${!runStyle.grainHorizontal ? " on" : ""}`} onClick={() => setGrain(false)} type="button">{t.config.grainV}</button>
+                      <button className={`style-profile${runStyle.grainHorizontal ? " on" : ""}`} onClick={() => setGrain(true)} type="button">{t.config.grainH}</button>
+                    </div>
+
+                    <div className="fin-sep" />
+
+                    {/* УГЛОВЫЕ — a shop builds all its corners the same way, so the answer belongs
+                        here; a single module can still differ (Стиль → Фасад). */}
+                    <div className="fin-row">
+                      <div className="fin-label">
+                        <span className="fin-name">{t.config.cornerDoors}</span>
+                      </div>
+                    </div>
+                    <div className="style-profiles">
+                      {([["single", t.config.cornerSingle], ["pair", t.config.cornerPair]] as const).map(([v, label]) => (
+                        <button
+                          key={v}
+                          className={`style-profile${(runStyle.cornerDoors ?? "single") === v ? " on" : ""}`}
+                          onClick={() => setCornerDoors(v)}
+                          type="button"
+                        >{label}</button>
+                      ))}
+                    </div>
+
+                    <div className="fin-sep" />
+
+                    {/* ДО ПОТОЛКА */}
+                    <div className="fin-row">
+                      <div className="fin-label">
+                        <span className="fin-name">{t.config.closer}</span>
+                        <span className="fin-sub">{t.config.closerSub}</span>
+                      </div>
+                      <button
+                        className={`switch${closer.on ? " on" : ""}`}
+                        onClick={() => setCloser({ on: !closer.on })}
+                        type="button"
+                        aria-pressed={closer.on}
+                      ><span className="knob" /></button>
+                    </div>
+                    {closer.on && (
+                      <>
+                        {/* WHY a limit and not "always close it": past this, the honest answer is a
+                            third ROW, not a sheet of MDF a metre tall. The readout below says which
+                            case this kitchen is actually in, so the number is never a mystery. */}
+                        <DimSlider icon={<GlyphH />} label={t.config.closerGap} value={closer.maxGap} min={0} max={1000} step={50}
+                          onLive={(v) => setCloser({ maxGap: v })}
+                          onCommit={(v) => setCloser({ maxGap: v })} />
+                        <div className="fin-note">
+                          {ceilGap == null
+                            ? t.config.noGap
+                            : ceilGap > closer.maxGap
+                              ? t.config.gapTooBig(Math.round(ceilGap))
+                              : `${Math.round(ceilGap)} ${t.config.mm}`}
+                        </div>
+                      </>
+                    )}
                   </div>
                 </>
               );

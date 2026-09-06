@@ -10,6 +10,7 @@
 // Pure. No React, no store.
 
 import type { Cabinet } from "./cabinet";
+import type { PanelPart } from "@mebelchi/schema";
 import { GEOM } from "./layout";
 
 /** Default depth per kind (mm) — a per-module `depth` overrides it. */
@@ -22,7 +23,7 @@ export function cabDepth(c: Cabinet): number {
 }
 
 /** Default hood mount (its underside clears the worktop by 560mm). */
-export const HOOD_BOTTOM = GEOM.plinth + GEOM.baseH + GEOM.worktop + 560; // 1420
+export const HOOD_BOTTOM = GEOM.plinth + GEOM.baseH + GEOM.worktop + 560; // 1440
 
 /** The default wall-unit mounting height (mm above floor) — where an upper lands with no `mountY`. */
 export const UPPER_BOTTOM = GEOM.upperBottom;
@@ -39,18 +40,50 @@ export interface Band {
   hasWorktop: boolean;
 }
 
+/**
+ * HOW DEEP THIS ROLE'S PANELS ARE CUT on this cabinet (mm).
+ *
+ * The app-side twin of pricing's `panelDepth`, and it must agree with it: the 3D draws what the cut
+ * list orders. Clamped to the carcass for the same reason — a shelf deeper than its box does not go
+ * in, so an override that says so is not a preference, it is a mistake.
+ */
+export function panelDepthOf(c: Cabinet, part: PanelPart): number {
+  const box = cabDepth(c);
+  const want = c.panels?.[part]?.depthMm;
+  if (want == null) return box;
+  return Math.max(50, Math.min(box, Math.round(want)));
+}
+
+/**
+ * IS THIS MODULE LIFTED OFF THE FLOOR?
+ *
+ * `mountY` has always meant one thing — the bottom of the carcass, above the floor — but only a
+ * WALL unit was allowed to have it. A base or a tall was pinned to the floor with no way to say
+ * otherwise, which is the axis "I cannot put a cabinet exactly there" was actually about: you could
+ * slide a module anywhere on the plan and never lift it.
+ *
+ * It now means the same thing for every kind, and a floor module that has it is HUNG. That is not a
+ * cosmetic difference: the plinth is the thing a base stands on, so one that is not standing has no
+ * plinth — the 3D must not draw a toe-kick under thin air and the shop must not cut a board for it.
+ */
+export const isFloating = (c: Cabinet): boolean => c.kind !== "upper" && c.mountY != null;
+
 export function cabBand(c: Cabinet): Band {
   if (c.kind === "upper") {
     const y0 = c.mountY ?? (c.appliance === "hood" ? HOOD_BOTTOM : GEOM.upperBottom);
     return { y0, y1: y0 + c.h, carcass0: y0, carcass1: y0 + c.h, hasWorktop: false };
   }
+  // where the CARCASS starts, and where the module's occupied band starts. They differ by exactly
+  // the plinth — because the plinth is the only thing between a standing box and the floor.
+  const foot = c.mountY ?? GEOM.plinth;
+  const floor = c.mountY ?? 0;
   if (c.kind === "tall") {
     // honours c.h — the 3D used to pin every tall to 2.2m and ignore the edit entirely
-    const top = GEOM.plinth + c.h;
-    return { y0: 0, y1: top, carcass0: GEOM.plinth, carcass1: top, hasWorktop: false };
+    const top = foot + c.h;
+    return { y0: floor, y1: top, carcass0: foot, carcass1: top, hasWorktop: false };
   }
-  const carcass1 = GEOM.plinth + c.h;
-  return { y0: 0, y1: carcass1 + GEOM.worktop, carcass0: GEOM.plinth, carcass1, hasWorktop: true };
+  const carcass1 = foot + c.h;
+  return { y0: floor, y1: carcass1 + GEOM.worktop, carcass0: foot, carcass1, hasWorktop: true };
 }
 
 /** THE corner body — a 45° chamfer or an L-shaped notch.

@@ -13,6 +13,9 @@ export type {
 export type {
   Module,
   ModuleKind,
+  PanelPart,
+  PanelOverride,
+  PanelBanding,
   ModuleFill,
   DoorStyle,
   FrontProfile,
@@ -31,6 +34,10 @@ export type {
   ProjectPricing,
   ProjectMeta,
   ProductionOpts,
+  FlatPanel,
+  ProjectLighting,
+  WorktopCut,
+  PanelCutout,
 } from "./project.js";
 
 export type {

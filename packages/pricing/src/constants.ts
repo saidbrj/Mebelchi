@@ -31,6 +31,14 @@ export const DEFAULT_HARDWARE_SKUS = {
   cam: "CAM-MINIFIX-15",
   /** The wall hanger a навесной carcass hangs on. Counted per BOX — see `hangingCount`. */
   hanging: "HANG-BRACKET-01",
+  /** LED strip, sold by the METRE — its BOM line carries unit "m" and reads `pricePerM`. */
+  ledStrip: "LED-STRIP-24V",
+  /** The aluminium profile + diffuser it sits in. Also per metre. */
+  ledProfile: "LED-PROFILE-AL",
+  /** The driver. Sized to the load (`ProjectLighting.psu`), not one per run. */
+  ledPsu: "LED-PSU-40W",
+  /** A door sensor / IR switch, when there is one instead of a wall switch. */
+  ledSensor: "LED-SENSOR-IR",
 } as const;
 
 /**

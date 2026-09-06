@@ -60,6 +60,19 @@ function drawSheet(
     const x = offX + p.x;
     const yTop = -p.y; // top edge of the part
     rect("PARTS", x, yTop - p.h, p.w, p.h);
+    // THE HOLES GO IN THE PLAN. A back notched round a riser is not a rectangle, and a saw plan
+    // that draws it as one is a plan for the wrong part. Panel-local mm from the part's
+    // bottom-left — which is (x, yTop − p.h) here.
+    //
+    // A ROTATED part is the one case this cannot draw honestly: the nester turned the board 90° to
+    // make it fit, and the hole would have to turn with it. Skipped rather than drawn in the wrong
+    // place — see the roadmap.
+    if (!p.rot) {
+      for (const c of p.panel.cutouts ?? []) {
+        if (c.x < 0 || c.y < 0 || c.x + c.w > p.w || c.y + c.h > p.h) continue;
+        rect("PARTS", x + c.x, yTop - p.h + c.y, c.w, c.h);
+      }
+    }
     const lab = `${p.panel.part}${p.rot ? "*" : ""}`;
     const size = `${Math.round(p.panel.w)}x${Math.round(p.panel.h)}`;
     const fh = Math.max(20, Math.min(60, (p.w - 40) / (Math.max(lab.length, size.length) * 0.62), (p.h - 60) / 2));

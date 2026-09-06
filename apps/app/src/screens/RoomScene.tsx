@@ -1,7 +1,7 @@
 // Phase A.2b — the room design scene (Figma "12"). Live three.js room + an
 // editable 2D floor plan. Tap a wall to select it, tap the floor for covering /
 // edit, drag corners (with 90°/45° magnet) and openings, edit numbers inline.
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { useStore } from "../store";
 import { useT } from "../i18n/useT";
 import { ThreeScene, type SceneView } from "../three/ThreeScene";
@@ -13,7 +13,7 @@ import { DimSlider, GlyphW, GlyphH } from "../components/DimControls";
 import { JourneyBar } from "../components/JourneyBar";
 import { Illustration } from "../quiz/Illustration";
 import { FLOOR_COVERINGS, ROOM_TYPES } from "../model/floors";
-import { fittingCatalog, fittingKind, openingCatalog, wallSegments, defaultFittingHeight, defaultOpeningSill, OPENING_FINISHES, type FittingCategory, type OpeningKind, type OpeningKindId, type Pt } from "../model/room";
+import { fittingCatalog, fittingKind, openingCatalog, pipeDiameter, pipeLength, wallSegments, defaultFittingHeight, defaultOpeningSill, OPENING_FINISHES, type FittingCategory, type OpeningKind, type OpeningKindId, type Pt } from "../model/room";
 import { WALL_COVERINGS, WALL_FAMILIES, familyCount, coveringColor as wallColorHex, dominantColor, leafRects, defaultSurface, type SurfPath } from "../model/walls";
 import { matSwatchStyle } from "../three/pbr";
 import {
@@ -26,6 +26,7 @@ import {
   IconWater,
   IconHeating,
   IconVent,
+  IconPipe,
   IconReshape,
   IconAddWall,
   IconDoor,
@@ -62,9 +63,53 @@ interface Editor {
   apply: (v: number) => void;
 }
 
+/** A LABELLED NUMBER WITH ± STEPPERS — the same control the width/height rows use, but reusable
+ *  and with its own step, because a pipe's diameter moves in 5mm and its length in 50. */
+function NumRow({
+  label,
+  value,
+  step,
+  min,
+  max,
+  onSet,
+}: {
+  label: string;
+  value: number;
+  step: number;
+  min: number;
+  max: number;
+  onSet: (v: number) => void;
+}) {
+  const [text, setText] = useState(String(Math.round(value)));
+  useEffect(() => setText(String(Math.round(value))), [value]);
+  const clamp = (v: number) => Math.max(min, Math.min(max, Math.round(v)));
+  const bump = (d: number) => onSet(clamp((parseInt(text, 10) || value) + d));
+  return (
+    <div className="edit-row">
+      <span className="edit-row-lbl">{label}</span>
+      <div className="dim-stepper">
+        <button className="num-step" type="button" aria-label={`−${step}`} onPointerDown={(e) => e.preventDefault()} onClick={() => bump(-step)}>−</button>
+        <input
+          className="edit-input dim-input"
+          inputMode="numeric"
+          value={text}
+          onChange={(e) => setText(e.target.value.replace(/[^0-9]/g, ""))}
+          onBlur={() => { const v = parseInt(text, 10); if (!Number.isNaN(v)) onSet(clamp(v)); }}
+          onKeyDown={(e) => e.key === "Enter" && (e.target as HTMLInputElement).blur()}
+        />
+        <button className="num-step" type="button" aria-label={`+${step}`} onPointerDown={(e) => e.preventDefault()} onClick={() => bump(step)}>+</button>
+      </div>
+    </div>
+  );
+}
+
 export function RoomScene() {
   const t = useT();
-  const fitTitle = (c: FittingCategory) => (c === "electric" ? t.room.fitElectric : c === "heating" ? t.room.fitHeating : t.room.fitVent);
+  const fitTitle = (c: FittingCategory) =>
+    c === "electric" ? t.room.fitElectric
+      : c === "heating" ? t.room.fitHeating
+        : c === "plumbing" ? t.room.fitPlumbing
+          : t.room.fitVent;
   const openTitle = (k: OpeningKindId) => (k === "window" ? t.room.openWindow : k === "door" ? t.room.openDoor : t.room.openOpening);
   const shape = useStore((s) => s.shape);
   const ceiling = useStore((s) => s.ceiling);
@@ -80,6 +125,12 @@ export function RoomScene() {
   const moveFitting = useStore((s) => s.moveFitting);
   const setFittingWidth = useStore((s) => s.setFittingWidth);
   const setFittingHeight = useStore((s) => s.setFittingHeight);
+  const setFittingOrient = useStore((s) => s.setFittingOrient);
+  const setFittingAlong = useStore((s) => s.setFittingAlong);
+  const setFittingMountY = useStore((s) => s.setFittingMountY);
+  const setPipePoint = useStore((s) => s.setPipePoint);
+  const addPipeBend = useStore((s) => s.addPipeBend);
+  const removePipeBend = useStore((s) => s.removePipeBend);
   const dragFitting3D = useStore((s) => s.dragFitting3D);
   const removeFitting = useStore((s) => s.removeFitting);
   const duplicateFitting = useStore((s) => s.duplicateFitting);
@@ -245,9 +296,15 @@ export function RoomScene() {
     setFit3D(null);
     setEditor(null);
   };
+  // ONE SELECTION, BOTH VIEWS. `selectedFitting` drove the plan and the edit sheet while `fit3D`
+  // drove the 3D, and only the 3D's own tap ever set the second one — so placing a pipe (which
+  // selects it and drops you in the plan) left the 3D showing nothing selected, and with it no
+  // gizmo and no measurements. Two selections for one item is one too many.
   const selectFitting = (id: string | null) => {
     setSelectedFitting(id);
+    setFit3D(id);
     setSelectedWall(null);
+    setWall3D(null);
     setFloorSelected(false);
     setSelectedOpening(null);
     setEditor(null);
@@ -261,15 +318,16 @@ export function RoomScene() {
     setFit3D(null);
     setEditor(null);
   };
+  // Switching plan ⇄ 3D KEEPS the item you had selected. Dropping it meant placing a pipe and then
+  // looking at it in 3D lost the selection — and with it the gizmo and the measurements — for no
+  // reason the user could see. The WALL and floor selections are cleared, because those are
+  // view-specific edit targets (a wall's drag handles belong to the view you grabbed them in).
   const pickView = (v: SceneView) => {
     setView(v);
     setEditor(null);
     setSelectedWall(null);
     setFloorSelected(false);
-    setSelectedFitting(null);
-    setSelectedOpening(null);
     setWall3D(null);
-    setFit3D(null);
   };
   // a wall tapped in the 3D / front view → paint target
   const selectWall3D = (w: number | null) => {
@@ -280,13 +338,13 @@ export function RoomScene() {
     setSelectedFitting(null);
     setSelectedOpening(null);
   };
-  // an item tapped in 3D → manipulate target
+  // an item tapped in 3D → the same selection the plan and the edit sheet use
   const selectFit3D = (id: string) => {
     setFit3D(id);
+    setSelectedFitting(id);
     setWall3D(null);
     setSelectedWall(null);
     setFloorSelected(false);
-    setSelectedFitting(null);
     setSelectedOpening(null);
   };
   const placeFitting = (category: FittingCategory, kind: string) => {
@@ -378,7 +436,7 @@ export function RoomScene() {
 
   const filtered = FLOOR_COVERINGS.filter((f) => f.name.toLowerCase().includes(coverSearch.toLowerCase()));
   const fitCat: FittingCategory | null =
-    sheet === "electric" || sheet === "heating" || sheet === "vent" ? sheet : null;
+    sheet === "electric" || sheet === "heating" || sheet === "vent" || sheet === "plumbing" ? sheet : null;
   const filteredFit = fitCat
     ? fittingCatalog(fitCat).filter((e) => e.name.toLowerCase().includes(fitSearch.toLowerCase()))
     : [];
@@ -395,6 +453,13 @@ export function RoomScene() {
   // the currently-selected wall item (window/door/opening or a fitting), unified
   const selOpen = selectedOpening ? openings.find((o) => o.id === selectedOpening) ?? null : null;
   const selFit = selectedFitting ? fittings.find((f) => f.id === selectedFitting) ?? null : null;
+  const pipe = selFit?.category === "plumbing";
+  /** the length of the wall the selected fitting sits on — what «От угла стены» is measured along */
+  const fitWallLen = useMemo(() => {
+    if (!selFit) return 0;
+    const seg = wallSegments(roomPoints, interiorWalls)[selFit.wall];
+    return seg ? Math.hypot(seg.b.x - seg.a.x, seg.b.y - seg.a.y) || 1 : 4000;
+  }, [selFit, roomPoints, interiorWalls]);
   const itemSelected = !!(selOpen || selFit);
   const selKind = selFit ? fittingKind(selFit.category, selFit.kind) : null;
   const itemName = selOpen ? selOpen.name : selKind?.name ?? t.room.element;
@@ -538,6 +603,9 @@ export function RoomScene() {
             wallSurfaces={wallSurfaces}
             selectedWall3D={wall3D}
             selectedFit3D={fit3D}
+            onPipePoint={(id, i, a, y, live) => setPipePoint(id, i, a, y, live)}
+            onPipeBend={(id, i) => addPipeBend(id, i)}
+            onPipeUnbend={(id, i) => removePipeBend(id, i)}
             selectedOpen3D={selectedOpening}
             floorSel3D={floorSelected}
             onWallClick={selectWall3D}
@@ -929,6 +997,13 @@ export function RoomScene() {
                   <span className="el">{t.room.vent}</span>
                   <span className="chev">›</span>
                 </button>
+                {/* PIPES AND RISERS — the ones a kitchen is built AROUND rather than moved for.
+                    Place one and every cabinet it crosses cuts its own back (model/cutouts.ts). */}
+                <button className="elem-row" onClick={() => openFitSheet("plumbing")} type="button">
+                  <span className="ei"><IconPipe /></span>
+                  <span className="el">{t.room.plumbing}</span>
+                  <span className="chev">›</span>
+                </button>
               </>
             )}
 
@@ -1020,6 +1095,38 @@ export function RoomScene() {
                   <button className="replace-btn" onClick={startReplace} type="button">{t.room.replace}</button>
                 </div>
                 <div className="item-edit-section">{t.room.dimensions}</div>
+                {/* A PIPE IS NOT A PLATE. It has a diameter, a length, a distance along the wall
+                    and a height off the floor — and a fitter measures all four. The generic
+                    width/height pair could express the first two only by accident (which of them
+                    is the diameter depends on which way the pipe runs), so plumbing gets its own
+                    fields and the model does the mapping (model/room `orient`). */}
+                {pipe && selFit ? (
+                  <>
+                    <div className="edit-row">
+                      <span className="edit-row-lbl">{t.room.pipeRun}</span>
+                      <div className="style-profiles">
+                        {([["v", t.room.pipeVert], ["h", t.room.pipeHoriz]] as const).map(([v, label]) => (
+                          <button
+                            key={v}
+                            className={`style-profile${(selFit.orient ?? "v") === v ? " on" : ""}`}
+                            onClick={() => setFittingOrient(selFit.id, v)}
+                            type="button"
+                          >{label}</button>
+                        ))}
+                      </div>
+                    </div>
+                    <NumRow label={t.room.pipeDia} value={pipeDiameter(selFit)} step={5} min={10} max={400}
+                      onSet={(v) => (selFit.orient === "h" ? setFittingHeight(selFit.id, v) : setFittingWidth(selFit.id, v))} />
+                    <NumRow label={t.room.pipeLen} value={pipeLength(selFit)} step={50} min={50} max={4000}
+                      onSet={(v) => (selFit.orient === "h" ? setFittingWidth(selFit.id, v) : setFittingHeight(selFit.id, v))} />
+                    <div className="item-edit-section">{t.room.position}</div>
+                    <NumRow label={t.room.fitAlong} value={Math.round(selFit.t * fitWallLen)} step={50} min={0} max={Math.round(fitWallLen)}
+                      onSet={(v) => setFittingAlong(selFit.id, v)} />
+                    <NumRow label={t.room.fitFromFloor} value={Math.round(selFit.mountY ?? pipeLength(selFit) / 2)} step={50} min={0} max={ceiling}
+                      onSet={(v) => setFittingMountY(selFit.id, v)} />
+                  </>
+                ) : (
+                <>
                 <div className="edit-row">
                   <span className="edit-row-lbl">{t.room.width}</span>
                   <div className="dim-stepper">
@@ -1051,6 +1158,8 @@ export function RoomScene() {
                       <button className="num-step" type="button" aria-label="+5 см" onPointerDown={(e) => e.preventDefault()} onClick={() => stepDim("h", 50)}>+</button>
                     </div>
                   </div>
+                )}
+                </>
                 )}
                 {selOpen && selOpen.kind === "window" && (
                   <div className="edit-row">

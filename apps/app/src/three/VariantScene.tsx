@@ -16,7 +16,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { makeRoom, makeWoodTexture, type WallInfo } from "./ThreeScene";
 import { PBR, applyPbrFloor, onTexturesReady } from "./pbr";
 import { attachPerfHud } from "./perfHud";
-import { buildRig, type LightPreset, type QualityTier } from "./lighting";
+import { buildRig, type LightPreset, type QualityTier, type CeilingLightKind } from "./lighting";
 import { buildMirror, type Mirror } from "./reflect";
 import { autoTier, pixelRatioFor, startingTier, tierSpec, type QualityPref } from "./quality";
 import { buildPost } from "./post";
@@ -25,6 +25,9 @@ import type { Grids } from "../model/sheet";
 import { openCells } from "../model/sheet";
 import { colEdges, rowEdges, ROW_MIN } from "../model/grid";
 import { resolveLayout, type Room } from "../model/resolve";
+import { wallPanels, type PanelSpecs } from "../model/wallPanels";
+import { ledStrips, type LedSpec } from "../model/ledStrips";
+import { backCutouts } from "../model/cutouts";
 import { cabDepth } from "../model/bands";
 import { planRuns, cornerUnits, cornerSideFor, outerEndSeats, pickSeat, DEFAULT_REVEAL, type KitchenLayout, type CornerSpec, type PlannedRun } from "../model/runPlan";
 import { polygonBoundsMm, offsetPolygon, type Pt, type Opening, type Fitting } from "../model/room";
@@ -32,7 +35,7 @@ import { cabFootprints, halfExtents, footsClash, objectOverlapIds, type Foot } f
 import { cabBand, counterTop, UPPER_BOTTOM } from "../model/resolve";
 import { maxCabH, cornerArm, isOuterCorner, FOOT_DEPTH_MM, D_MIN, D_MAX } from "../model/bands";
 import type { Surface } from "../model/walls";
-import type { KitchenStyle } from "../model/layout";
+import { effectiveStyle, type KitchenStyle } from "../model/layout";
 import type { Cabinet } from "../model/cabinet";
 import { ICON_DRAG_PATH, ICON_ROTATE_PATH, ICON_VMOVE_PATH } from "../components/icons";
 import { registerCapture } from "../lib/thumbnailCapture";
@@ -58,6 +61,10 @@ export interface SceneApi {
   setSun: (azimuth: number, elevation: number) => void;
   /** how many ceiling lamps are lit (2/4/6) */
   setLampCount: (n: number) => void;
+  /** round downlights or linear luminaires */
+  setLampKind: (k: CeilingLightKind) => void;
+  /** how far across the room they spread (0..1 of the span) */
+  setLampSpread: (v: number) => void;
   /** turn the reflective floor on/off (rebuilds the room's mirror) */
   setReflect: (v: boolean) => void;
   /** render style changed («Линии» ⇄ realistic): re-skin the room + flip the paper background */
@@ -270,6 +277,9 @@ interface Geom {
   selW: number; // selected module width (mm)
   selX: number; // selected module run-local left edge (mm) — the anchor for a left-end resize
   selUpper: boolean; // selected is a wall unit
+  /** selected is a FLOOR module (base / tall) that can be lifted off the floor — see
+   *  model/bands.ts `isFloating`. A wall unit already hangs; furniture is not cabinetry. */
+  selFloor: boolean;
   /** selected has a c.h-driven height the 3D can resize: a wall unit OR a column. A column never
    *  had a height handle at all, so a floor-to-ceiling unit could not be built in 3D. */
   selTallH: boolean;
@@ -450,6 +460,8 @@ export function VariantScene({
   sun,
   shadowPx,
   lampCount = 4,
+  lampKind = "spot",
+  lampSpread = 0.34,
   reflect = false,
   quality = "auto",
   onSelectCab,
@@ -469,6 +481,8 @@ export function VariantScene({
   sheet = "auto",
   gridLines = true,
   placeBand,
+  panels,
+  led,
   onApi,
   onReady,
 }: {
@@ -492,6 +506,13 @@ export function VariantScene({
    *  would keep drawing 16мм after the seller switched the shop to 18мм — nothing in the deps
    *  below would have changed. Not used in the body; it exists to invalidate the rebuild. */
   constructionRev?: number;
+  /** THE ФАРТУК + ceiling-closer SPECS. The scene derives the actual panels from these on every
+   *  rebuild rather than taking finished geometry, so a live width drag re-shapes the wall panel
+   *  behind the cabinet in the same frame the cabinet moves. Omitted → no panels. */
+  panels?: PanelSpecs;
+  /** THE LED SPEC. Derived inside the rebuild for the same reason the panels are: the strip's
+   *  length is the row's length, so it has to re-measure as the row does. Omitted → unlit. */
+  led?: LedSpec;
   /** camera framing — 3/4 orbit or top-down plan (constructor only) */
   view?: KitchenView;
   /** snap moves/rotations to walls, neighbours and 45°/90° (constructor only) */
@@ -517,6 +538,10 @@ export function VariantScene({
   /** how many ceiling lamps are lit (2/4/6). «Вечер» is lit BY them, so it is its real control — the
    *  sun dial, correctly, barely moves anything at night. */
   lampCount?: number;
+  /** round downlights or linear luminaires — a different fixture, not a different setting */
+  lampKind?: CeilingLightKind;
+  /** how far across the room the fixtures spread, 0..1 of the span */
+  lampSpread?: number;
   /** a REFLECTIVE floor. Costs a second render of the scene, so it only ever appears on a settled
    *  frame — the same bargain ambient occlusion gets. See three/reflect.ts. */
   reflect?: boolean;
@@ -677,8 +702,8 @@ export function VariantScene({
   onReadyRef.current = onReady;
 
   // keep latest room inputs without re-initialising the scene
-  const propsRef = useRef({ points, ceiling, reveal, openings, coveringColor, floorId, interiorWalls, fittings, wallSurfaces, waterWall, layout, mode, view, selectedId, selectedIds, grids, sheet, gridLines, placeBand });
-  propsRef.current = { points, ceiling, reveal, openings, coveringColor, floorId, interiorWalls, fittings, wallSurfaces, waterWall, layout, mode, view, selectedId, selectedIds, grids, sheet, gridLines, placeBand };
+  const propsRef = useRef({ points, ceiling, reveal, openings, coveringColor, floorId, interiorWalls, fittings, wallSurfaces, waterWall, layout, mode, view, selectedId, selectedIds, grids, sheet, gridLines, placeBand, panels, led });
+  propsRef.current = { points, ceiling, reveal, openings, coveringColor, floorId, interiorWalls, fittings, wallSurfaces, waterWall, layout, mode, view, selectedId, selectedIds, grids, sheet, gridLines, placeBand, panels, led };
 
   // footprints + selection geometry, recomputed when the run/selection changes
   const geomRef = useRef<Geom | null>(null);
@@ -748,6 +773,7 @@ export function VariantScene({
       selFoot,
       inner: offsetPolygon(points, 100),
       selMountY,
+      selFloor: !!selCab && selCab.kind !== "upper" && !selCab.furniture,
       selH,
       selW: selFoot?.w ?? selCab?.w ?? 600,
       selUpper: selCab?.kind === "upper",
@@ -826,12 +852,15 @@ export function VariantScene({
     if (!api || !line || !chip || !txt) return;
     const xW = (dr.px - g.cx) / 1000;
     const zW = (dr.pz - g.cy) / 1000;
-    const top = api.project(xW, g.counter / 1000, zW); // worktop level
+    // a wall unit's gap is measured DOWN to the counter; a lifted floor module's is measured to the
+    // FLOOR, because that is the thing it is no longer standing on
+    const from = g.selFloor ? 0 : g.counter;
+    const top = api.project(xW, from / 1000, zW);
     const bot = api.project(xW, dr.mountY / 1000, zW); // unit bottom
     line.setAttribute("x1", `${top.x}`); line.setAttribute("y1", `${top.y}`);
     line.setAttribute("x2", `${bot.x}`); line.setAttribute("y2", `${bot.y}`);
     chip.setAttribute("transform", `translate(${(top.x + bot.x) / 2} ${(top.y + bot.y) / 2})`);
-    txt.textContent = `${Math.max(0, Math.round(dr.mountY - g.counter))} мм`;
+    txt.textContent = `${Math.max(0, Math.round(dr.mountY - from))} мм`;
   };
 
   // a move/rotate/vertical step from absolute client coords — driven by window
@@ -937,7 +966,8 @@ export function VariantScene({
     const g = geomRef.current;
     const api = apiRef.current;
     if (!dr || dr.mode !== "vertical" || !g || !api) return;
-    const lo = 200;
+    // a wall unit cannot come below the counter; a floor module can go all the way back to standing
+    const lo = g.selFloor ? 0 : 200;
     const hi = Math.max(lo, propsRef.current.ceiling - g.selH);
     let mountY = Math.min(hi, Math.max(lo, dr.mountY0 + (dr.vy0 - clientY) * (1000 / dr.pxPerM)));
     // snap the bottom to align with another wall unit's bottom/top (magnet)
@@ -1379,6 +1409,12 @@ export function VariantScene({
     const auto = autoTier(tier0, qualityRef.current === "auto");
 
     const scene = new THREE.Scene();
+    // dev-only: lets local tooling inspect what was actually built, the way `__store` does for
+    // state (stripped from prod builds). Verifying a render by reading the code is how the фартук
+    // stayed broken for days.
+    if (import.meta.env.DEV && typeof window !== "undefined") {
+      (window as unknown as { __scene: THREE.Scene }).__scene = scene;
+    }
     const camera = new THREE.PerspectiveCamera(45, w0 / h0, 0.05, 100);
     const controls = new OrbitControls(camera, renderer.domElement);
     controls.enableDamping = true;
@@ -1482,6 +1518,8 @@ export function VariantScene({
     let wood: THREE.Texture | null = null;
     let room: THREE.Group | null = null;
     let walls: WallInfo[] = [];
+    /** the room's ceiling surface — culled by height, the way a wall is culled by facing */
+    let ceilingMesh: THREE.Mesh | null = null;
     let kitchen: THREE.Group | null = null;
 
     const buildRoom = () => {
@@ -1511,6 +1549,10 @@ export function VariantScene({
       );
       room = built.group;
       walls = built.walls;
+      ceilingMesh = null;
+      room.traverse((o) => {
+        if ((o as THREE.Mesh).isMesh && o.userData.ceiling) ceilingMesh = o as THREE.Mesh;
+      });
       room.traverse((o) => {
         const m = o as THREE.Mesh;
         if (m.isMesh) m.receiveShadow = true; // floor + walls catch the kitchen's shadow
@@ -2158,7 +2200,11 @@ export function VariantScene({
         disposeGroup(kitchen);
       }
       const s = propsRef.current;
-      const { runs } = planRuns(s.points, s.waterWall, s.layout, s.openings, next, s.reveal);
+      // ONE resolve for the whole rebuild: it carries the runs, the clash set AND the wall the
+      // panels are derived against. This used to plan the runs here and compute the footprints
+      // again a few lines down — the same two passes, twice.
+      const L = resolveLayout(next, { points: s.points, waterWall: s.waterWall, layout: s.layout, openings: s.openings, reveal: s.reveal });
+      const runs = L.runs;
       const rb = polygonBoundsMm(s.points);
       kitchen = buildKitchen(
         next,
@@ -2166,10 +2212,18 @@ export function VariantScene({
         nextStyle,
         { cx: rb.cx, cy: rb.cy },
         s.ceiling,
+        s.panels
+          // the PANELS match what the cabinets are wearing, not what the run was generated with
+          ? wallPanels({ L, ceiling: s.ceiling, specs: s.panels, style: effectiveStyle(next, nextStyle), openings: s.openings, fittings: s.fittings })
+          : [],
+        new Map(),
+        s.led ? ledStrips(L, s.led) : [],
       );
       kitchen.traverse((o) => {
         const m = o as THREE.Mesh;
-        if (!m.isMesh || m.userData.decal) return; // a painted-on shadow must not cast one of its own
+        // a painted-on shadow must not cast one of its own — and neither must a painted-on LIGHT,
+        // whose additive plane would otherwise shade the very surface it is there to brighten
+        if (!m.isMesh || m.userData.decal || m.userData.led) return;
         m.castShadow = true;
         m.receiveShadow = true;
       });
@@ -2180,9 +2234,7 @@ export function VariantScene({
       }
       applyMode(kitchen, propsRef.current.mode); // honour the current render style
       // red overlap warning (editor only) for modules clashing with a same-layer one
-      clashIds = cbRef.current.onMovePlan
-        ? new Set(objectOverlapIds(cabFootprints(next, s.points, s.waterWall, s.layout, s.openings, s.reveal)))
-        : new Set();
+      clashIds = cbRef.current.onMovePlan ? new Set(L.clashing) : new Set();
       selId = propsRef.current.selectedId ?? null;
       for (const id of clashIds) paintCab(id);
       if (selId) paintCab(selId);
@@ -2220,6 +2272,10 @@ export function VariantScene({
         const dot = (camera.position.x - wll.mx) * wll.nx + (camera.position.z - wll.mz) * wll.nz;
         wll.mesh.visible = dot <= 0.001;
       }
+      // the ceiling culls on the same principle as a wall, just on the other axis: it exists when
+      // you are under it. From the 3/4 view outside the room you are above it, and a visible
+      // ceiling there would simply be a lid over the whole scene.
+      if (ceilingMesh) ceilingMesh.visible = camera.position.y < propsRef.current.ceiling / 1000 - 0.05;
     };
 
     // ---- gizmo helpers (project the module centre to screen, position handles) ----
@@ -2323,7 +2379,11 @@ export function VariantScene({
       // (onResizeLive → gridSetCabW), HEIGHT/DEPTH are per-module (onResize → patchCabDims). Only the
       // vertical MOUNT drag stays free-only: a gridded unit's mount belongs to its row.
       const free = !g?.selGridded;
-      setDisp(vertHRef.current, active && upper && free); // up/down mount: the ROW owns this for a gridded unit
+      // UP/DOWN MOUNT. For a WALL unit the row owns the height, so a gridded one is left alone. A
+      // FLOOR module has no such row — the sheet owns its column, not its elevation — so it can be
+      // lifted whether it is tiled or free. That is the axis free placement was missing, and a
+      // slider was the wrong shape for it: placement wants direct manipulation.
+      setDisp(vertHRef.current, active && (upper ? free : !!g?.selFloor));
       const resizable = active && !!g?.selResizable && !!cb.onResize;
       setDisp(resizeWRef.current, resizable); // width arrow — not on a corner (its width IS the square)
       // depth arrow — ON a corner too, where it drags the depth of the RUNS it butts into and the
@@ -3019,6 +3079,14 @@ export function VariantScene({
         rig.setLampCount(v);
         invalidate();
       },
+      setLampKind: (k) => {
+        rig.setLampKind(k);
+        invalidate();
+      },
+      setLampSpread: (v) => {
+        rig.setLampSpread(v);
+        invalidate();
+      },
       setReflect: (v) => {
         reflectRef.current = v;
         buildRoom(); // the mirror is created/destroyed IN buildRoom — a toggle has to rebuild it
@@ -3202,9 +3270,12 @@ export function VariantScene({
 
   // switching variant / render style / selection → rebuild the kitchen group (the
   // fresh materials pick up the current render mode + highlight)
+  //
+  // `panels` is in here too, and it is why the фартук appears the instant it is switched on: the
+  // panels are DERIVED inside the rebuild, so the spec changing is the only signal needed.
   useEffect(() => {
     apiRef.current?.setKitchen(cabs, style);
-  }, [cabs, style, layout, mode, constructionRev]);
+  }, [cabs, style, layout, mode, constructionRev, panels, led, ceiling, fittings, openings]);
 
   // The render style also re-skins the ROOM (line-art vs photoreal) and flips the paper background —
   // both live in buildRoom, which the kitchen rebuild above doesn't touch.
@@ -3235,6 +3306,14 @@ export function VariantScene({
   useEffect(() => {
     apiRef.current?.setLampCount(lampCount);
   }, [lampCount]);
+
+  useEffect(() => {
+    apiRef.current?.setLampKind(lampKind);
+  }, [lampKind]);
+
+  useEffect(() => {
+    apiRef.current?.setLampSpread(lampSpread);
+  }, [lampSpread]);
 
   useEffect(() => {
     apiRef.current?.setReflect(reflect);

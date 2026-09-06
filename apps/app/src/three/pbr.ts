@@ -180,3 +180,59 @@ export function planarUV(geo: THREE.BufferGeometry, tile: number, offU: number, 
   for (let i = 0; i < pos.count; i++) uv.setXY(i, (pos.getX(i) + offU) / tile, (pos.getZ(i) + offV) / tile);
   uv.needsUpdate = true;
 }
+
+/**
+ * Planar UVs for a VERTICAL panel — the фартук.
+ *
+ * `offU` is the SAME along-the-wall offset the worktop below it was mapped with, so the two share
+ * one pattern instead of restarting it; `vBottom` is the V the worktop's back edge ended on, and V
+ * carries on from there as the panel goes up. That is what makes a stone splashback read as the
+ * slab folded up the wall rather than a second, unrelated sheet — which is the whole difference
+ * between a premium kitchen and a matching-coloured one.
+ */
+export function wallUV(geo: THREE.BufferGeometry, tile: number, offU: number, vBottom: number): void {
+  const pos = geo.attributes.position as THREE.BufferAttribute | undefined;
+  const uv = geo.attributes.uv as THREE.BufferAttribute | undefined;
+  if (!pos || !uv) return;
+  let minY = Infinity;
+  for (let i = 0; i < pos.count; i++) minY = Math.min(minY, pos.getY(i));
+  for (let i = 0; i < pos.count; i++) {
+    uv.setXY(i, (pos.getX(i) + offU) / tile, (vBottom - (pos.getY(i) - minY)) / tile);
+  }
+  uv.needsUpdate = true;
+}
+
+/**
+ * SLAB UVs for a FRONT — what makes a row of doors look cut from one board.
+ *
+ * A front's geometry is a plain box, so by default every door gets the texture stretched across its
+ * own 0..1: the grain restarts at every door edge, and a 300mm drawer face shows the same number of
+ * growth rings as a 900mm one. Nobody's kitchen looks like that. Mapping instead from the front's
+ * position ON THE WALL (`offU` metres along the run, `offV` metres above the floor) puts every
+ * front in one continuous board, so the figure runs across a bank of drawers and lines up with the
+ * door beside it.
+ *
+ * `horizontal` turns the board 90°: an oak front normally runs its grain vertically, but a wide
+ * drawer bank is often laid the other way, and a shop that veneers its own fronts chooses.
+ */
+export function slabUV(
+  geo: THREE.BufferGeometry,
+  tile: number,
+  offU: number,
+  offV: number,
+  horizontal = false,
+): void {
+  const pos = geo.attributes.position as THREE.BufferAttribute | undefined;
+  const uv = geo.attributes.uv as THREE.BufferAttribute | undefined;
+  if (!pos || !uv) return;
+  for (let i = 0; i < pos.count; i++) {
+    const u = (pos.getX(i) + offU) / tile;
+    const v = (pos.getY(i) + offV) / tile;
+    // THE SCANS RUN THEIR GRAIN ALONG U. So the straight mapping (u→U) lays the board on its side
+    // and `horizontal` is the one that needs NO swap; VERTICAL — the way a door is normally hung,
+    // and the default — is the swapped one.
+    if (horizontal) uv.setXY(i, u, v);
+    else uv.setXY(i, v, u);
+  }
+  uv.needsUpdate = true;
+}

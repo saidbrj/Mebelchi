@@ -1,6 +1,20 @@
 // Wall coverings (paint) + a recursive surface split-tree so a wall can be split
 // horizontally / vertically into sub-surfaces, each with its own colour.
 
+/**
+ * HOW FAR THE PAINT STANDS OFF THE WALL (metres).
+ *
+ * The wall's paint is a separate plane pushed slightly into the room, because a covering coplanar
+ * with the wall z-fights with it. Anything else that is FIXED TO the wall has to clear this or it
+ * is drawn behind the paint and simply never seen — which is what happened to the фартук: a 6mm
+ * panel lying flat on the wall sat 6mm inside a paint layer at 12mm, so a painted kitchen showed
+ * the paint colour in the splash zone no matter what the panel was made of.
+ *
+ * Lives here, in the module that owns wall coverings, so the renderer that draws the paint and the
+ * one that draws the panels read the same number instead of each keeping its own.
+ */
+export const WALL_PAINT_OFFSET_M = 0.012;
+
 export interface WallCovering {
   id: string;
   name: string;

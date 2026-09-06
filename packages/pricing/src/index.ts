@@ -6,7 +6,7 @@
 
 export { buildBom } from "./buildBom.js";
 export { priceProject } from "./priceProject.js";
-export { modulesToParts, modulePanels, carcassPanels, panelAreaM2, panelThicknessMm, moduleInterior, cutFronts, shelfCount, drawerCount, hasFacade } from "./parts.js";
+export { modulesToParts, modulePanels, carcassPanels, panelAreaM2, panelThicknessMm, panelDepth, panelBanding, panelBandMm, moduleInterior, cutFronts, shelfCount, drawerCount, hasFacade } from "./parts.js";
 export type { DerivedPanel, PanelRole } from "./parts.js";
 export {
   groupCarcasses,
@@ -14,6 +14,7 @@ export {
   carcassWidth,
   carcassKind,
   hangingCount,
+  carcassHangs,
   resolveProduction,
   DEFAULT_PRODUCTION,
 } from "./carcass.js";

@@ -8,26 +8,33 @@
 import * as THREE from "three";
 import { CARCASS_THICKNESS_MM } from "@mebelchi/pricing";
 import type { Placement } from "../model/runPlan";
-import type { KitchenStyle } from "../model/layout";
+import { GEOM, type KitchenStyle } from "../model/layout";
 import { cabinetLayout, cellSizes, isLeaf, frontOf, type Cabinet, type Cell, type HandlePos, type DoorOpening, type FrontProfile } from "../model/cabinet";
 import { cabBand, cabDepth } from "../model/resolve";
 import { golaSpec } from "../model/gola";
 import { constructionOf, shopConstruction } from "../model/construction";
-import { cornerShapeOf, cornerArm } from "../model/bands";
+import { cornerShapeOf, cornerArm, isFloating, panelDepthOf } from "../model/bands";
 import { chamferRing } from "../model/outerCorner";
 import { frontFace, hasBody, makeGlassMat } from "./frontFace";
 import { addCabinetHardware, type HardwareOverlayOpts } from "./cabinetHardware";
 import { contactShadow } from "./contact";
-import { PBR, texturedMaterial, planarUV } from "./pbr";
+import { PBR, texturedMaterial, planarUV, wallUV, slabUV } from "./pbr";
 import { mergeGeometries } from "three/examples/jsm/utils/BufferGeometryUtils.js";
-import { catalogByColor } from "../model/catalog";
+import { catalogByColor, catalogByColorAny } from "../model/catalog";
+import { WALL_PAINT_OFFSET_M } from "../model/walls";
+import type { PanelBand } from "../model/wallPanels";
+import { stripLen, type LedStrip } from "../model/ledStrips";
+import { sinkOf, worktopHole, tapAt, isRimless, SINK_RIM, SINK_BRIDGE } from "../model/sink";
+import type { PanelCutout } from "@mebelchi/schema";
 
 // Vertical geometry + depth come from the CANONICAL layout model (model/resolve.ts) — this
 // file used to redeclare its own metre constants and a 4th copy of the depth table, which is
 // how the 3D drifted from the front view (a resized tall didn't move here; the hood sat 80mm
-// off). PLINTH/WORKTOP below are just GEOM's plinth/worktop expressed in metres.
-const PLINTH = 0.1;
-const WORKTOP = 0.04;
+// off). PLINTH/WORKTOP below are just GEOM's plinth/worktop expressed in metres — READ from GEOM,
+// because a hand-typed copy is how they drift: this file sat at 0.1 while the model (and the cut
+// list, and the front view) had moved to the census-measured 120mm.
+const PLINTH = GEOM.plinth / 1000;
+const WORKTOP = GEOM.worktop / 1000;
 
 /** HOW FAR BEHIND ITS FOOTPRINT CENTRE a free module's group origin sits (m), measured along its
  *  facing. An ordinary module is built forward from its BACK face (→ half its depth); a CORNER unit
@@ -74,6 +81,36 @@ interface Mats {
   glass: () => THREE.Material;
   /** anything else, by colour — appliance steel, toe-kick, burners… */
   flat: (color: number, opts?: THREE.MeshStandardMaterialParameters) => THREE.Material;
+  /** WHERE THIS MODULE SITS IN THE SLAB — `offU` is its centre along the wall (m). Set by the
+   *  caller after construction (makeMats has no idea where the module is); null on the isolated
+   *  studio path, where there is no run to be continuous along. See `grainMap`. */
+  grain: GrainRef | null;
+}
+
+/** The slab the fronts are cut from: where along the wall, and which way the grain runs. */
+export interface GrainRef {
+  offU: number;
+  horizontal: boolean;
+}
+
+/** How big the figure reads (m). One board's worth of pattern across ~1.2m, which is about right
+ *  for the oak/walnut scans in public/textures. */
+const GRAIN_TILE = 1.2;
+
+/**
+ * Map every mesh a front just added into slab space.
+ *
+ * Called immediately after `frontFace`, while the group holds only that front's meshes and before
+ * `pivotGroup` shifts them — the mapping reads `mesh.position`, and a pivoted door's children have
+ * already been moved by then.
+ */
+function grainMap(target: THREE.Object3D, grain: GrainRef | null, from = 0): void {
+  if (!PBR || !grain) return;
+  for (let i = from; i < target.children.length; i++) {
+    const m = target.children[i] as THREE.Mesh;
+    if (!m.isMesh || !m.geometry) continue;
+    slabUV(m.geometry, GRAIN_TILE, grain.offU + m.position.x, m.position.y, grain.horizontal);
+  }
 }
 
 /**
@@ -102,6 +139,7 @@ function makeMats(fin: Cabinet["finish"], style: KitchenStyle): Mats {
       () => new THREE.MeshStandardMaterial({ color, roughness: 0.8, ...opts }),
     );
   return {
+    grain: null,
     flat,
     steel: () => flat(STEEL, { metalness: 0.4, roughness: 0.35 }),
     carcass: () => flat(fin?.carcass ?? style.carcass),
@@ -158,6 +196,9 @@ function mergeIn(g: THREE.Object3D): void {
   for (const ch of g.children) {
     const m = ch as THREE.Mesh;
     if (!m.isMesh || !m.geometry || Array.isArray(m.material)) continue;
+    // A LIGHT IS NOT PART OF THE MODULE'S SHELL. The merge hands every bucket `castShadow = true`,
+    // which on an additive wash plane paints a dark rectangle where the light should be.
+    if (m.userData.led) continue;
     const list = byMat.get(m.material as THREE.Material);
     if (list) list.push(m);
     else byMat.set(m.material as THREE.Material, [m]);
@@ -199,8 +240,32 @@ function mergeIn(g: THREE.Object3D): void {
 /** Build the run(s) as a THREE.Group, using one RunRef per Cabinet.run.
  *  `roomCenter` (mm) lets modules with a free plan transform (px/pz/rot) be placed
  *  in the same centred-metre space as the run placements. */
-export function buildKitchen(cabs: Cabinet[], runs: RunRef[], style: KitchenStyle, roomCenter?: { cx: number; cy: number }, ceiling?: number): THREE.Group {
+export function buildKitchen(
+  cabs: Cabinet[],
+  runs: RunRef[],
+  style: KitchenStyle,
+  roomCenter?: { cx: number; cy: number },
+  ceiling?: number,
+  /** The фартук + ceiling-closing panels, already derived (model/wallPanels.ts). This file DRAWS
+   *  them; it does not decide where they go — the quote and the cut list read the same list. */
+  panels: PanelBand[] = [],
+  /** BACK-PANEL NOTCHES by module id (model/cutouts.ts) — where a riser runs up the face of the
+   *  wall and the box is built around it rather than moved for it. */
+  backCuts: Map<string, PanelCutout[]> = new Map(),
+  /** The LED strips built into the cabinetry, already derived (model/ledStrips.ts). Same deal as
+   *  `panels`: this file draws them, the quote reads the identical list. */
+  leds: LedStrip[] = [],
+): THREE.Group {
   const root = new THREE.Group();
+
+  // HOW FAR OUT THE WALL'S OWN SURFACES ALREADY REACH — the paint, plus the thickest panel fixed
+  // over it. Any light painted ON the wall has to sit in front of all of it, or it is drawn inside
+  // the splashback. Computed once: the corner units need the same number as the straight runs, or
+  // the wash would step in or out of the wall where they meet.
+  const wallStandoff = panels.reduce(
+    (mm, b) => (b.kind === "splash" ? Math.max(mm, WALL_PAINT_OFFSET_M + b.t / 1000) : mm),
+    WALL_PAINT_OFFSET_M,
+  );
 
   // WHICH BAY OF WHICH BOX. Modules sharing a `carcassGroup` are built as ONE carcass, so each of
   // them is a bay of it rather than a box of its own — and only the end bays carry an outer side.
@@ -221,6 +286,17 @@ export function buildKitchen(cabs: Cabinet[], runs: RunRef[], style: KitchenStyl
       ordered.forEach((c, i) => bays.set(c.id, { first: i === 0, last: i === ordered.length - 1 }));
     }
   }
+
+  // THE ROW'S UNDERSIDE PLANES. A wall unit whose bottom is covered by one must not draw a bottom
+  // board of its own: the plane is a drawing of those boards, not a second layer of them.
+  const undersides = panels.filter((p) => p.kind === "underside");
+  const coveredBelow = (c: Cabinet, run: number, wallCentreMm: number): boolean => {
+    if (c.kind !== "upper" || !undersides.length) return false;
+    const y0 = cabBand(c).y0;
+    return undersides.some(
+      (u) => u.run === run && Math.abs(u.y0 - y0) < 30 && wallCentreMm >= u.x0 - 1 && wallCentreMm <= u.x1 + 1,
+    );
+  };
 
   const cursor: Record<string, number> = {};
   for (const c of cabs) {
@@ -243,6 +319,8 @@ export function buildKitchen(cabs: Cabinet[], runs: RunRef[], style: KitchenStyl
     const band = cabBand(c);
     const bandY0 = band.y0 / 1000;
     const carcassBot = band.carcass0 / 1000;
+    // lifted off the floor: hung on the wall rather than standing on a plinth (model/bands.ts)
+    const floating = isFloating(c);
     const carcassTop = band.carcass1 / 1000;
     const sCenter = p.startS + (xMm + c.w / 2) / 1000;
 
@@ -255,6 +333,10 @@ export function buildKitchen(cabs: Cabinet[], runs: RunRef[], style: KitchenStyl
     // constructed a fresh MeshStandardMaterial on every call — `hollowCarcass` alone made five
     // identical ones for one box, and a 14-module kitchen ended up with ~160 materials.
     const M = makeMats(fin, style);
+    // WHERE THIS MODULE IS IN THE SLAB. Same along-the-wall metric the worktop and the фартук map
+    // with, so a wooden фартук, the counter and the fronts all read as one board.
+    // a per-module override wins over the kitchen-wide direction
+    M.grain = { offU: sCenter, horizontal: c.grainHorizontal ?? style.grainHorizontal === true };
     const facadeMat = M.facade;
     const carcassMat = M.carcass;
     const mat = M.flat;
@@ -345,6 +427,14 @@ export function buildKitchen(cabs: Cabinet[], runs: RunRef[], style: KitchenStyl
         leaf.position.set(cx, 0, cz);
         leaf.rotation.y = Math.atan2(nx, nz); // local +Z → the face normal
         frontFace(cornerProfile, width, height - 0.03, 0, yc, 0.011, cornerFacade, leaf, cornerGlass);
+        // THE CORNER'S LEAVES GET THE GRAIN TOO. They are rotated into the corner, so their local x
+        // runs along whichever wall this arm faces — pick that axis for the slab offset. It cannot
+        // line up across the 45° with the run beside it (nothing can), but it gets the same board:
+        // the same scale, the same direction, instead of the texture stretched to each door.
+        if (M.grain) {
+          const along = Math.abs(nz) > Math.abs(nx) ? cx : cz;
+          grainMap(leaf, { ...M.grain, offU: M.grain.offU + along });
+        }
         target.add(leaf);
       };
       // ONE handle on the door, by type (c.handle index into HANDLES): 3 Без = none,
@@ -393,6 +483,7 @@ export function buildKitchen(cabs: Cabinet[], runs: RunRef[], style: KitchenStyl
           orient.position.set(cx, 0, cz);
           const lift = new THREE.Group();
           frontFace(cornerProfile, face * Math.SQRT2, height - 0.03, 0, yc, 0.011, cornerFacade, lift, cornerGlass);
+          grainMap(lift, M.grain); // the lift leaf is a front like any other
           cornerHandle(0, 0, 0, 1, top ? yc - height * 0.35 : yc + height * 0.35, len, lift); // near free edge, on +Z face
           const edgeY = top ? yc + height / 2 : yc - height / 2; // hinge = top or bottom edge
           for (const ch of lift.children) ch.position.y -= edgeY;
@@ -415,6 +506,22 @@ export function buildKitchen(cabs: Cabinet[], runs: RunRef[], style: KitchenStyl
             const off = (hingeRight ? -1 : 1) * face * 0.35;
             cornerHandle((sx * (half + cut)) / 2 - sx * dn * off, (sz * (half + cut)) / 2 + sz * dn * off, sx * dn, sz * dn, yc, len, door);
           });
+        } else if ((c.cornerDoors ?? style.cornerDoors ?? "single") === "pair") {
+          // TWO LEAVES, ONE PER ARM — each hinged at its own OUTER end, so they open in opposite
+          // directions and meet at the inner notch. The two hinge points and their swing signs are
+          // exactly the two the single L-door chooses between, which is the point: the same body,
+          // opened twice instead of once. Handles sit at the free (inner) ends, where they meet.
+          const hRad = sx * sz * DOOR_OPEN_RAD;
+          // arm A (∥ wall A): hinge at its outer end on wall A
+          swingDoor(sx * half, sz * cut, hRad, (door) => {
+            panel((sx * (half + cut)) / 2, sz * cut, face, 0, sz, yc, height, door);
+            cornerHandle(sx * (cut + 0.06), sz * cut, 0, sz, yc, len, door);
+          });
+          // arm B (∥ wall B): hinge at its outer end on wall B, mirrored swing
+          swingDoor(sx * cut, sz * half, -hRad, (door) => {
+            panel(sx * cut, (sz * (half + cut)) / 2, face, sx, 0, yc, height, door);
+            cornerHandle(sx * cut, sz * (cut + 0.06), sx, 0, yc, len, door);
+          });
         } else {
           // L-door: BOTH arms are ONE L-shaped leaf hinged at one outer edge, handle at the
           // other (free) outer end; swings open like a regular but L-shaped door.
@@ -426,6 +533,77 @@ export function buildKitchen(cabs: Cabinet[], runs: RunRef[], style: KitchenStyl
           });
         }
       };
+      // ── THE CORNER'S OWN LED ──────────────────────────────────────────────────────────────────
+      //
+      // A corner unit's front is a 45° CHAMFER or an L that turns a right angle. It is never a
+      // straight length parallel to a wall, which is what the first version drew: one bar in the
+      // run's frame, hanging out into the room past the cabinet it was supposed to be under.
+      //
+      // So it is built HERE, from the same room-facing footprint points the body is extruded from
+      // (`footPts`) and in the cabinet's own group — which makes it impossible for the light and
+      // the box to disagree about where the front is.
+      {
+        const mine = leds.filter((s) => s.cabId === c.id && s.corner);
+        if (mine.length) {
+          const A: [number, number] = [sx * half, sz * cut];
+          const Mid: [number, number] = [sx * cut, sz * cut];
+          const B: [number, number] = [sx * cut, sz * half];
+          const edges: [[number, number], [number, number]][] = diagonal ? [[A, B]] : [[A, Mid], [Mid, B]];
+          const SET = 0.04; // the same setback the straight strips take, in metres
+          for (const s of mine) {
+            const yM = s.y / 1000 + (s.dir === "down" ? -LED_BAR / 2 : LED_BAR / 2);
+            const m8 = ledBarMat(s);
+            for (const [[px, pz], [qx, qz]] of edges) {
+              // step the edge back off the face, toward the wall corner behind it
+              let nx = -(qz - pz);
+              let nz = qx - px;
+              const nl = Math.hypot(nx, nz) || 1;
+              nx /= nl;
+              nz /= nl;
+              const mx = (px + qx) / 2;
+              const mz = (pz + qz) / 2;
+              if ((-sx * half - mx) * nx + (-sz * half - mz) * nz < 0) {
+                nx = -nx;
+                nz = -nz;
+              }
+              const ax = px + nx * SET, az = pz + nz * SET;
+              const bx = qx + nx * SET, bz = qz + nz * SET;
+              const len = Math.hypot(bx - ax, bz - az);
+              if (len < 0.02) continue;
+              const bar = new THREE.Mesh(new THREE.BoxGeometry(len, LED_BAR, LED_BAR * 1.6), m8);
+              bar.position.set((ax + bx) / 2, yM, (az + bz) / 2);
+              bar.rotation.y = -Math.atan2(bz - az, bx - ax);
+              bar.castShadow = bar.receiveShadow = false;
+              bar.userData.led = true;
+              g.add(bar);
+            }
+
+            // AND IT HAS TO LIGHT SOMETHING. A bar that glows but washes nothing left the фартук's
+            // light running the length of each wall and then stopping dead at the corner, with a lit
+            // strip visible above the dark patch. The corner unit's two BACK sides are against the
+            // two walls, so its light falls on the splashback in that corner from both — which is
+            // exactly the gap between where one wall's wash ends and the next one's begins.
+            const wash = ledWashMat(s);
+            const side = 2 * half;
+            const q = (rotY: number, px: number, pz: number) => {
+              const m = new THREE.Mesh(new THREE.PlaneGeometry(side, LED_WASH), wash);
+              m.rotation.y = rotY;
+              if (s.dir === "up") m.rotation.z = Math.PI; // ramp's bright end down at the strip
+              m.position.set(px, yM + (s.dir === "down" ? -LED_WASH / 2 : LED_WASH / 2), pz);
+              m.castShadow = m.receiveShadow = false;
+              m.userData.led = true;
+              g.add(m);
+            };
+            // wall A lies at local z = −sz·half and faces +sz; wall B at x = −sx·half, facing +sx.
+            // Both step out by the SAME clearance the straight runs use — sitting flush on the
+            // splashback is what made one of the two vanish.
+            const off = wallStandoff + LED_WASH_CLEAR - half;
+            q(sz > 0 ? 0 : Math.PI, 0, sz * off);
+            q(sx > 0 ? Math.PI / 2 : -Math.PI / 2, sx * off, 0);
+          }
+        }
+      }
+
       // a thin vertical carcass panel along the edge (ax,az)→(bx,bz), centred on it
       const sidePanel = (ax: number, az: number, bx: number, bz: number, yBase: number, hh: number) => {
         const L = Math.hypot(bx - ax, bz - az);
@@ -471,17 +649,20 @@ export function buildKitchen(cabs: Cabinet[], runs: RunRef[], style: KitchenStyl
         hollowBody(carcassBot, h);
         if (!outer) doors(carcassBot + h / 2, h); // outer = open display, no door
       } else {
-        const baseTop = carcassTop; // = plinth + c.h, from the canonical band
-        const h = baseTop - PLINTH;
-        prism(PLINTH, 0, mat(STEEL_DARK), -0.02); // toe-kick (recessed, like regular bases)
-        hollowBody(PLINTH, h);
+        const baseTop = carcassTop;
+        const h = baseTop - carcassBot;
+        // NO TOE-KICK UNDER A HUNG BOX. The plinth is what a base STANDS on; lifted off the floor
+        // it stands on nothing, and a toe-kick drawn in mid-air under it is not a detail anyone
+        // would forgive. `carcassBot` carries the lift — it is the canonical band's own number.
+        if (!floating) prism(carcassBot, 0, mat(STEEL_DARK), -0.02);
+        hollowBody(carcassBot, h);
         prism(WORKTOP, baseTop, worktopMat(), 0.03); // worktop with the same front overhang
-        if (!outer) doors(PLINTH + h / 2, h);
+        if (!outer) doors(carcassBot + h / 2, h);
       }
       // the footprint on the floor: an inner corner is a square (w × w), an end unit is w × the run depth
       if (isUpper) {
         if (bandY0 < 1.8) contactShadow(g, wM, outer ? cabDepth(c) / 1000 : wM, { centred: true, y: Math.min(WORKTOP_TOP, carcassBot), opacity: 0.4 });
-      } else {
+      } else if (!floating) {
         contactShadow(g, wM, outer ? cabDepth(c) / 1000 : wM, { centred: true });
       }
       seatModule(root, g);
@@ -615,7 +796,7 @@ export function buildKitchen(cabs: Cabinet[], runs: RunRef[], style: KitchenStyl
       const h = carcassTop - carcassBot;
       const bottom = carcassBot;
       const yc = bottom + h / 2;
-      hollowCarcass(add, wM, h, dM, yc, carcassMat, bay, c);
+      hollowCarcass(add, wM, h, dM, yc, carcassMat, bay, c, coveredBelow(c, run, sCenter * 1000), backCuts.get(c.id));
       buildModuleInterior(add, handle, c, wM, h, dM, yc, style, M, true, g);
     // the shade a wall unit throws on the counter — only for a row hanging at the normal height
     // (an antresol sits above a column, and there is no counter under it to darken)
@@ -628,9 +809,9 @@ export function buildKitchen(cabs: Cabinet[], runs: RunRef[], style: KitchenStyl
       // was pinned to a hardcoded 2.2m top and IGNORED c.h — resizing a tall moved it in the
       // front view and did nothing here. Now it follows the canonical band.
       const tallTop = carcassTop;
-      const h = tallTop - PLINTH;
-      const yc = (tallTop + PLINTH) / 2;
-      add(wM, PLINTH, dM * 0.85, 0, PLINTH / 2, dM * 0.55, mat(STEEL_DARK));
+      const h = tallTop - carcassBot;
+      const yc = (tallTop + carcassBot) / 2;
+      if (!floating) add(wM, carcassBot, dM * 0.85, 0, carcassBot / 2, dM * 0.55, mat(STEEL_DARK));
       if (c.appliance === "fridge" && !c.builtin) {
         add(wM, h, dM, 0, yc, dM / 2, mat(0xdde2e5, { metalness: 0.45, roughness: 0.3 }));
         add(wM + 0.002, 0.012, 0.01, 0, PLINTH + h * 0.62, dM + 0.006, mat(STEEL_DARK));
@@ -666,10 +847,10 @@ export function buildKitchen(cabs: Cabinet[], runs: RunRef[], style: KitchenStyl
           add(wM - 0.04, topH, 0.02, 0, ovY0 + ovH + topH / 2, dM + 0.011, facadeMat());
         }
       } else {
-        hollowCarcass(add, wM, h, dM, yc, carcassMat, bay, c);
+        hollowCarcass(add, wM, h, dM, yc, carcassMat, bay, c, false, backCuts.get(c.id));
         buildModuleInterior(add, handle, c, wM, h, dM, yc, style, M, false, g);
       }
-    contactShadow(g, wM, dM); // a column, on the floor
+    if (!floating) contactShadow(g, wM, dM); // a column, on the floor — see the base path
       seatModule(root, g);
       continue;
     }
@@ -679,8 +860,8 @@ export function buildKitchen(cabs: Cabinet[], runs: RunRef[], style: KitchenStyl
     // cabinets the SAME so the worktop stays level); everything sits on this `baseTop`.
     // Straight from the canonical band; the RENDERER no longer clamps (the editor does).
     const baseTop = carcassTop;
-    const h = baseTop - PLINTH;
-    const yc = (baseTop + PLINTH) / 2;
+    const h = baseTop - carcassBot;
+    const yc = (baseTop + carcassBot) / 2;
 
     // plinth / toe-kick — full width `wM` so adjacent cabinets touch with zero seam gaps;
     // extends across reveal gaps to the wall on end cabinets.
@@ -707,8 +888,9 @@ export function buildKitchen(cabs: Cabinet[], runs: RunRef[], style: KitchenStyl
         }
       }
     }
-    add(plinthW, PLINTH, dM * 0.85, plinthLx, PLINTH / 2, dM * 0.55, mat(STEEL_DARK));
-    hollowCarcass(add, wM, h, dM, yc, carcassMat, bay, c);
+    // see the corner arm above: a hung box has no plinth, because there is nothing under it
+    if (!floating) add(plinthW, carcassBot, dM * 0.85, plinthLx, carcassBot / 2, dM * 0.55, mat(STEEL_DARK));
+    hollowCarcass(add, wM, h, dM, yc, carcassMat, bay, c, false, backCuts.get(c.id));
 
     // worktop with a front overhang (bigger on the seating side of an island)
     const front = freestanding ? 0.26 : 0.03;
@@ -738,21 +920,108 @@ export function buildKitchen(cabs: Cabinet[], runs: RunRef[], style: KitchenStyl
       }
     }
 
-    const wt = add(wtW, WORKTOP, wtDepth, wtLx, baseTop + WORKTOP / 2, dM / 2 - 0.01 + front / 2, worktopMat());
+    // THE COUNTER, WITH THE HOLE ITS APPLIANCE NEEDS CUT IN IT.
+    //
+    // A sink's MOUNT is defined by how its bowl meets the slab's cut edge, so the opening has to be
+    // real geometry: hide it under a rim and подстольная / integrated cannot be drawn at all. One
+    // extruded shape with a hole rather than four boxes around it — the same thing the notched
+    // backs and the socket-cut фартук already do, and it keeps the slab one mesh and one UV.
+    const hole = worktopHole(c);
+    let wt: THREE.Mesh;
+    if (hole) {
+      const shape = new THREE.Shape();
+      const hw = wtW / 2, hd = wtDepth / 2;
+      shape.moveTo(-hw, -hd);
+      shape.lineTo(hw, -hd);
+      shape.lineTo(hw, hd);
+      shape.lineTo(-hw, hd);
+      shape.closePath();
+      // the hole is in the CABINET's frame (mm from its centre, and from the wall); the slab's own
+      // frame is centred on the slab, which sits `front/2` proud of the carcass
+      const cx = hole.cx / 1000 - wtLx;
+      const cz = hole.cz / 1000 - (dM / 2 - 0.01 + front / 2);
+      const h2 = new THREE.Path();
+      const ow = hole.w / 2000, od = hole.d / 2000;
+      h2.moveTo(cx - ow, cz - od);
+      h2.lineTo(cx + ow, cz - od);
+      h2.lineTo(cx + ow, cz + od);
+      h2.lineTo(cx - ow, cz + od);
+      h2.closePath();
+      shape.holes.push(h2);
+      const geo = new THREE.ExtrudeGeometry(shape, { depth: WORKTOP, bevelEnabled: false });
+      geo.rotateX(-Math.PI / 2); // extrude axis Z → Y up, shape Y → −Z
+      geo.translate(0, baseTop, 0);
+      wt = new THREE.Mesh(geo, worktopMat());
+      wt.position.set(wtLx, 0, dM / 2 - 0.01 + front / 2);
+      wt.castShadow = wt.receiveShadow = true;
+      g.add(wt);
+    } else {
+      wt = add(wtW, WORKTOP, wtDepth, wtLx, baseTop + WORKTOP / 2, dM / 2 - 0.01 + front / 2, worktopMat());
+    }
     // map the marble in run space (offset by the cabinet's position along the run) so the
     // worktops flow into one continuous slab instead of per-cabinet blocks
     if (PBR) planarUV(wt.geometry, 1.4, sCenter + wtLx, 0);
 
     if (c.appliance === "sink") {
       facade(add, handle, { ...c, fill: "shelves" } as Cabinet, wM, h, yc, dM, style, M, g);
-      add(wM * 0.55, 0.05, dM * 0.6, 0, baseTop - 0.01, dM * 0.5, mat(STEEL_DARK)); // basin well
-      add(wM * 0.55, 0.015, dM * 0.6, 0, baseTop + WORKTOP - 0.005, dM * 0.5, steelMat()); // rim
-      // gooseneck faucet: column + forward spout
+      const spec = sinkOf(c);
+      const tap = tapAt(c);
+      if (spec && hole) {
+        // THE MOUNT IS THE WHOLE DIFFERENCE. Where the bowl's top edge sits relative to the slab is
+        // what makes a sink накладная, врезная, подстольная or integrated — and it is the one thing
+        // a client can see. Everything else about the four is the same bowl.
+        const rimless = isRimless(spec.mount);
+        // AN INTEGRATED BOWL IS THE COUNTER, so it is cut from the counter's own material.
+        //
+        // Otherwise the WELL is darker than the RIM. Not decoration: a basin lit from above with
+        // one bright material for both reads as a flat white patch under the hole rather than as
+        // something you can put a pan in — the shading is the only depth cue at this angle.
+        const integrated = spec.mount === "integrated";
+        const wellMat = () => (integrated ? worktopMat() : mat(STEEL_DARK));
+        const rimMat = () => (integrated ? worktopMat() : steelMat());
+        const slabTop = baseTop + WORKTOP;
+        // the well hangs from the slab's bottom for a rimless mount, from its top for a rimmed one
+        const wellTop = spec.mount === "undermount" ? baseTop : slabTop;
+        const wellH = spec.well / 1000;
+        const ox = hole.cx / 1000;
+        const oz = hole.cz / 1000;
+        const ow = hole.w / 1000;
+        const od = hole.d / 1000;
+        // one well, or two side by side under the one opening
+        const wells = spec.bowls === 2 ? [-1, 1] : [0];
+        const bw = spec.bowls === 2 ? (ow - SINK_BRIDGE / 1000) / 2 : ow;
+        for (const k of wells) {
+          const bx = ox + (k * (bw + SINK_BRIDGE / 1000)) / 2;
+          // the well's walls + floor, drawn as a shallow open box: a solid block would read as a
+          // worktop with a metal patch on it rather than as something you can put a pan in
+          add(bw, 0.004, od, bx, wellTop - wellH, oz, wellMat()); // floor
+          add(bw, wellH, 0.004, bx, wellTop - wellH / 2, oz - od / 2, wellMat());
+          add(bw, wellH, 0.004, bx, wellTop - wellH / 2, oz + od / 2, wellMat());
+          add(0.004, wellH, od, bx - bw / 2, wellTop - wellH / 2, oz, wellMat());
+          add(0.004, wellH, od, bx + bw / 2, wellTop - wellH / 2, oz, wellMat());
+        }
+        if (!rimless) {
+          // THE RIM, and how high it sits. Proud of the slab is накладная — the cheap fit, and what
+          // this file drew for every sink it ever rendered. Врезная lies almost flush.
+          const proud = spec.mount === "overmount" ? 0.008 : 0.002;
+          const lap = SINK_RIM / 1000;
+          const rw = ow + 2 * lap, rd = od + 2 * lap;
+          const ry = slabTop + proud / 2;
+          // a frame, so the rim reads as a lip around the hole and not as a lid over it
+          add(rw, proud, lap, ox, ry, oz - rd / 2 + lap / 2, rimMat());
+          add(rw, proud, lap, ox, ry, oz + rd / 2 - lap / 2, rimMat());
+          add(lap, proud, rd - 2 * lap, ox - rw / 2 + lap / 2, ry, oz, rimMat());
+          add(lap, proud, rd - 2 * lap, ox + rw / 2 - lap / 2, ry, oz, rimMat());
+        }
+      }
+      // gooseneck faucet: column + forward spout, standing in the tap zone behind the bowl
+      const tx = tap ? tap.cx / 1000 : wM * 0.2;
+      const tz = tap ? tap.cz / 1000 : dM * 0.16;
       const col = new THREE.Mesh(new THREE.CylinderGeometry(0.013, 0.013, 0.22, 10), steelMat());
-      col.position.set(wM * 0.2, baseTop + WORKTOP + 0.11, dM * 0.16);
+      col.position.set(tx, baseTop + WORKTOP + 0.11, tz);
       g.add(col);
       const spout = new THREE.Mesh(new THREE.CylinderGeometry(0.012, 0.012, 0.14, 10), steelMat());
-      spout.position.set(wM * 0.2, baseTop + WORKTOP + 0.21, dM * 0.3);
+      spout.position.set(tx, baseTop + WORKTOP + 0.21, tz + 0.14);
       spout.rotation.x = Math.PI / 2;
       g.add(spout);
     } else if (c.appliance === "hob" || c.appliance === "cooktop") {
@@ -805,8 +1074,11 @@ export function buildKitchen(cabs: Cabinet[], runs: RunRef[], style: KitchenStyl
       g.add(foot);
     }
 
-    // the base cabinet SITS on the floor — say so
-    contactShadow(g, wM, dM);
+    // the base cabinet SITS on the floor — say so.
+    //
+    // …UNLESS IT IS NOT SITTING ON IT. The contact decal is a painted "this touches the floor
+    // here"; under a hung box it reads as one standing on the floor it is clearly above.
+    if (!floating) contactShadow(g, wM, dM);
     seatModule(root, g);
   }
 
@@ -816,7 +1088,6 @@ export function buildKitchen(cabs: Cabinet[], runs: RunRef[], style: KitchenStyl
   // to the ceiling. Drawn straight from the run geometry + reserved reveal, so they sit exactly in
   // the dead zone the layout already left empty and can never drift from it.
   {
-    const ceilM = (ceiling ?? 0) / 1000;
     // the doors sit ~15mm proud of the carcass front (facades are built at dM+0.011..0.02), so a
     // carcass-depth panel looks recessed — reach the door face so the filler is flush with the fronts.
     const FRONT_PROUD = 0.016;
@@ -841,10 +1112,6 @@ export function buildKitchen(cabs: Cabinet[], runs: RunRef[], style: KitchenStyl
         (c) => (c.run ?? 0) === r && c.px == null && c.appliance !== "filler" && !c.furniture && !c.corner,
       );
       if (!onRun.length) return;
-      const talls = onRun.filter((c) => c.kind === "tall");
-      const uppers = onRun.filter((c) => c.kind === "upper" && c.appliance !== "hood");
-      const topOf = (arr: Cabinet[]) => (arr.length ? Math.max(...arr.map((c) => cabBand(c).y1)) / 1000 : 0);
-      const depthOf = (arr: Cabinet[], fb: number) => (arr.length ? cabDepth(arr[0]) / 1000 : fb);
       // the module NEAREST this end (start = smallest x, end = largest x+w). Uses the run-local x the
       // grid writes; the filler then matches exactly what stands beside it instead of the run's tallest.
       const edge = (pool: Cabinet[], atStart: boolean): Cabinet | null => {
@@ -877,24 +1144,263 @@ export function buildKitchen(cabs: Cabinet[], runs: RunRef[], style: KitchenStyl
       if (revS > 0) drawSide(revS / 2000, revS / 1000, true); // start band, flush to the wall (no corner here)
       if (revE > 0) drawSide(p.lenM - revE / 2000, revE / 1000, false); // end band
 
-      // horizontal TOP filler: a floor-to-ceiling run whose tallest column intentionally stops a
-      // reveal short of the ceiling (see the solver) gets a scribe strip closing that small gap.
-      // Spans wall-to-wall and matches the depth of the top-row modules (e.g. 3rd row antresol).
-      const colTop = Math.max(topOf(talls), topOf(uppers));
-      const gap = ceilM - colTop;
-      if (ceilM > 0 && colTop > 0 && gap > 0.002 && gap <= 0.12) {
-        const topCabs = onRun.filter((c) => Math.abs(cabBand(c).y1 / 1000 - colTop) < 0.01);
-        const dep = topCabs.length
-          ? Math.max(...topCabs.map(cabDepth)) / 1000
-          : (talls.length ? depthOf(talls, 0.56) : depthOf(uppers, 0.35));
-        const s0 = 0;
-        const s1 = p.lenM;
-        const topCab = edge(topCabs.length ? topCabs : onRun.filter((c) => c.kind === "tall" || c.kind === "upper"), true);
-        panelAt(p, (s0 + s1) / 2, s1 - s0, colTop, gap, dep, topCab?.finish);
-      }
+      // NOTE: the horizontal strip up to the ceiling used to be built here, and only when the gap
+      // happened to be ≤120mm — so the commonest case in a low room (one row of wall units and
+      // 300mm of bare wall above it) was never closed at all. It is a real panel now, derived with
+      // the фартук in model/wallPanels.ts and drawn below.
     });
   }
+
+  // ── WALL PANELS: the фартук + the strip to the ceiling ──────────────────────────────────────────
+  // Both come in already derived (model/wallPanels.ts) in WALL space, which is the same metric
+  // `sCenter` uses for a module — so drawing one is just "put a sheet there". Nothing here decides
+  // where a panel goes; the quote and the cut list read the exact same bands.
+  {
+    // ONE material per (colour × decor), not one per panel: a splash and a closer that share a decor
+    // share a material, so the merge below collapses the whole kitchen's panels into a draw call or
+    // two. (A stone фартук on three walls used to be three materials for the same stone.)
+    const panelMats = new Map<string, THREE.Material>();
+    const panelMat = (color: number, kind: PanelBand["kind"]): THREE.Material => {
+      const key = `${color}|${kind}`;
+      let m = panelMats.get(key);
+      if (m) return m;
+      // WHATEVER DECOR THE COLOUR NAMES. A фартук can be given any material in the catalog, so
+      // looking only under "worktop" found nothing for an oak or a walnut and the panel came out as
+      // tinted marble — the colour moved, the material never did. Prefer the kind's natural part so
+      // a colour in two lists still resolves the obvious way.
+      const part = kind === "splash" ? "worktop" : kind === "underside" ? "carcass" : "facade";
+      const decor = catalogByColorAny(color, part);
+      // no catalog match at all → a stone фартук is the sane default; a board is just its colour
+      const fallbackTex = kind === "splash" ? "marble" : "";
+      m =
+        (PBR ? texturedMaterial(decor?.tex ?? fallbackTex, color) : null) ??
+        new THREE.MeshStandardMaterial({ color, roughness: kind === "splash" ? 0.45 : 0.8 });
+      panelMats.set(key, m);
+      return m;
+    };
+
+    for (const b of panels) {
+      const ref = runs[b.run];
+      if (!ref || ref.kind !== "wall") continue;
+      const p = ref.placement;
+      const wRun = (b.x1 - b.x0) / 1000;
+      const hh = (b.y1 - b.y0) / 1000;
+      if (wRun <= 0.002 || hh <= 0.002) continue;
+      const sC = (b.x0 + b.x1) / 2000; // wall-space centre, in metres — exactly what a module uses
+      // a closer stands proud with the row it caps (flush with the door faces); an underside plane
+      // is as deep as the row whose bottom it IS; a фартук is only its own thickness deep
+      const d =
+        b.kind === "closer" ? b.depth / 1000 + 0.016 : b.kind === "underside" ? b.depth / 1000 : b.t / 1000;
+      // …AND IT SITS ON TOP OF THE PAINT. The wall's covering is a plane pushed 12mm into the room
+      // (it would z-fight with the wall otherwise), so a 6mm panel lying flat on the wall is drawn
+      // BEHIND it: on a painted kitchen the splash zone showed the paint colour whatever the panel
+      // was made of. A стеновая панель really is fixed over the plaster, so this is also what it is.
+      const standoff = b.kind === "splash" ? WALL_PAINT_OFFSET_M : 0;
+
+      let geo: THREE.BufferGeometry;
+      if (b.cuts.length) {
+        // sockets go THROUGH the panel. An extruded Shape with holes is one mesh either way, so the
+        // holes cost nothing but the shape — and a фартук drawn around its sockets is the detail a
+        // client notices, because it is what the fitted panel looks like.
+        const shape = new THREE.Shape();
+        shape.moveTo(-wRun / 2, -hh / 2);
+        shape.lineTo(wRun / 2, -hh / 2);
+        shape.lineTo(wRun / 2, hh / 2);
+        shape.lineTo(-wRun / 2, hh / 2);
+        shape.closePath();
+        for (const c of b.cuts) {
+          const x0 = c.x / 1000 - wRun / 2;
+          const y0 = c.y / 1000 - hh / 2;
+          const w = c.w / 1000;
+          const h = c.h / 1000;
+          const hole = new THREE.Path();
+          hole.moveTo(x0, y0);
+          hole.lineTo(x0 + w, y0);
+          hole.lineTo(x0 + w, y0 + h);
+          hole.lineTo(x0, y0 + h);
+          hole.closePath();
+          shape.holes.push(hole);
+        }
+        geo = new THREE.ExtrudeGeometry(shape, { depth: d, bevelEnabled: false });
+        geo.translate(0, 0, -d / 2); // extrude grows +z from the shape plane; centre it like a box
+      } else {
+        geo = new THREE.BoxGeometry(wRun, hh, d);
+      }
+
+      // THE CONTINUOUS PATTERN. `sC` is the same along-the-wall offset the worktops were mapped
+      // with, and the V picks up where the worktop's back edge left off — so the veining runs off
+      // the counter and up the wall as one slab instead of restarting at the joint.
+      if (PBR && b.kind === "splash") wallUV(geo, 1.4, sC, -(b.depth / 1000 + 0.05) / 2);
+
+      const mesh = new THREE.Mesh(geo, panelMat(b.color, b.kind));
+      // TAGGED, not anonymous: the scene already puts un-tagged strips on the root (the side
+      // fillers), so anything that needs to find the wall panels — a raycast, a test — has to be
+      // able to ask rather than guess by elimination.
+      mesh.userData.panel = b.kind;
+      const into = standoff + d / 2;
+      mesh.position.set(
+        p.ax + p.ux * sC + p.ix * into,
+        (b.y0 + b.y1) / 2000,
+        p.az + p.uz * sC + p.iz * into,
+      );
+      mesh.rotation.y = -Math.atan2(p.uz, p.ux);
+      mesh.castShadow = mesh.receiveShadow = true;
+      root.add(mesh);
+    }
+  }
+
+  // ── THE LIGHT BUILT INTO THE CABINETRY ──────────────────────────────────────────────────────────
+  // Two meshes per strip: the lit line itself, and a wash on the surface it throws at.
+  //
+  // NO ACTUAL LIGHTS ARE ADDED. The rig's count is fixed for the life of the scene on purpose —
+  // adding one recompiles every material in it (three/lighting.ts) — and a kitchen can easily carry
+  // eight strips. So the strip is EMISSIVE and the light it appears to cast is a painted gradient.
+  // That is a picture of light rather than light, and at this scale nobody can tell: what you read
+  // is a bright line and a falloff under it, which is exactly what the gradient is.
+  if (leds.length) {
+    const led = new THREE.Group();
+    led.name = "led";
+    for (const s of leds) {
+      const ref = runs[s.run];
+      if (!ref || ref.kind !== "wall") continue;
+      // a corner strip does not follow a wall — it is drawn off its own cabinet's footprint, in
+      // the corner branch above, because its front is a chamfer or an L
+      if (s.corner) continue;
+      const p = ref.placement;
+      const wRun = stripLen(s) / 1000;
+      if (wRun <= 0.01) continue;
+      const sC = (s.x0 + s.x1) / 2000;
+      const yM = s.y / 1000;
+      const down = s.dir === "down";
+      // seat a mesh in this run's frame, `into` metres out from the wall
+      const seat = (m: THREE.Mesh, into: number, y: number) => {
+        m.position.set(p.ax + p.ux * sC + p.ix * into, y, p.az + p.uz * sC + p.iz * into);
+        m.rotation.y = -Math.atan2(p.uz, p.ux);
+        led.add(m);
+      };
+
+      // the lit line: a shallow bar tucked against the board it is screwed to
+      const bar = new THREE.Mesh(new THREE.BoxGeometry(wRun, LED_BAR, LED_BAR * 1.6), ledBarMat(s));
+      seat(bar, s.z / 1000, yM + (down ? -LED_BAR / 2 : LED_BAR / 2));
+
+      // THE WASH IS THE WHOLE EFFECT. The strip itself is set back where you cannot see it — that
+      // is the point of a setback — so what reads as under-cabinet lighting is the lit splashback,
+      // not the diode. An `interior` strip gets none: inside a box the bar alone reads, and a
+      // gradient in there would paint over the shelves it is meant to light.
+      if (s.zone === "interior") continue;
+      if (s.zone === "plinth") {
+        // a pool on the FLOOR in front of the toe-kick, spreading AWAY from the cabinets. The
+        // strip is at the plinth, so that edge is the bright one.
+        const q = new THREE.Mesh(new THREE.PlaneGeometry(wRun, LED_POOL), ledWashMat(s));
+        q.geometry.rotateX(-Math.PI / 2);
+        seat(q, s.z / 1000 + LED_POOL / 2, 0.004);
+      } else {
+        // a gradient down (or up) the WALL behind, brightest at the strip.
+        //
+        // …AND IT HAS TO CLEAR THE ФАРТУК. The splashback is a panel standing off the wall, so a
+        // wash laid on the wall itself is drawn INSIDE it and the light vanishes on exactly the
+        // kitchens that have one — the same trap the фартук itself fell into against the paint
+        // (model/walls.ts). Stand off past the thickest panel on this run.
+        const h = LED_WASH;
+        const q = new THREE.Mesh(new THREE.PlaneGeometry(wRun, h), ledWashMat(s));
+        // the ramp runs 0→1 up the plane's local +Y, so it is already bright at the top: flip it
+        // only for a strip throwing UP, whose bright end is the bottom
+        if (!down) q.rotation.z = Math.PI;
+        seat(q, wallStandoff + LED_WASH_CLEAR, yM + (down ? -h / 2 : h / 2));
+      }
+    }
+    mergeIn(led);
+    led.traverse((o) => {
+      const m = o as THREE.Mesh;
+      if (!m.isMesh) return;
+      // A LIGHT DOES NOT SHADE WHAT IT LIGHTS. `userData.led` as well as the flags, because the
+      // scene re-walks the finished kitchen and turns shadows on for everything it does not
+      // recognise (three/VariantScene) — and an additive wash plane casting a shadow paints a dark
+      // rectangle over the exact patch it is supposed to be lighting. The merge above builds fresh
+      // meshes, so the tag has to go on here rather than on the parts.
+      m.castShadow = m.receiveShadow = false;
+      m.userData.led = true;
+    });
+    root.add(led);
+  }
   return root;
+}
+
+/** How thick the lit line reads (m). A strip in its profile is about this. */
+const LED_BAR = 0.01;
+/** How far the wall wash carries (m) before it is gone. */
+const LED_WASH = 0.5;
+/**
+ * HOW FAR IN FRONT OF THE WALL'S OWN SURFACES a painted wash sits (m).
+ *
+ * Flush is not enough. A quad laid exactly on the splashback's face z-fights with it, and a
+ * z-fight resolves differently per surface and per viewing angle — which showed up as one wall of
+ * a corner lighting up and the other staying dark, with no difference in the code between them.
+ * One constant, used by the straight runs and the corner alike, so they cannot drift apart.
+ */
+const LED_WASH_CLEAR = 0.006;
+/** How far the plinth pool spreads onto the floor (m). */
+const LED_POOL = 0.45;
+
+/**
+ * THE FALLOFF, as a texture — white, with the alpha ramping from nothing to full along V.
+ *
+ * A `DataTexture` rather than a painted canvas on purpose: this file is built in the tests too, and
+ * there is no `document` in that environment. A typed array has no such opinion.
+ */
+let RAMP: THREE.DataTexture | null = null;
+function rampTexture(): THREE.DataTexture {
+  if (RAMP) return RAMP;
+  const N = 64;
+  const data = new Uint8Array(N * 4);
+  for (let i = 0; i < N; i++) {
+    // squared, because light does not fade linearly and a linear ramp reads as a painted stripe
+    const a = Math.pow(i / (N - 1), 2.2);
+    data[i * 4] = data[i * 4 + 1] = data[i * 4 + 2] = 255;
+    data[i * 4 + 3] = Math.round(a * 255);
+  }
+  RAMP = new THREE.DataTexture(data, 1, N, THREE.RGBAFormat);
+  RAMP.needsUpdate = true;
+  return RAMP;
+}
+
+/** ONE material per zone, so the whole kitchen's strips merge into a draw call each. */
+const LED_BAR_MATS = new Map<string, THREE.Material>();
+const LED_WASH_MATS = new Map<string, THREE.Material>();
+
+/** The strip's own body: barely shaded, mostly emissive — it IS the bright thing. */
+function ledBarMat(s: LedStrip): THREE.Material {
+  const key = `${s.zone}|${s.color}`;
+  let m = LED_BAR_MATS.get(key);
+  if (!m) {
+    m = new THREE.MeshStandardMaterial({
+      color: 0x1a1a1a,
+      emissive: s.color,
+      emissiveIntensity: 1.6,
+      roughness: 0.4,
+    });
+    LED_BAR_MATS.set(key, m);
+  }
+  return m;
+}
+
+/** The painted light. Additive and depth-write-off, so it lies over whatever it falls on. */
+function ledWashMat(s: LedStrip): THREE.Material {
+  const key = `${s.zone}|${s.color}`;
+  let m = LED_WASH_MATS.get(key);
+  if (!m) {
+    m = new THREE.MeshBasicMaterial({
+      map: rampTexture(),
+      color: s.color,
+      transparent: true,
+      opacity: s.zone === "plinth" ? 0.3 : 0.42,
+      blending: THREE.AdditiveBlending,
+      depthWrite: false,
+      side: THREE.DoubleSide,
+    });
+    LED_WASH_MATS.set(key, m);
+  }
+  return m;
 }
 
 /** Options for the isolated single-cabinet build (the furniture editor / V21 studio). */
@@ -939,6 +1445,7 @@ export function buildCabinetSolo(c: Cabinet, style: KitchenStyle, opts: CabinetS
     mesh.position.set(lx, ly, lz);
     mesh.castShadow = mesh.receiveShadow = true;
     target.add(mesh);
+    return mesh;
   };
   const bar: BarFn = (length, vertical, lx, ly, lz, target = g) => {
     const m = new THREE.Mesh(new THREE.CylinderGeometry(0.011, 0.011, length, 10), handleMat());
@@ -1032,7 +1539,9 @@ function applyOutline(g: THREE.Object3D): void {
   });
 }
 
-type AddFn = (w: number, h: number, d: number, lx: number, ly: number, lz: number, m: THREE.Material, target?: THREE.Object3D) => void;
+/** Returns the mesh it made — a caller building a panel that is NOT a box (a back cut around a
+ *  riser) still has to land it in the same group, and the group is the one thing only `add` knows. */
+type AddFn = (w: number, h: number, d: number, lx: number, ly: number, lz: number, m: THREE.Material, target?: THREE.Object3D) => THREE.Mesh;
 type BarFn = (length: number, vertical: boolean, lx: number, ly: number, lz: number, target?: THREE.Object3D) => void;
 
 // re-pivot a group around (px, _, pz) by shifting its children the opposite way, so
@@ -1071,7 +1580,22 @@ interface Bay {
 // its left side only if it is the first in the box, and its right panel is a shared stile (centred
 // on the boundary) unless it is the last. Four bays → 1 + 4 = 5 verticals, exactly the 5 the cut
 // list bills. Rendering it any other way would put the seller's 3D and the factory's DXF at odds.
-function hollowCarcass(add: AddFn, wM: number, h: number, dM: number, yc: number, m: () => THREE.Material, bay?: Bay, cab?: Cabinet) {
+function hollowCarcass(
+  add: AddFn,
+  wM: number,
+  h: number,
+  dM: number,
+  yc: number,
+  m: () => THREE.Material,
+  bay?: Bay,
+  cab?: Cabinet,
+  /** the row's continuous underside plane already covers this box's bottom — don't draw a second
+   *  board in the same place (see the WALL PANELS section of buildKitchen) */
+  noBottom = false,
+  /** holes the back is cut with, panel-local mm from its bottom-left (model/cutouts.ts) — a riser
+   *  running up the face of the wall, which the box is built around rather than moved for */
+  backCuts: PanelCutout[] = [],
+) {
   // the shop's standing build, with this module's own overrides on top (model/construction.ts)
   const con = cab ? constructionOf(cab) : shopConstruction();
   const t = con.boardThickness / 1000;
@@ -1111,8 +1635,10 @@ function hollowCarcass(add: AddFn, wM: number, h: number, dM: number, yc: number
   }
 
   // Bottom board — respect vkladnoe (inset between sides) vs nakladnoe (full width)
-  const btmW = con.bottomMode === "vkladnoe" ? wM - 2 * t : wM;
-  add(btmW, t, dM, 0, yc - h / 2 + t / 2, dM / 2, m());
+  if (!noBottom) {
+    const btmW = con.bottomMode === "vkladnoe" ? wM - 2 * t : wM;
+    add(btmW, t, dM, 0, yc - h / 2 + t / 2, dM / 2, m());
+  }
 
   // Top board — respect topMode: "full" lid, "stretchers" (two 80mm rails), or "none"
   const topMode = con.topMode;
@@ -1128,15 +1654,48 @@ function hollowCarcass(add: AddFn, wM: number, h: number, dM: number, yc: number
 
   // Real Back Panel Rendering (groove vs overlay vs none)
   if (con.backMount !== "none") {
-    if (con.backMount === "overlay") {
-      // 16mm solid LDSP back panel
-      add(wM, h, t, 0, yc, t / 2, m());
+    const overlay = con.backMount === "overlay";
+    const bw = overlay ? wM : bay ? wM : wM - t * 2;
+    const bh = overlay ? h : h - t * 2;
+    const bt = overlay ? t : 0.003;
+    const bz = overlay ? t / 2 : con.grooveSetback / 1000 + 0.0015;
+    if (!backCuts.length) {
+      add(bw, bh, bt, 0, yc, bz, m());
     } else {
-      // 3mm HDF in a groove, set back by the shop's groove offset
-      const grooveOff = con.grooveSetback / 1000;
-      const bw = bay ? wM : wM - t * 2;
-      const bh = h - t * 2;
-      add(bw, bh, 0.003, 0, yc, grooveOff + 0.0015, m());
+      // NOTCHED. The panel is the same board with holes in it, so it is built as one extruded shape
+      // rather than a box — exactly how the фартук is cut around its sockets. The cut-outs arrive in
+      // the CARCASS's frame (0..w × 0..h from its bottom-left); the mesh is centred, so they shift.
+      const shape = new THREE.Shape();
+      shape.moveTo(-bw / 2, -bh / 2);
+      shape.lineTo(bw / 2, -bh / 2);
+      shape.lineTo(bw / 2, bh / 2);
+      shape.lineTo(-bw / 2, bh / 2);
+      shape.closePath();
+      for (const cut of backCuts) {
+        // panel-local mm → this mesh's centred metres
+        const x0 = (cut.x - (wM * 1000 - bw * 1000) / 2) / 1000 - bw / 2;
+        const y0 = (cut.y - (h * 1000 - bh * 1000) / 2) / 1000 - bh / 2;
+        const cw = cut.w / 1000;
+        const ch = cut.h / 1000;
+        const ax = Math.max(x0, -bw / 2 + 0.001);
+        const ay = Math.max(y0, -bh / 2 + 0.001);
+        const bx = Math.min(x0 + cw, bw / 2 - 0.001);
+        const by = Math.min(y0 + ch, bh / 2 - 0.001);
+        if (bx - ax < 0.002 || by - ay < 0.002) continue;
+        const hole = new THREE.Path();
+        hole.moveTo(ax, ay);
+        hole.lineTo(bx, ay);
+        hole.lineTo(bx, by);
+        hole.lineTo(ax, by);
+        hole.closePath();
+        shape.holes.push(hole);
+      }
+      const geo = new THREE.ExtrudeGeometry(shape, { depth: bt, bevelEnabled: false });
+      geo.translate(0, 0, -bt / 2);
+      // `add` owns the group; take the mesh it makes and give it the notched geometry
+      const mesh = add(bw, bh, bt, 0, yc, bz, m());
+      mesh.geometry.dispose();
+      mesh.geometry = geo;
     }
   }
 }
@@ -1209,6 +1768,7 @@ function buildFront(add: AddFn, handle: BarFn, kind: "door" | "drawer", opening:
     // a drawer face is a front like any other — it gets the module's profile, which is exactly how
     // the fluted kitchens in the photos are built (ribbed drawer banks under a ribbed door)
     frontFace(profile, fw, fh, xC, yC2, z, fmat, drw, M.glass());
+    grainMap(drw, M.grain); // before the box + handle go in — those are not facade
     if (hasBody(profile) && !gola) placeHandle(handle, handlePos ?? "top", xL, xR, yB, yT, z, drw);
     const boxMat = M.box();
     const boxD = dM * 0.85, sideH = Math.min(fh * 0.5, 0.12), bt = 0.012, cz = z - boxD / 2 - 0.006, fy0 = yB + 0.02;
@@ -1234,6 +1794,7 @@ function buildFront(add: AddFn, handle: BarFn, kind: "door" | "drawer", opening:
   if (!hasBody(profile)) return;
   const door = new THREE.Group();
   frontFace(profile, fw, fh, xC, yC2, z, fmat, door, M.glass());
+  grainMap(door, M.grain); // before placeHandle adds hardware, and before pivotGroup moves anything
   const opn = opening ?? "left";
   const hpos: HandlePos = handlePos ?? (opn === "left" ? "right" : opn === "right" ? "left" : opn === "top" ? "bottom" : "top");
   if (!gola) placeHandle(handle, hpos, xL, xR, yB, yT, z, door);
@@ -1249,9 +1810,18 @@ function buildFront(add: AddFn, handle: BarFn, kind: "door" | "drawer", opening:
 }
 
 // interior structure BEHIND a front (a combined door) — split dividers only, no sub-fronts
-function buildInterior(add: AddFn, cell: Cell, wM: number, h: number, dM: number, yc: number, carcassMat: () => THREE.Material, r: Rect) {
+function buildInterior(add: AddFn, cell: Cell, wM: number, h: number, dM: number, yc: number, carcassMat: () => THREE.Material, r: Rect, pd?: PanelDepths) {
   if (isLeaf(cell)) return;
   const t = CARCASS_T, iw = wM - 2 * t, ih = h - 2 * t, x0 = -wM / 2 + t, yb = yc - h / 2 + t, zc = dM / 2 + t / 2, zd = dM - t - 0.03;
+  // A SHALLOWER BOARD LOSES ITS FRONT EDGE, NOT ITS BACK ONE. That is where the depth comes off in
+  // the shop — the board still meets the back, and the door closes clean over the gap it leaves.
+  const back = zc - zd / 2;
+  const shorten = (partD: number | undefined) => {
+    const zz = partD == null ? zd : Math.max(0.02, zd - (dM - partD));
+    return { d: zz, c: back + zz / 2 };
+  };
+  const shelfZ = shorten(pd?.shelf);
+  const divZ = shorten(pd?.divider);
   const sizes = cellSizes(cell);
   let acc = 0;
   for (let i = 0; i < cell.children!.length; i++) {
@@ -1259,25 +1829,41 @@ function buildInterior(add: AddFn, cell: Cell, wM: number, h: number, dM: number
     const sub: Rect = cell.split === "rows"
       ? { fx0: r.fx0, fy0: r.fy0 + (r.fy1 - r.fy0) * acc, fx1: r.fx1, fy1: r.fy0 + (r.fy1 - r.fy0) * (acc + f) }
       : { fx0: r.fx0 + (r.fx1 - r.fx0) * acc, fy0: r.fy0, fx1: r.fx0 + (r.fx1 - r.fx0) * (acc + f), fy1: r.fy1 };
-    buildInterior(add, cell.children![i], wM, h, dM, yc, carcassMat, sub);
+    buildInterior(add, cell.children![i], wM, h, dM, yc, carcassMat, sub, pd);
     acc += f;
     if (i < cell.children!.length - 1) {
-      if (cell.split === "rows") add(iw * (r.fx1 - r.fx0), t, zd, x0 + iw * (r.fx0 + r.fx1) / 2, yb + ih * (r.fy0 + (r.fy1 - r.fy0) * acc), zc, carcassMat());
-      else add(t, ih * (r.fy1 - r.fy0), zd, x0 + iw * (r.fx0 + (r.fx1 - r.fx0) * acc), yb + ih * (r.fy0 + r.fy1) / 2, zc, carcassMat());
+      // the SAME roles as buildCells: a row boundary is a shelf, a column boundary a divider.
+      // This is the path a fronted cabinet takes — the shelves BEHIND its door — and forgetting it
+      // is why a shallow shelf priced correctly and still drew full depth.
+      if (cell.split === "rows") add(iw * (r.fx1 - r.fx0), t, shelfZ.d, x0 + iw * (r.fx0 + r.fx1) / 2, yb + ih * (r.fy0 + (r.fy1 - r.fy0) * acc), shelfZ.c, carcassMat());
+      else add(t, ih * (r.fy1 - r.fy0), divZ.d, x0 + iw * (r.fx0 + (r.fx1 - r.fx0) * acc), yb + ih * (r.fy0 + r.fy1) / 2, divZ.c, carcassMat());
     }
   }
 }
 
 // recurse the cell tree: a node with a `front` gets ONE front over its whole rect (+ its
 // children rendered as the interior behind it); an un-fronted split recurses into cells.
-function buildCells(add: AddFn, handle: BarFn, cell: Cell, wM: number, h: number, dM: number, yc: number, style: KitchenStyle, M: Mats, isUpper: boolean, profile: FrontProfile, g: THREE.Group, r: Rect = { fx0: 0, fy0: 0, fx1: 1, fy1: 1 }, golaGapM = 0) {
+/** How deep the interior boards are cut, in metres — see model/bands.ts `panelDepthOf`. Absent →
+ *  the carcass's own depth, which is what every one of them used to take. */
+interface PanelDepths { shelf: number; divider: number }
+
+function buildCells(add: AddFn, handle: BarFn, cell: Cell, wM: number, h: number, dM: number, yc: number, style: KitchenStyle, M: Mats, isUpper: boolean, profile: FrontProfile, g: THREE.Group, r: Rect = { fx0: 0, fy0: 0, fx1: 1, fy1: 1 }, golaGapM = 0, pd?: PanelDepths) {
   if (cell.front) {
     buildFront(add, handle, cell.front, cell.opening, cell.handle, cell.organizer, wM, h, dM, yc, style, M, isUpper, profile, g, r, golaGapM);
-    if (cell.children && cell.children.length) buildInterior(add, cell, wM, h, dM, yc, M.carcass, r);
+    if (cell.children && cell.children.length) buildInterior(add, cell, wM, h, dM, yc, M.carcass, r, pd);
     return;
   }
   if (isLeaf(cell)) return; // open compartment — the hollow carcass shows through
   const t = CARCASS_T, iw = wM - 2 * t, ih = h - 2 * t, x0 = -wM / 2 + t, yb = yc - h / 2 + t, zc = dM / 2 + t / 2, zd = dM - t - 0.03;
+  // A SHALLOWER BOARD LOSES ITS FRONT EDGE, NOT ITS BACK ONE. That is where the depth comes off in
+  // the shop — the board still meets the back, and the door closes clean over the gap it leaves.
+  const back = zc - zd / 2;
+  const shorten = (partD: number | undefined) => {
+    const zz = partD == null ? zd : Math.max(0.02, zd - (dM - partD));
+    return { d: zz, c: back + zz / 2 };
+  };
+  const shelfZ = shorten(pd?.shelf);
+  const divZ = shorten(pd?.divider);
   const sizes = cellSizes(cell);
   let acc = 0;
   for (let i = 0; i < cell.children!.length; i++) {
@@ -1285,11 +1871,13 @@ function buildCells(add: AddFn, handle: BarFn, cell: Cell, wM: number, h: number
     const sub: Rect = cell.split === "rows"
       ? { fx0: r.fx0, fy0: r.fy0 + (r.fy1 - r.fy0) * acc, fx1: r.fx1, fy1: r.fy0 + (r.fy1 - r.fy0) * (acc + f) }
       : { fx0: r.fx0 + (r.fx1 - r.fx0) * acc, fy0: r.fy0, fx1: r.fx0 + (r.fx1 - r.fx0) * (acc + f), fy1: r.fy1 };
-    buildCells(add, handle, cell.children![i], wM, h, dM, yc, style, M, isUpper, profile, g, sub, golaGapM);
+    buildCells(add, handle, cell.children![i], wM, h, dM, yc, style, M, isUpper, profile, g, sub, golaGapM, pd);
     acc += f;
     if (i < cell.children!.length - 1) {
-      if (cell.split === "rows") add(iw * (r.fx1 - r.fx0), t, zd, x0 + iw * (r.fx0 + r.fx1) / 2, yb + ih * (r.fy0 + (r.fy1 - r.fy0) * acc), zc, M.carcass());
-      else add(t, ih * (r.fy1 - r.fy0), zd, x0 + iw * (r.fx0 + (r.fx1 - r.fx0) * acc), yb + ih * (r.fy0 + r.fy1) / 2, zc, M.carcass());
+      // a ROW split boundary is a SHELF; a column split boundary is a DIVIDER — the two roles the
+      // overrides are keyed by, and the reason this had to know which it was drawing
+      if (cell.split === "rows") add(iw * (r.fx1 - r.fx0), t, shelfZ.d, x0 + iw * (r.fx0 + r.fx1) / 2, yb + ih * (r.fy0 + (r.fy1 - r.fy0) * acc), shelfZ.c, M.carcass());
+      else add(t, ih * (r.fy1 - r.fy0), divZ.d, x0 + iw * (r.fx0 + (r.fx1 - r.fx0) * acc), yb + ih * (r.fy0 + r.fy1) / 2, divZ.c, M.carcass());
     }
   }
 }
@@ -1301,7 +1889,10 @@ function buildModuleInterior(add: AddFn, handle: BarFn, c: Cabinet, wM: number, 
   // GOLA shortens every front by the grip gap + drops its handle (all fronts share the one gap).
   const gola = golaSpec(c);
   const golaGapM = gola ? gola.gapMm / 1000 : 0;
-  buildCells(add, handle, cabinetLayout(c), wM, h, dM, yc, style, M, isUpper, profile, g, undefined, golaGapM);
+  buildCells(add, handle, cabinetLayout(c), wM, h, dM, yc, style, M, isUpper, profile, g, undefined, golaGapM, {
+    shelf: panelDepthOf(c, "shelf") / 1000,
+    divider: panelDepthOf(c, "divider") / 1000,
+  });
   for (const cd of c.combinedDoors ?? [])
     buildFront(add, handle, "door", cd.opening, cd.handle, undefined, wM, h, dM, yc, style, M, isUpper, profile, g, { fx0: cd.fx0, fy0: cd.fy0, fx1: cd.fx1, fy1: cd.fy1 }, golaGapM);
 }
@@ -1372,6 +1963,7 @@ function facade(add: AddFn, bar: BarFn, c: Cabinet, wM: number, h: number, yc: n
       const fy = bottom + inset + fh / 2 + i * (fh + gap);
       const drw = new THREE.Group();
       frontFace(profile, fwD, fh, 0, fy, z, fmat, drw, M.glass()); // front
+      grainMap(drw, M.grain);
       bar(wM * 0.4, false, 0, fy + fh / 2 - 0.03, z + 0.012, drw); // handle
       // open-top box behind the front (floor + 2 sides + back) so it reads as a real drawer
       const cz = z - boxD / 2 - 0.006; // box centre z
@@ -1391,6 +1983,7 @@ function facade(add: AddFn, bar: BarFn, c: Cabinet, wM: number, h: number, yc: n
   const fw = wM - inset * 2;
   const door = new THREE.Group();
   frontFace(profile, fw, h - inset * 2, 0, yc, z, fmat, door, M.glass()); // door panel
+  grainMap(door, M.grain);
   bar(Math.min(0.22, h * 0.3), true, wM / 2 - 0.05, yc, z + 0.012, door); // handle (right) → hinge left
   pivotGroup(door, -fw / 2, z); // hinge on the front-left vertical edge
   door.userData.openable = { kind: "door", maxRad: DOOR_OPEN_RAD };

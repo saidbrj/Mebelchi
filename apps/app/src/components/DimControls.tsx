@@ -8,11 +8,12 @@
 import React from "react";
 import { useStore } from "../store";
 import type { Cabinet } from "../model/cabinet";
-import { cabDepth, maxCabH, MIN_H, D_MIN, D_MAX } from "../model/bands";
+import { cabDepth, maxCabH, cabBand, isFloating, panelDepthOf, MIN_H, D_MIN, D_MAX } from "../model/bands";
 
 export const GlyphW = () => (<svg width="20" height="20" viewBox="0 0 30 30" fill="currentColor" aria-hidden><path d="M6 15L6.44494 15.4534L11.6225 20.5L12.5528 19.5932L8.48764 15.6308L21.5124 15.6308L17.4472 19.5932L18.3775 20.5L23.5551 15.4534L24 15L23.5551 14.5466L18.3775 9.5L17.4472 10.4068L21.5124 14.3692L8.48764 14.3692L12.5528 10.4068L11.6225 9.5L6.44494 14.5466L6 15Z" /></svg>);
 export const GlyphH = () => (<svg width="20" height="20" viewBox="0 0 30 30" fill="currentColor" aria-hidden><path d="M14.5 6L14.0466 6.44494L9 11.6225L9.90681 12.5528L13.8692 8.48764L13.8692 21.5124L9.90681 17.4472L9 18.3775L14.0466 23.5551L14.5 24L14.9534 23.5551L20 18.3775L19.0932 17.4472L15.1308 21.5124L15.1308 8.48764L19.0932 12.5528L20 11.6225L14.9534 6.44494L14.5 6Z" /></svg>);
 export const GlyphD = () => (<svg width="20" height="20" viewBox="0 0 30 30" fill="currentColor" aria-hidden><path d="M10.125 7.5L9.75 9H20.25L19.875 7.5H10.125ZM15 9.75L13.125 11.25H14.25V17.25H11.625L15 20.25L18.375 17.25H15.75V11.25H16.875L15 9.75ZM6.375 21L6 22.5H24L23.625 21H6.375Z" /></svg>);
+export const GlyphLift = () => (<svg width="20" height="20" viewBox="0 0 30 30" fill="currentColor" aria-hidden><path d="M6 23.25h18v1.5H6v-1.5zM15 5l-.4534.44494L9.5 10.6225l.90681.9303L14 7.98764V20h1.5V7.98764l3.5932 3.5652L20 10.6225l-4.5466-5.17756L15 5z" /></svg>);
 export const GlyphShelf = () => (<svg width="20" height="20" viewBox="0 0 30 30" fill="currentColor" aria-hidden><path d="M6.5625 8.90625V10.2604H23.4375V8.90625H6.5625ZM6.5625 11.6146V12.9687H23.4375V11.6146H6.5625ZM6.5625 14.3229V15.6771H23.4375V14.3229H6.5625ZM6.5625 17.0312V18.3854H23.4375V17.0312H6.5625ZM6.5625 19.7396V21.0937H23.4375V19.7396H6.5625Z" /></svg>);
 
 export function DimSlider(props: {
@@ -60,8 +61,33 @@ export function DimControls({ cab }: { cab: Cabinet }) {
   const patchCabDims = useStore((s) => s.patchCabDims);
   const patchCab = useStore((s) => s.patchCab);
   const patchCabLive = useStore((s) => s.patchCabLive);
+  const liftCab = useStore((s) => s.liftCab);
 
   const idx = cabs.findIndex((c) => c.id === cab.id);
+  /** What this role's banding is today — the stored answer, or the role's own default. */
+  const bandingOf = (part: "shelf" | "divider") => cab.panels?.[part]?.banding ?? "front";
+  /** Set one ROLE's banding, dropping the record when it is back at the default. */
+  const setBanding = (part: "shelf" | "divider", v: "none" | "front" | "all") => {
+    const next = { ...(cab.panels ?? {}) };
+    const cur = { ...(next[part] ?? {}) };
+    if (v === "front") delete cur.banding;
+    else cur.banding = v;
+    if (Object.keys(cur).length) next[part] = cur;
+    else delete next[part];
+    patchCab(idx, { panels: Object.keys(next).length ? next : undefined });
+  };
+
+  /** Set one ROLE's depth, or clear it when it is back at the carcass — an override that says
+   *  «the same as the box» is not an override, and storing one would freeze the shelf at today's
+   *  depth the next time somebody resizes the cabinet. */
+  const setPanelDepth = (part: "shelf" | "divider", mm: number, live = false) => {
+    const full = mm >= cabDepth(cab);
+    const next = { ...(cab.panels ?? {}) };
+    if (full) delete next[part];
+    else next[part] = { ...(next[part] ?? {}), depthMm: mm };
+    const patch = { panels: Object.keys(next).length ? next : undefined };
+    (live ? patchCabLive : patchCab)(idx, patch);
+  };
   // a module tiled into the wall sheet resizes its COLUMN (neighbours slide); a free one resizes alone
   const tiled = cab.cell != null && cab.px == null;
   const isOven = cab.appliance === "oven";
@@ -80,6 +106,90 @@ export function DimControls({ cab }: { cab: Cabinet }) {
         onBegin={beginCabEdit}
         onLive={(v) => patchCabDims(cab.id, { depth: v }, true)}
         onCommit={(v) => patchCabDims(cab.id, { depth: v })} />
+      {/* ── OFF THE FLOOR ─────────────────────────────────────────────────────────────────────
+          The axis free placement was missing. The plan could always slide a module anywhere;
+          nothing could LIFT one, because `mountY` — «the bottom of the carcass» — was allowed
+          only on a wall unit. A lifted base is HUNG: it loses its plinth and gains навесы
+          (model/bands.ts `isFloating`). A wall unit is excluded because hanging is all it has
+          ever done, and its height already has its own control. */}
+      {cab.kind !== "upper" && !cab.furniture && (
+        <>
+          <div className="dim-row dim-toggle">
+            <span className="dim-ico" aria-hidden><GlyphLift /></span>
+            <span className="dim-lbl">На весу</span>
+            <button
+              className={`switch${isFloating(cab) ? " on" : ""}`}
+              onClick={() => { beginCabEdit(); liftCab(cab.id, isFloating(cab) ? null : 400); }}
+              type="button"
+              aria-pressed={isFloating(cab)}
+            ><span className="knob" /></button>
+          </div>
+          {isFloating(cab) && (
+            <DimSlider
+              icon={<GlyphLift />}
+              label="От пола"
+              value={cab.mountY ?? 0}
+              min={0}
+              // it cannot be pushed through the ceiling — the box's own height is what is left
+              max={Math.max(0, ceiling - (cabBand({ ...cab, mountY: 0 }).y1 - 0))}
+              step={10}
+              onBegin={beginCabEdit}
+              onLive={(v) => liftCab(cab.id, v)}
+              onCommit={(v) => liftCab(cab.id, v)}
+            />
+          )}
+        </>
+      )}
+      {/* ── PER-ROLE PANEL DEPTH ───────────────────────────────────────────────────────────────
+          Every board in a box used to take the carcass's own depth. That is right for a side and
+          wrong for a shelf: shops cut shelves shallower so a door closes clean over the front
+          edge, and there was no way to say so — the cut list ordered a full-depth board and the
+          3D drew one. Set BACK from the front, because that is where the depth comes off.
+          Keyed by ROLE: a shop decides that shelves are 500, not that this one is. */}
+      {!cab.furniture && !cab.appliance && (
+        <>
+          <DimSlider
+            icon={<GlyphShelf />}
+            label="Глубина полок"
+            value={panelDepthOf(cab, "shelf")}
+            min={100}
+            max={cabDepth(cab)}
+            step={10}
+            onBegin={beginCabEdit}
+            onLive={(v) => setPanelDepth("shelf", v, true)}
+            onCommit={(v) => setPanelDepth("shelf", v)}
+          />
+          {/* WHICH EDGES OF A SHELF ARE BANDED. Every shop bands the front edge — raw chipboard
+              inside a cabinet swells and looks unfinished — and the engine counted none of it
+              until now, so every quote was short by its shelves. «Все» is for open shelving,
+              where each edge is on show. */}
+          <div className="dim-row dim-toggle">
+            <span className="dim-ico" aria-hidden><GlyphShelf /></span>
+            <span className="dim-lbl">Кромка полок</span>
+            <div className="style-profiles" style={{ flex: "0 0 auto", margin: 0 }}>
+              {([["front", "Перед"], ["all", "Все"], ["none", "Нет"]] as const).map(([v, label]) => (
+                <button
+                  key={v}
+                  className={`style-profile${bandingOf("shelf") === v ? " on" : ""}`}
+                  onClick={() => { beginCabEdit(); setBanding("shelf", v); }}
+                  type="button"
+                >{label}</button>
+              ))}
+            </div>
+          </div>
+          <DimSlider
+            icon={<GlyphD />}
+            label="Глубина перегородок"
+            value={panelDepthOf(cab, "divider")}
+            min={100}
+            max={cabDepth(cab)}
+            step={10}
+            onBegin={beginCabEdit}
+            onLive={(v) => setPanelDepth("divider", v, true)}
+            onCommit={(v) => setPanelDepth("divider", v)}
+          />
+        </>
+      )}
       {isOven && (
         <>
           <DimSlider icon={<GlyphH />} label="Высота духовки" value={cab.applianceH ?? 580} min={350} max={900} step={10}

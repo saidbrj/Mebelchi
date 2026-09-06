@@ -42,6 +42,12 @@ const SPOTS = 6;
 /** The lamp-count choices «Вечер» offers — a fixture layout, not a dimmer: each lit lamp is its own
  *  pool of light and its own soft shadow, which is how a kitchen is actually lit. */
 export const LAMP_COUNTS = [2, 4, 6] as const;
+
+/** WHAT HANGS FROM THE CEILING. A round downlight drops a pool; a linear luminaire washes a strip.
+ *  Every flat's lighting is one or the other (or both), and a render that only ever draws circles
+ *  cannot show the client the kitchen they are buying. */
+export type CeilingLightKind = "spot" | "linear";
+export const LAMP_KINDS: CeilingLightKind[] = ["spot", "linear"];
 /** …of which this many cast shadows, and only when the preset says so («Вечер»). Each caster is another
  *  depth pass, so the rest merely light. */
 const CASTING_SPOTS = 2;
@@ -291,6 +297,11 @@ export interface Rig {
    *  a dimmer: more lamps mean more pools of light, brighter overall, and more soft shadows. The sun
    *  dial, correctly, does almost nothing at night, which is exactly why this control exists. */
   setLampCount: (n: number) => void;
+  /** ROUND DOWNLIGHTS or LINEAR luminaires — a different fixture, not a different setting. */
+  setLampKind: (k: CeilingLightKind) => void;
+  /** How far across the room the fixtures spread, 0..1 of the span. Tight keeps them over the
+   *  middle of the floor; wide walks them out toward the runs. */
+  setLampSpread: (v: number) => void;
   setTier: (t: QualityTier) => void;
   preset: () => LightPreset;
   /**
@@ -325,6 +336,9 @@ export function buildRig(scene: THREE.Scene, renderer: THREE.WebGLRenderer, opts
   let preset: LightPreset = opts.preset ?? "day";
   let tier: QualityTier = opts.tier ?? "high";
   let lampCount = 4; // how many of the SPOTS lamps are lit
+  let lampKind: CeilingLightKind = "spot";
+  /** how far across the room the fixture grid reaches, as a fraction of the span (see placeLamps) */
+  let lampSpread = 0.34;
   let roomBounds = { w: 4000, h: 3000 }; // mm — updated by aim()
   let ceilingY = 2.5; // m — updated by aim()
 
@@ -415,6 +429,63 @@ export function buildRig(scene: THREE.Scene, renderer: THREE.WebGLRenderer, opts
     spots.push(s);
   }
 
+  // THE FIXTURES YOU CAN SEE.
+  //
+  // The downlights were pure light — nothing hung from the ceiling, so a render of an evening
+  // kitchen had pools of light falling out of a blank white plane. A fixture is a trim ring and a
+  // lens, and the lens goes emissive when its lamp is lit, which is what makes the ceiling read as
+  // the source rather than as a surface someone happens to be shining at.
+  //
+  // Two shared materials and two shared geometries for all six: this is a decoration, and the perf
+  // ledger has no room for six materials' worth of it.
+  const trimMat = new THREE.MeshStandardMaterial({ color: 0xe9e9e6, roughness: 0.5, metalness: 0.15 });
+  const lensMat = new THREE.MeshStandardMaterial({ color: 0xfff4e2, emissive: 0xffd9a8, emissiveIntensity: 0 });
+  /** every geometry a fixture body has used, so a kind change can free the ones it replaces */
+  const fixtureGeos: THREE.BufferGeometry[] = [];
+  const fixtures: THREE.Group[] = [];
+  for (let i = 0; i < SPOTS; i++) {
+    const f = new THREE.Group();
+    f.visible = false;
+    scene.add(f);
+    fixtures.push(f);
+  }
+
+  /** How long a linear luminaire is (m) — a good share of the room, capped either way. Shared with
+   *  `placeLamps`, which has to spread the lamps along exactly this length. */
+  const barLen = () => Math.max(0.6, Math.min(2.4, (roomBounds.h / 1000) * 0.55));
+
+  /** How many fixture BODIES are on: one per lamp for spots, one per BAR for a linear layout. */
+  let litBodies = 0;
+
+  /**
+   * Give every fixture the body of the CURRENT kind.
+   *
+   * A downlight is a ring in the ceiling; a linear luminaire is a bar of it, and a kitchen laid out
+   * with one is not the same room — the bar runs along the space and washes the whole counter
+   * instead of dropping a row of pools on it. So this is geometry, not a setting on a light: the
+   * fixture has to look like the thing the client is buying.
+   */
+  const buildFixtureBodies = () => {
+    for (const g of fixtureGeos) g.dispose();
+    fixtureGeos.length = 0;
+    const linear = lampKind === "linear";
+    const len = linear ? barLen() : 0;
+    const trimGeo = linear
+      ? new THREE.BoxGeometry(0.07, 0.02, len)
+      : new THREE.CylinderGeometry(0.055, 0.055, 0.016, 20);
+    const lensGeo = linear
+      ? new THREE.BoxGeometry(0.05, 0.008, len - 0.04)
+      : new THREE.CylinderGeometry(0.045, 0.045, 0.006, 20);
+    fixtureGeos.push(trimGeo, lensGeo);
+    for (const f of fixtures) {
+      for (const ch of [...f.children]) f.remove(ch);
+      f.add(new THREE.Mesh(trimGeo, trimMat));
+      const lens = new THREE.Mesh(lensGeo, lensMat);
+      lens.position.y = linear ? -0.012 : -0.006;
+      f.add(lens);
+    }
+  };
+
   /** a capture temporarily overrides the tier's shadow resolution */
   let mapOverride: number | null = null;
   const shadowSize = () =>
@@ -450,6 +521,12 @@ export function buildRig(scene: THREE.Scene, renderer: THREE.WebGLRenderer, opts
       p.color.setHex(s.spotColor);
       p.castShadow = shadows && s.spotCast && lit && lm > 0 && i < CASTING_SPOTS && tier !== "low";
     });
+    // The FIXTURES hang whatever the preset — a kitchen has downlights in it at midday too, they are
+    // simply off. Their lenses glow only when the lamps are actually burning, which is what tells
+    // you at a glance whether the room's own lighting is doing the work.
+    lensMat.emissive.setHex(s.spotColor);
+    lensMat.emissiveIntensity = lm > 0 ? 1.6 : 0;
+    // whether a fixture SHOWS is a camera question, not a preset one — see `follow`
 
     if (shadows) {
       const size = shadowSize();
@@ -479,6 +556,7 @@ export function buildRig(scene: THREE.Scene, renderer: THREE.WebGLRenderer, opts
     const b = polygonBoundsMm(room.points);
     roomBounds = { w: b.w, h: b.h };
     ceilingY = room.ceiling / 1000;
+    buildFixtureBodies(); // a linear fixture's LENGTH comes from the room, so it waits for this
     placeLamps();
     applyPreset();
   };
@@ -492,9 +570,50 @@ export function buildRig(scene: THREE.Scene, renderer: THREE.WebGLRenderer, opts
    * Arranged as `rows × cols` chosen from the count, spread comfortably inside the runs.
    */
   const placeLamps = () => {
-    const [cols, rows] = lampCount <= 2 ? [lampCount, 1] : lampCount <= 4 ? [2, 2] : [3, 2];
     const y = ceilingY - 0.12;
-    const SPREAD = 0.34; // how far across the room the lamp grid reaches (fraction of the span)
+    const SPREAD = lampSpread;
+
+    if (lampKind === "linear") {
+      /**
+       * A LINEAR LUMINAIRE IS A LINE OF LIGHT, NOT A POINT WITH A LONG LID.
+       *
+       * The fixture BODY was already a bar, but its light was a single spot at the bar's centre —
+       * so a 2.4m luminaire lit the room exactly like a 110mm downlight. That is the one difference
+       * a client can actually see, and it was the difference that wasn't there.
+       *
+       * The light count is fixed for the life of the scene (adding one recompiles every material),
+       * so the fix is to SAMPLE the bar with the lamps that already exist: the lit ones spread
+       * along its length and their pools overlap into a wash down the room. Which is what a linear
+       * luminaire is — a row of diodes behind a diffuser.
+       *
+       * So `lampCount` stops meaning "how many fixtures" and starts meaning "how many samples";
+       * the number of BARS is derived from it, because two bars side by side across a 3m kitchen
+       * would touch.
+       */
+      const bars = lampCount <= 2 ? 1 : lampCount <= 4 ? 2 : 3;
+      const per = Math.max(1, Math.ceil(lampCount / bars));
+      const len = barLen();
+      const barX = (b: number) =>
+        (((bars > 1 ? (b / (bars - 1)) * 2 - 1 : 0) * SPREAD * roomBounds.w) / 1000);
+      spots.forEach((p, i) => {
+        const x = barX(Math.floor(i / per));
+        // even samples INSIDE the bar — at the ends they would spill past the diffuser
+        const slot = i % per;
+        const z = (per > 1 ? (slot + 0.5) / per - 0.5 : 0) * len;
+        p.position.set(x, y, z);
+        p.target.position.set(x, 0, z);
+        p.target.updateMatrixWorld();
+        p.distance = y * 2.6;
+      });
+      // ONE BODY PER BAR, at its centre — not one per lamp, or the samples along a bar would each
+      // draw their own 2.4m luminaire stacked on top of the last
+      for (let b = 0; b < bars; b++) fixtures[b].position.set(barX(b), ceilingY - 0.008, 0);
+      litBodies = bars;
+      return;
+    }
+
+    const [cols, rows] = lampCount <= 2 ? [lampCount, 1] : lampCount <= 4 ? [2, 2] : [3, 2];
+    litBodies = lampCount;
     spots.forEach((p, i) => {
       // even grid cell centres in −1..1, then scaled into the room
       const cx = cols > 1 ? ((i % cols) / (cols - 1)) * 2 - 1 : 0;
@@ -505,6 +624,8 @@ export function buildRig(scene: THREE.Scene, renderer: THREE.WebGLRenderer, opts
       p.target.position.set(x, 0, z);
       p.target.updateMatrixWorld();
       p.distance = y * 2.6; // where the cone gives out — keeps its cost bounded
+      // the fixture sits FLUSH in the ceiling, a touch below its light
+      fixtures[i].position.set(x, ceilingY - 0.008, z);
     });
   };
 
@@ -513,6 +634,12 @@ export function buildRig(scene: THREE.Scene, renderer: THREE.WebGLRenderer, opts
   const UP = new THREE.Vector3(0, 1, 0);
 
   const follow = (camera: THREE.Camera, target: THREE.Vector3) => {
+    // THE FIXTURES BELONG TO THE CEILING, so they cull with it. Without this they hang in mid-air
+    // over an open-topped room the moment the camera rises above the ceiling — which is the normal
+    // 3/4 view, i.e. most of the time.
+    const underCeiling = camera.position.y < ceilingY - 0.05;
+    for (let i = 0; i < fixtures.length; i++) fixtures[i].visible = underCeiling && useSpots && i < litBodies;
+
     away.subVectors(camera.position, target); // from what you are looking at, back toward you
     away.y = 0;
     const dist = away.length();
@@ -551,6 +678,17 @@ export function buildRig(scene: THREE.Scene, renderer: THREE.WebGLRenderer, opts
       placeLamps(); // the layout changes with the count, not just which ones are lit
       applyPreset();
     },
+    setLampKind: (k) => {
+      if (k === lampKind) return;
+      lampKind = k;
+      buildFixtureBodies();
+      placeLamps(); // a bar lays out in a single file where a spot lays out in a grid
+      applyPreset();
+    },
+    setLampSpread: (v) => {
+      lampSpread = Math.max(0.05, Math.min(0.48, v));
+      placeLamps();
+    },
     setTier: (t) => {
       tier = t;
       applyPreset();
@@ -571,6 +709,10 @@ export function buildRig(scene: THREE.Scene, renderer: THREE.WebGLRenderer, opts
     dispose: () => {
       sun.shadow.map?.dispose();
       for (const p of spots) p.shadow.map?.dispose();
+      for (const f of fixtures) scene.remove(f);
+      for (const g of fixtureGeos) g.dispose();
+      trimMat.dispose();
+      lensMat.dispose();
       scene.remove(sun, sunTarget, fill, fillTarget, rim, rimTarget, hemi, ...spots);
       // the environment texture is cached per renderer and outlives the scene on purpose — it is the
       // same PMREM for every rebuild, and regenerating it is the expensive part

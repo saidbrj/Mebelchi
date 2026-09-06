@@ -13,7 +13,7 @@
 //
 // Pure: no I/O, no engine solve, deterministic from the model alone.
 
-import type { Module, MaterialSelection, FrontProfile } from "../../schema/src/index.js";
+import type { Module, MaterialSelection, FrontProfile, PanelPart, PanelBanding } from "../../schema/src/index.js";
 import type { Part } from "../../../engine/contracts/types.js";
 import { mmToMm10 } from "../../../engine/core/units.js";
 import { CARCASS_THICKNESS_MM, FACADE_THICKNESS_MM, GLASS_THICKNESS_MM } from "./constants.js";
@@ -40,6 +40,55 @@ export interface DerivedPanel {
    *  sides, the stiles, the one long top/bottom/back) — those belong to the box, not to any one
    *  cabinet in it, and the cut list has to say so or the shop will cut four of them. */
   moduleId?: string;
+  /** WHAT IT IS, structurally. `name` carries the same thing plus an index («shelf-2»), and used
+   *  to be re-parsed from the string by everyone who needed it; this is that answer, typed. */
+  part: PanelPart;
+}
+
+/**
+ * WHICH EDGES OF THIS ROLE ARE BANDED.
+ *
+ * THE DEFAULTS ARE WHAT SHOPS ACTUALLY DO, and one of them was simply missing: an interior board's
+ * FRONT edge is banded by everybody — raw chipboard inside a cabinet swells and looks unfinished —
+ * and this engine counted none of it. Shelves and dividers were quoted with bare edges.
+ *
+ * The carcass shell is `none` here on purpose: its front frame is billed as ONE perimeter for the
+ * whole box (`hiddenEdgeMm`), which is where merging shows its saving. Counting the sides again
+ * per panel would bill that frame twice. Fronts likewise — `visibleEdgeMm` already walks them.
+ */
+export function panelBanding(m: Module, part: PanelPart): PanelBanding {
+  const said = m.panels?.[part]?.banding;
+  if (said) return said;
+  return part === "shelf" || part === "divider" ? "front" : "none";
+}
+
+/** Banded length of one panel (mm), from its role's rule. */
+export function panelBandMm(m: Module, p: DerivedPanel): number {
+  switch (panelBanding(m, p.part)) {
+    case "all":
+      return 2 * (p.lengthMm + p.widthMm);
+    case "front":
+      // the edge that faces the room: a shelf's span, a divider's height — the panel's LENGTH
+      return p.lengthMm;
+    default:
+      return 0;
+  }
+}
+
+/**
+ * HOW DEEP THIS ROLE'S PANELS ARE CUT (mm).
+ *
+ * The carcass's own depth unless the module says otherwise. A shelf cut shallower than its box is
+ * an ordinary shop decision — it lets a door close clean over the front edge — and until the
+ * override existed the cut list simply ordered a full-depth board for it.
+ *
+ * Clamped to the box: a panel deeper than the carcass does not fit inside it, and a zero-depth one
+ * is not a panel. An override is a preference, and a preference that cannot be built is not one.
+ */
+export function panelDepth(m: Module, part: PanelPart): number {
+  const want = m.panels?.[part]?.depthMm;
+  if (want == null) return m.d;
+  return Math.max(50, Math.min(m.d, Math.round(want)));
 }
 
 /** The interior width a module's shelves span. Standalone that is the module less both its sides;
@@ -108,17 +157,21 @@ export function carcassPanels(c: Carcass, mats: MaterialSelection): DerivedPanel
   const boxW = ms.reduce((w, m) => w + m.w, 0);
 
   // --- the shell: belongs to the BOX, not to any module in it (hence no moduleId) ---
+  // the SHELL's depths come from the box's first module — the shell belongs to the box, so there is
+  // one answer for it however many modules are merged into one
+  const shellD = (part: PanelPart) => panelDepth(ms[0], part);
   const panels: DerivedPanel[] = [
-    { role: "carcass", name: "side-left", lengthMm: h, widthMm: d, materialRef: carcass },
-    { role: "carcass", name: "side-right", lengthMm: h, widthMm: d, materialRef: carcass },
+    { role: "carcass", part: "side", name: "side-left", lengthMm: h, widthMm: shellD("side"), materialRef: carcass },
+    { role: "carcass", part: "side", name: "side-right", lengthMm: h, widthMm: shellD("side"), materialRef: carcass },
   ];
   for (let i = 1; i < n; i++) {
-    panels.push({ role: "carcass", name: `stile-${i}`, lengthMm: h, widthMm: d, materialRef: carcass });
+    panels.push({ role: "carcass", part: "stile", name: `stile-${i}`, lengthMm: h, widthMm: shellD("stile"), materialRef: carcass });
   }
   panels.push(
-    { role: "carcass", name: "bottom", lengthMm: boxW - 2 * t, widthMm: d, materialRef: carcass },
-    { role: "carcass", name: "top", lengthMm: boxW - 2 * t, widthMm: d, materialRef: carcass },
-    { role: "carcass", name: "back", lengthMm: boxW, widthMm: h, materialRef: carcass },
+    { role: "carcass", part: "bottom", name: "bottom", lengthMm: boxW - 2 * t, widthMm: shellD("bottom"), materialRef: carcass },
+    { role: "carcass", part: "top", name: "top", lengthMm: boxW - 2 * t, widthMm: shellD("top"), materialRef: carcass },
+    // the BACK is a sheet across the box's face — its second dimension is the height, not a depth
+    { role: "carcass", part: "back", name: "back", lengthMm: boxW, widthMm: h, materialRef: carcass },
   );
 
   // --- per module: its bay's interior, and its fronts ---
@@ -134,10 +187,10 @@ export function carcassPanels(c: Carcass, mats: MaterialSelection): DerivedPanel
 
     // a shelf spans its cell's slice of the interior width; a divider its cell's slice of the height
     interior.shelves.forEach((s, k) => {
-      panels.push({ role: "carcass", name: `shelf-${k + 1}`, lengthMm: s.lengthMm, widthMm: m.d, materialRef: carcass, moduleId: m.id });
+      panels.push({ role: "carcass", part: "shelf", name: `shelf-${k + 1}`, lengthMm: s.lengthMm, widthMm: panelDepth(m, "shelf"), materialRef: carcass, moduleId: m.id });
     });
     interior.dividers.forEach((dv, k) => {
-      panels.push({ role: "carcass", name: `divider-${k + 1}`, lengthMm: dv.lengthMm, widthMm: m.d, materialRef: carcass, moduleId: m.id });
+      panels.push({ role: "carcass", part: "divider", name: `divider-${k + 1}`, lengthMm: dv.lengthMm, widthMm: panelDepth(m, "divider"), materialRef: carcass, moduleId: m.id });
     });
 
     // THE FRONTS. Every profile but glass is ONE piece of MDF — the CNC routes the shape into a single
@@ -160,17 +213,17 @@ export function carcassPanels(c: Carcass, mats: MaterialSelection): DerivedPanel
       // suffix, so the base must stay ASCII and the suffix must be the last thing in the name.
       const name =
         f.kind === "drawer" ? `drawer-front-${++drawers}` : doorTotal === 1 ? "door" : `door-${++doors}`;
-      panels.push({ role: "facade", name, lengthMm: f.hMm, widthMm: f.wMm, materialRef: facade, profile, moduleId: m.id });
+      panels.push({ role: "facade", part: f.kind === "drawer" ? "drawer" : "door", name, lengthMm: f.hMm, widthMm: f.wMm, materialRef: facade, profile, moduleId: m.id });
 
       const pane = glassRect(profile, f.wMm, f.hMm);
       if (pane.w > 0 && pane.h > 0) {
-        panels.push({ role: "glass", name: `glass-${++panes}`, lengthMm: pane.h, widthMm: pane.w, materialRef: mats.glassId ?? facade, profile, moduleId: m.id });
+        panels.push({ role: "glass", part: "glass", name: `glass-${++panes}`, lengthMm: pane.h, widthMm: pane.w, materialRef: mats.glassId ?? facade, profile, moduleId: m.id });
       }
       // the раскладка bars of a grid front — thin MDF strips, cut from the facade sheet like anything
       // else, so their total length × width is billed as one panel
       const bar = mullionBar(profile, f.wMm, f.hMm);
       if (bar.w > 0 && bar.h > 0) {
-        panels.push({ role: "facade", name: `mullion-${++bars}`, lengthMm: bar.h, widthMm: bar.w, materialRef: facade, profile, moduleId: m.id });
+        panels.push({ role: "facade", part: "mullion", name: `mullion-${++bars}`, lengthMm: bar.h, widthMm: bar.w, materialRef: facade, profile, moduleId: m.id });
       }
     }
   });

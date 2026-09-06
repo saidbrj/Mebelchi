@@ -4,12 +4,15 @@
 // not a mockup. Pure; the screen renders it and offers a CSV download.
 
 import { carcassPanels, groupCarcasses, carcassWidth, panelAreaM2, panelThicknessMm, seedRateTable, priceProject, DEFAULT_PRODUCTION, type PanelRole } from "@mebelchi/pricing";
-import type { ProductionOpts } from "@mebelchi/schema";
+import type { ProductionOpts, FlatPanel, PanelCutout } from "@mebelchi/schema";
 import { projectFromCabs } from "./toProject";
 import type { Cabinet, FrontProfile } from "./cabinet";
 import { loadSettings } from "./settings";
 
 const matName = (ref: string): string => seedRateTable.materials[ref]?.name ?? ref;
+/** A WORKTOP ref lives in its own rate map, not in `materials` — `matName` would hand the shop a
+ *  raw UUID where the slab's name belongs. */
+const worktopName = (ref: string): string => seedRateTable.worktop[ref]?.name ?? ref;
 const hwName = (sku: string): string => Object.values(seedRateTable.hardware).find((h) => h.sku === sku)?.name ?? sku;
 
 // Kromka thickness, in the shop's own notation. The 359-panel factory dump settles which
@@ -67,6 +70,13 @@ export function cabLabel(c: Cabinet): string {
   return `${kindRu(c)} ${c.w}`;
 }
 
+/** The cut-outs, in words. The geometry rides along in `PanelRow.cutouts`; this is the line the
+ *  human on the saw reads, and it has to carry POSITIONS — "2 cut-outs" is not enough to cut one. */
+export function cutNote(cuts: PanelCutout[]): string {
+  if (!cuts.length) return "—";
+  return `Вырезы: ${cuts.length} × ${cuts.map((c) => `${c.w}×${c.h}@${c.x},${c.y}`).join(" ")}`;
+}
+
 /** what the CNC has to do to this panel's face — the shop cannot rout what the list doesn't say */
 const PROFILE_RU: Record<FrontProfile, string> = {
   flat: "—",
@@ -93,6 +103,10 @@ export interface PanelRow {
   edge: string;
   /** the routed profile of this front (blank on a carcass panel) */
   profile: string;
+  /** HOLES IN THIS PANEL, panel-local mm — a фартук's sockets, a back cut around a riser. Carried
+   *  as geometry so the machine file can draw them; `profile` says the same thing in words for the
+   *  human reading the list. */
+  cutouts?: PanelCutout[];
 }
 export interface HwRow {
   name: string;
@@ -113,7 +127,18 @@ export interface Production {
  *  long top/bottom/back belong to the BOX and are listed against it, while each bay's shelves and
  *  fronts stay listed against the cabinet they go in. Send the shop a per-cabinet list for a merged
  *  row and it cuts eight side panels for a box that has two. */
-export function production(cabs: Cabinet[], prod: ProductionOpts = DEFAULT_PRODUCTION): Production | null {
+export function production(
+  cabs: Cabinet[],
+  prod: ProductionOpts = DEFAULT_PRODUCTION,
+  /** THE FLAT WALL PANELS — фартук, the strip to the ceiling. They are real boards the shop cuts,
+   *  so they belong on the cut list, in the nest and in the machine file. Derived app-side
+   *  (model/toProject `panelsFor`) because they depend on the room, which this function has no
+   *  view of. Absent → none, exactly as before. */
+  wallPanels: FlatPanel[] = [],
+  /** BACK-PANEL NOTCHES by module id (model/cutouts.ts) — a riser the box is built around. The
+   *  cut list has to carry them or the shop cuts a solid back and finds out on site. */
+  backCuts: Map<string, PanelCutout[]> = new Map(),
+): Production | null {
   const real = cabs.filter((c) => !c.furniture);
   if (!real.length) return null;
   const project = projectFromCabs(real, prod);
@@ -135,6 +160,25 @@ export function production(cabs: Cabinet[], prod: ProductionOpts = DEFAULT_PRODU
         ? `${labelById.get(first.id)?.split(".")[0] ?? "?"}. ${kindRu(first)} ряд ${carcassWidth(box)} — общий корпус (${members.length} секц.)`
         : (labelById.get(first.id) ?? cabLabel(first));
 
+    // THE NOTCHES IN THIS BOX'S BACK.
+    //
+    // A back panel belongs to the BOX, not to a module — that is why it has no `moduleId` — but a
+    // riser is found by clashing with a MODULE. On a plain box the two frames are the same; on a
+    // merged row the one long back spans several modules, so each member's notch has to be shifted
+    // by how far that member sits along the box. Get this wrong on a merged row and the hole is cut
+    // in the wrong bay.
+    const boxBackCuts: PanelCutout[] = [];
+    {
+      const ordered = [...members].sort((a, b) => (a.x ?? 0) - (b.x ?? 0));
+      const originX = ordered.length ? ordered[0].x ?? 0 : 0;
+      for (const mem of ordered) {
+        const cs = backCuts.get(mem.id);
+        if (!cs?.length) continue;
+        const dx = (mem.x ?? 0) - originX;
+        for (const c of cs) boxBackCuts.push(dx ? { ...c, x: c.x + dx } : c);
+      }
+    }
+
     for (const p of carcassPanels(box, mats)) {
       const facade = p.role === "facade";
       const owner = p.moduleId ? labelById.get(p.moduleId) : undefined;
@@ -147,6 +191,7 @@ export function production(cabs: Cabinet[], prod: ProductionOpts = DEFAULT_PRODU
         }
       }
 
+      const cuts = p.name === "back" ? boxBackCuts : [];
       panels.push({
         module: owner ?? shellLabel,
         part: partRu(p.name),
@@ -158,10 +203,62 @@ export function production(cabs: Cabinet[], prod: ProductionOpts = DEFAULT_PRODU
         // by ROLE — a bought-to-size glass pane is 4mm and takes no kromka
         thicknessMm: panelThicknessMm(p.role),
         edge: p.role === "glass" ? EDGE_NONE : facade ? EDGE_VISIBLE : EDGE_HIDDEN,
-        profile: p.profile && !p.name.startsWith("mullion") ? PROFILE_RU[p.profile] : "",
+        profile: cuts.length
+          ? cutNote(cuts)
+          : p.profile && !p.name.startsWith("mullion")
+            ? PROFILE_RU[p.profile]
+            : "",
+        cutouts: cuts.length ? cuts : undefined,
       });
       boardArea += panelAreaM2(p);
     }
+  }
+
+  // ── THE FLAT WALL PANELS ──────────────────────────────────────────────────────────────────────
+  // A фартук and a ceiling closer are boards: they are sawn, they are edged, and the фартук has
+  // holes cut in it for the sockets. Until now they were priced and drawn and then never reached
+  // the shop — you sold a kitchen whose quote included the panel and whose cut list did not
+  // mention it.
+  for (const fp of wallPanels) {
+    // THE DECOR IT IS ACTUALLY MADE OF, when the design named one. The rate table only knows
+    // generic stock and its names carry the SLAB's thickness, so a 6mm фартук came out labelled
+    // «Столешница постформинг 38мм» — a contradiction against its own thickness column, and not
+    // what anyone orders. The stock name stays as the fallback.
+    // …and when there is no named decor, the stock's name still must not carry the SLAB's
+    // thickness: «Столешница постформинг 38мм» beside a 6мм thickness column is a contradiction the
+    // shop has to guess its way out of. The material column names the material; the thickness
+    // column states the thickness.
+    // NOTE the absence of \b around «мм»: JS word boundaries are ASCII-only, so a boundary after a
+    // Cyrillic letter never matches and the pattern would silently strip nothing.
+    const withoutThickness = (name: string) => name.replace(/[,\s·]*\d+([.,]\d+)?\s*мм/gi, "").trim();
+    const stockMat =
+      fp.decor ??
+      withoutThickness(fp.stock === "worktop"
+        ? (mats.worktopId ? worktopName(mats.worktopId) : "Столешница")
+        : fp.stock === "carcass"
+          ? (mats.carcassId ? matName(mats.carcassId) : "ЛДСП")
+          : (mats.facadeId ? matName(mats.facadeId) : "МДФ"));
+    const cuts = fp.cutouts ?? [];
+    const what = fp.kind === "splash" ? "Фартук" : "Панель до потолка";
+    panels.push({
+      // MODULE = where it goes, PART = what it is — the same split every cabinet row uses, so the
+      // cut map can label it and the fitter knows which wall the board belongs to
+      module: fp.wall ? `Стена ${fp.wall}` : what,
+      part: what,
+      role: "facade",
+      partEn: fp.kind === "splash" ? "backsplash" : "ceiling-filler",
+      material: stockMat,
+      lengthMm: Math.round(fp.w),
+      widthMm: Math.round(fp.h),
+      thicknessMm: fp.t,
+      // the two horizontal edges are what shows — the same rule the quote bands (buildBom)
+      edge: EDGE_VISIBLE,
+      // the shop cannot rout what the list does not say. Sizes and positions ride along, because
+      // "2 cut-outs" is not enough to cut one.
+      profile: cutNote(cuts),
+      cutouts: cuts.length ? cuts : undefined,
+    });
+    boardArea += (fp.w * fp.h) / 1e6;
   }
 
   // Emitting scribe filler panels (доборные фальш-панели)

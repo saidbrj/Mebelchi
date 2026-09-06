@@ -4,7 +4,7 @@
 // four layouts. "↻ Заново" regenerates. The footer's "Открыть в конструкторе" commits it.
 
 import { useEffect, useState } from "react";
-import { useStore } from "../store";
+import { useStore, usePanelSpecs } from "../store";
 import { useT } from "../i18n/useT";
 import { priceCabs, sqmPrice } from "../model/toProject";
 import { useMoney } from "../useMoney";
@@ -28,6 +28,8 @@ export function VariantsScreen() {
   const points = useStore((s) => s.roomPoints);
   const ceiling = useStore((s) => s.ceiling);
   const reveal = useStore((s) => s.reveal);
+  const panelSpecs = usePanelSpecs();
+  const led = useStore((s) => s.led);
   const openings = useStore((s) => s.openings);
   const interiorWalls = useStore((s) => s.interiorWalls);
   const fittings = useStore((s) => s.fittings);
@@ -112,6 +114,8 @@ export function VariantsScreen() {
               points={points}
               ceiling={ceiling}
               reveal={reveal}
+              panels={panelSpecs}
+              led={led}
               openings={openings}
               coveringColor={coveringColor}
               floorId={floorId}

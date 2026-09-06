@@ -15,10 +15,10 @@
 // — see config.ts) and wears a «Скоро» badge until it doesn't.
 
 import { useCallback, useEffect, useRef, useState } from "react";
-import { useStore } from "../store";
+import { useStore, usePanelSpecs } from "../store";
 import { useT } from "../i18n/useT";
 import { VariantScene, type SceneApi } from "../three/VariantScene";
-import { RENDER_PRESETS, LAMP_COUNTS, DEFAULT_SUN, clampEl, type LightPreset } from "../three/lighting";
+import { RENDER_PRESETS, LAMP_COUNTS, LAMP_KINDS, DEFAULT_SUN, clampEl, type LightPreset, type CeilingLightKind } from "../three/lighting";
 import { FLOOR_COVERINGS } from "../model/floors";
 import { AI_RENDER } from "../config";
 import { shareOrDownload, dataUrlToBlob } from "../lib/shareFile";
@@ -210,6 +210,8 @@ export function RenderScreen() {
   const points = useStore((s) => s.roomPoints);
   const ceiling = useStore((s) => s.ceiling);
   const reveal = useStore((s) => s.reveal);
+  const panelSpecs = usePanelSpecs();
+  const led = useStore((s) => s.led);
   const openings = useStore((s) => s.openings);
   const interiorWalls = useStore((s) => s.interiorWalls);
   const fittings = useStore((s) => s.fittings);
@@ -226,12 +228,17 @@ export function RenderScreen() {
   const apiRef = useRef<SceneApi | null>(null);
   const onApi = useCallback((api: SceneApi | null) => { apiRef.current = api; }, []);
 
+  const quality = useStore((s) => s.settings.quality);
   const [light, setLight] = useState<LightPreset>("day");
   // Starts exactly where the constructor's sun stands, so stepping into Рендер changes the QUALITY of
   // the picture and nothing about its lighting — then the dial is yours.
   const [sun, setSun] = useState(DEFAULT_SUN);
   const [panel, setPanel] = useState(false); // the light controls, folded away by default
   const [lampCount, setLampCount] = useState(4); // how many ceiling halogens — «Вечер» is lit BY them
+  // WHAT hangs there, and how far apart. A flat lit by a run of linear luminaires is not the same
+  // room as one lit by six downlights, and a render that can only draw circles cannot show it.
+  const [lampKind, setLampKind] = useState<CeilingLightKind>("spot");
+  const [lampSpread, setLampSpread] = useState(0.34);
   const [reflect, setReflect] = useState(true); // a reflective floor, on the settled frame
   const [shots, setShots] = useState<string[]>([]);
   const [lightbox, setLightbox] = useState(-1); // which shot is being looked at, full-screen
@@ -282,6 +289,8 @@ export function RenderScreen() {
           points={points}
           ceiling={ceiling}
           reveal={reveal}
+          panels={panelSpecs}
+          led={led}
           openings={openings}
           coveringColor={coveringColor}
           floorId={FLOOR_COVERINGS[floorCovering]?.id}
@@ -299,10 +308,20 @@ export function RenderScreen() {
           light={light}
           sun={sun}
           lampCount={lampCount}
+          lampKind={lampKind}
+          lampSpread={lampSpread}
           reflect={reflect}
           ao
-          quality="high"
-          shadowPx={2048}
+          // The seller's preference, NOT a pinned "high". `auto` is what turns on the adaptive
+          // ladder in three/quality.ts (pixel ratio → AO → shadow map), and pinning this to "high"
+          // disabled it: autoTier() only steps down when quality === "auto", so a mid-range Android
+          // stayed at 2× pixel ratio with AO and a 2048 shadow map and simply chugged.
+          quality={quality}
+          // The INTERACTIVE shadow map. The snapshot is unaffected — captureHiRes() calls
+          // rig.beginCapture(2048), which overrides this for the frame it exports. So 1024 here is
+          // a quarter of the shadow-pass texels while you orbit, and the picture you hand a client
+          // is identical.
+          shadowPx={1024}
           sheet="off"
           onApi={onApi}
         />
@@ -327,6 +346,14 @@ export function RenderScreen() {
                 have no lamps burning, so the picker would be a control over nothing. */}
             {light === "evening" && (
               <>
+                <div className="rnd-sec">{t.render.lampKind}</div>
+                <div className="pillrow">
+                  {LAMP_KINDS.map((k) => (
+                    <button key={k} className={`chip${lampKind === k ? " sel" : ""}`} onClick={() => setLampKind(k)} type="button">
+                      {k === "spot" ? t.render.lampSpot : t.render.lampLinear}
+                    </button>
+                  ))}
+                </div>
                 <div className="rnd-sec">{t.render.lamps}</div>
                 <div className="pillrow">
                   {LAMP_COUNTS.map((n) => (
@@ -335,6 +362,16 @@ export function RenderScreen() {
                     </button>
                   ))}
                 </div>
+                <div className="rnd-sec">{t.render.lampSpread}</div>
+                <input
+                  className="dim-slider"
+                  type="range"
+                  min={5}
+                  max={48}
+                  step={1}
+                  value={Math.round(lampSpread * 100)}
+                  onChange={(e) => setLampSpread(Number(e.target.value) / 100)}
+                />
               </>
             )}
 

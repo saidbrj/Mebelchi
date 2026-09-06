@@ -15,7 +15,7 @@ export interface V21State {
   bottomT: number; // 16mm or 18mm
   topMode: "full" | "stretchers" | "none";
   topCw: number; // 80mm stretcher width
-  plinthMode: "box" | "sides" | "legs";
+  plinthMode: "box" | "sides" | "legs" | "none";
   plinthH: number; // 120mm
   plinthOff: number; // 0mm
   shelfSb: number; // shelf setback offset
@@ -676,7 +676,8 @@ export function V21BlueprintEditor({
                 <button className={`segbtn ${s.plinthMode === "sides" ? "on" : ""}`} onClick={() => updateS({ plinthMode: "sides" })} style={{ flex: 1, border: "none", background: s.plinthMode === "sides" ? "#ffffff" : "transparent", color: s.plinthMode === "sides" ? "#0f172a" : "#64748b", boxShadow: s.plinthMode === "sides" ? "0 1px 2px rgba(0,0,0,0.06)" : "none", padding: "7px 0", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Боки до пола</button>
                 <button className={`segbtn ${s.plinthMode === "legs" ? "on" : ""}`} onClick={() => updateS({ plinthMode: "legs" })} style={{ flex: 1, border: "none", background: s.plinthMode === "legs" ? "#ffffff" : "transparent", color: s.plinthMode === "legs" ? "#0f172a" : "#64748b", boxShadow: s.plinthMode === "legs" ? "0 1px 2px rgba(0,0,0,0.06)" : "none", padding: "7px 0", borderRadius: 8, fontSize: 12, fontWeight: 600, cursor: "pointer" }}>Ножки</button>
               </div>
-              {renderPlinthSVG(s.plinthMode)}
+              {/* a hung box has no plinth to draw — see model/construction.ts */}
+              {s.plinthMode !== "none" && renderPlinthSVG(s.plinthMode)}
             </div>
 
             {/* Card 5: Полка */}

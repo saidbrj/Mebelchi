@@ -2,13 +2,14 @@
 // object + actions, typed. Screens read slices from here; the price ticker reads
 // the same state through model/toProject.ts → priceProject.
 
+import { useMemo } from "react";
 import { create } from "zustand";
 import { MATERIALS, mk, dedupeIds, styleOf, frontOf, type Cabinet, type FinishKey, type FrontProfile } from "./model/cabinet";
 import { fillGapSpan, firstFitX, parkX } from "./model/fill";
 import { dockAll, cabFootprints, footsClash } from "./model/footprint";
 import { generateVariants as solveVariants, type GenVariant, type KitchenStyle, type Zone, type FridgeType, type OvenType, type HoodType, type WallBand } from "./model/layout";
 import { isTiled, runFloor, resolveLayout, wallRows } from "./model/resolve";
-import { maxCabH, cabDepth, isOuterCorner, bandsOverlap, FOOT_DEPTH_MM, MIN_H, D_MIN, D_MAX } from "./model/bands";
+import { maxCabH, cabDepth, isOuterCorner, bandsOverlap, cabBand, FOOT_DEPTH_MM, MIN_H, D_MIN, D_MAX } from "./model/bands";
 import { resizeCabs, setBasesH, editRows, seatCorner, seatOuterCorner, healRunStarts, healCornerUnits, type ResizeBounds, type RowEdit } from "./model/rowOps";
 import { mergeRow, unmergeRow, healCarcassGroups, joinSeam, splitSeam, boxMates, hangersOn } from "./model/carcassGroups";
 import {
@@ -42,8 +43,10 @@ const WORKTOP = GEOM.worktop;
  *  from-scratch start, so a blank kitchen isn't a colourless one. */
 const DEFAULT_RUN_STYLE: KitchenStyle = { carcass: 0xefe8da, facade: 0xe7ddc9, worktop: 0x7c756b, handle: 0x6f6a62, glassUppers: false };
 import { planRuns, candidateLayouts, cornerUnits, cornerSideFor, interiorWallCabs, type KitchenLayout } from "./model/runPlan";
-import { roomOutlineMm, defaultOpenings, defaultOpeningHeight, fittingKind, wallSegments, interiorSegRef, polygonBoundsMm, type Pt, type Opening, type OpeningKind, type Fitting, type FittingCategory } from "./model/room";
+import { roomOutlineMm, defaultOpenings, defaultOpeningHeight, defaultFittingHeight, fittingKind, wallSegments, interiorSegRef, polygonBoundsMm, wallItemId, dedupeWallItems, pipePathOf, type PipePoint, type Pt, type Opening, type OpeningKind, type Fitting, type FittingCategory } from "./model/room";
 import { defaultSurface, splitLeaf, colorLeaf, type Surface, type SurfPath } from "./model/walls";
+import { DEFAULT_SPLASH, DEFAULT_CLOSER, DEFAULT_UNDERSIDE, type SplashSpec, type CloserSpec, type UndersideSpec, type PanelSpecs } from "./model/wallPanels";
+import { DEFAULT_LED, type LedSpec } from "./model/ledStrips";
 import { PERSIST_KEYS, loadProjectState, upsertProject, deleteProject, updateProjectMeta, newProjectId, allProjects, replaceAllProjects, type DesignState, type MetaPatch, type ProjectBucket } from "./model/projects";
 import { toProject } from "./model/toProject";
 import { ratesToTable } from "./model/rates";
@@ -62,8 +65,14 @@ import { captureThumbnail } from "./lib/thumbnailCapture";
 import { QUIZ } from "./quiz/questions";
 
 const snap100 = (v: number) => Math.round(v / 100) * 100;
-let fittingSeq = 0;
-let openingSeq = 0;
+
+/** The length of a wall segment (mm) — what a pipe's `a` coordinate is measured along. */
+const wallLenOf = (s: { roomPoints: Pt[]; interiorWalls: Pt[][] }, wall: number): number => {
+  const seg = wallSegments(s.roomPoints, s.interiorWalls)[wall];
+  return seg ? Math.hypot(seg.b.x - seg.a.x, seg.b.y - seg.a.y) || 1 : 4000;
+};
+// ids for wall items come from model/room now — a bare module counter restarts on every page load
+// and collided with the ids a reopened project already held (see `wallItemId`)
 
 interface RoomSnapshot {
   shape: "i" | "l";
@@ -222,6 +231,19 @@ export interface AppState {
   /** FILLER GAP (mm) reserved at each run end that butts a wall, and under the ceiling on a
    *  floor-to-ceiling run — the scribe «добор». 0 = cabinets go wall-to-wall. See model/runPlan. */
   reveal: number;
+  /** THE ФАРТУК — the wall panel between the worktop and the wall units. A SPEC, not geometry:
+   *  where the panels land is derived every time from what is standing there (model/wallPanels). */
+  splash: SplashSpec;
+  /** THE STRIP TO THE CEILING — what makes a kitchen floor-to-ceiling in a room too low for a
+   *  second row of wall units. Same deal: a spec, the panels are derived. */
+  closer: CloserSpec;
+  /** THE PLANE UNDER THE WALL UNITS — one panel per row, so the undersides read as one surface
+   *  rather than a row of separate boxes. Same deal again. */
+  underside: UndersideSpec;
+  /** THE LIGHT BUILT INTO THE CABINETRY — which zones are lit, and in what colour. A spec again:
+   *  a strip's LENGTH is the length of the run it is screwed to, so it is derived, never typed
+   *  (model/ledStrips). */
+  led: LedSpec;
   water: "left" | "center" | "right" | "none";
   /** wall index the water supply comes from (drives dishwasher placement), null = unset */
   waterWall: number | null;
@@ -326,6 +348,21 @@ export interface AppState {
   /** Set the filler «добор» width (mm, absolute), clamped [0,120]. 0 removes the fillers. Rebuilds
    *  the wall sheets so the reserved dead zones move with it. */
   setReveal: (mm: number) => void;
+  /** Edit the ФАРТУК spec — on/off, decor, height. Nothing is stored per wall: the panels are
+   *  re-derived from this + the layout on every render, so changing it here changes every run. */
+  setSplash: (patch: Partial<SplashSpec>) => void;
+  /** Edit the ceiling-closer spec. Same story. */
+  setCloser: (patch: Partial<CloserSpec>) => void;
+  /** Edit the under-the-wall-units panel spec. Same story. */
+  setUnderside: (patch: Partial<UndersideSpec>) => void;
+  /** Edit the built-in lighting. Same story — nothing here is geometry. */
+  setLed: (patch: Partial<LedSpec>) => void;
+  /** WHICH WAY THE GRAIN RUNS on the fronts (kitchen-wide). The fronts are mapped in slab space,
+   *  so this turns the whole board rather than re-tiling each door. */
+  setGrain: (horizontal: boolean) => void;
+  /** How this shop builds its L corners: one L-shaped leaf, or two doors. Kitchen-wide default;
+   *  a single module can still differ (Cabinet.cornerDoors). */
+  setCornerDoors: (v: "single" | "pair") => void;
   setRoomName: (v: string) => void;
   setRoomType: (v: string) => void;
   setFloorCovering: (i: number) => void;
@@ -368,6 +405,24 @@ export interface AppState {
   moveFitting: (id: string, t: number) => void; // slide along its current wall
   setFittingWidth: (id: string, width: number) => void;
   setFittingHeight: (id: string, height: number) => void;
+  /** TURN A PIPE. Swaps its two extents so it keeps its shape: a Ø110 riser 2500 tall becomes a
+   *  2500 run of Ø110 lying along the wall. Plumbing only. */
+  setFittingOrient: (id: string, orient: "v" | "h") => void;
+  /** POSITION MEASURED FROM THE WALL — mm from the wall's start corner to the item's centre. The
+   *  drag gesture is fine for roughing in; a pipe is surveyed, and the fitter has a tape. */
+  setFittingAlong: (id: string, mm: number) => void;
+  /** Height of the item's CENTRE above the floor (mm). */
+  setFittingMountY: (id: string, mm: number) => void;
+  /** MOVE ONE POINT of a pipe's path (wall space: mm along, mm up). This is what a drag on a
+   *  handle does — and it is also how a pipe is resized and reshaped, because a path has no
+   *  separate width to pull. */
+  setPipePoint: (id: string, i: number, a: number, y: number, live?: boolean) => void;
+  /** BEND IT — split the segment after point `i`, putting a new bend at its middle. */
+  addPipeBend: (id: string, i: number) => void;
+  /** Straighten a bend out again. Refuses to leave fewer than two points. */
+  removePipeBend: (id: string, i: number) => void;
+  /** Replace the whole path — what the drawing tool commits. */
+  setPipePath: (id: string, pts: PipePoint[]) => void;
   dragFitting3D: (id: string, x: number, y: number, heightMm: number) => void; // 3D: nearest wall + along + height
   removeFitting: (id: string) => void;
   duplicateFitting: (id: string) => string | null;
@@ -536,6 +591,16 @@ export interface AppState {
   resizeCab: (id: string, newW: number, edge?: "left" | "right", bounds?: ResizeBounds) => void;
   /** resizeCab with NO undo entry — for the grid's border drag; pair with beginCabEdit() */
   resizeCabLive: (id: string, newW: number, edge?: "left" | "right", bounds?: ResizeBounds) => void;
+  /**
+   * LIFT A FLOOR MODULE OFF THE FLOOR, or set it back down (mm to the carcass bottom; null = down).
+   *
+   * `mountY` has always meant "the bottom of the carcass" for a wall unit; this lets a base or a
+   * tall say the same thing. A lifted base is HUNG — it loses its plinth in the 3D, in the
+   * elevation and in the quote, and gains the навесы that actually carry it (model/bands.ts
+   * `isFloating`). This is the axis free placement was missing: the plan could put a module
+   * anywhere on the floor and nothing could lift it off.
+   */
+  liftCab: (id: string, mm: number | null) => void;
   /** set the base-cabinet (counter) height for ALL base cabinets at once (mm) — keeps the
    *  worktop level; base bodies + worktop are driven by `c.h` in the 3D/elevation/pricing */
   setBaseHeight: (mm: number) => void;
@@ -618,6 +683,13 @@ function freshDesign() {
     wallLen: 2400,
     ceiling: 2700,
     reveal: 0, // «Добор у стен» OFF by default — most kitchens tile wall-to-wall; the seller opts in
+    // Both ON by default, because both are what a kitchen built in the last five years looks like:
+    // a стеновая панель rather than bare wall behind the counter, and no dead strip under the
+    // ceiling. A shop that tiles its splashbacks turns the first one off in «Отделка».
+    splash: DEFAULT_SPLASH as SplashSpec,
+    closer: DEFAULT_CLOSER as CloserSpec,
+    underside: DEFAULT_UNDERSIDE as UndersideSpec,
+    led: DEFAULT_LED as LedSpec,
 
     water: "left" as AppState["water"],
     waterWall: null as number | null,
@@ -826,6 +898,44 @@ export const useStore = create<AppState>((set, get) => ({
   // clear the sheets so the reserved dead zones (which now include the reveal) rebuild against the
   // new width; the 3D/front views re-read `reveal` from the room and redraw the panels.
   setReveal: (mm) => set({ reveal: Math.max(0, Math.min(120, Math.round(mm))), grids: {} }),
+  // No `grids: {}` on either of these: a panel occupies no CELL. It fills the dead space the sheet
+  // already leaves empty (the void row, the strip under the ceiling), which is exactly why it can be
+  // switched on and off without disturbing a single module.
+  setSplash: (patch) =>
+    set((st) => ({
+      splash: {
+        ...st.splash,
+        ...patch,
+        h: patch.h == null ? st.splash.h : Math.max(100, Math.min(1200, Math.round(patch.h))),
+        t: patch.t == null ? st.splash.t : Math.max(3, Math.min(40, Math.round(patch.t))),
+      },
+    })),
+  setCloser: (patch) =>
+    set((st) => ({
+      closer: {
+        ...st.closer,
+        ...patch,
+        maxGap: patch.maxGap == null ? st.closer.maxGap : Math.max(0, Math.min(1200, Math.round(patch.maxGap))),
+        t: patch.t == null ? st.closer.t : Math.max(3, Math.min(40, Math.round(patch.t))),
+      },
+    })),
+  setUnderside: (patch) =>
+    set((st) => ({
+      underside: {
+        ...st.underside,
+        ...patch,
+        t: patch.t == null ? st.underside.t : Math.max(3, Math.min(40, Math.round(patch.t))),
+      },
+    })),
+  setLed: (patch) => set((st) => ({ led: { ...st.led, ...patch } })),
+  setGrain: (horizontal) => set((st) => ({ runStyle: { ...st.runStyle, grainHorizontal: horizontal } })),
+  setCornerDoors: (v) =>
+    set((st) => ({
+      ...cabHist(st),
+      runStyle: { ...st.runStyle, cornerDoors: v },
+      // a module that was told individually keeps its own answer; the rest follow the shop
+      cabs: st.cabs.map((c) => (c.corner ? { ...c, cornerDoors: undefined } : c)),
+    })),
   setRoomName: (roomName) => set({ roomName }),
   setRoomType: (roomType) => set({ roomType }),
   setFloorCovering: (floorCovering) => set({ floorCovering }),
@@ -976,7 +1086,7 @@ export const useStore = create<AppState>((set, get) => ({
     })),
   // add a window / door / wall-opening from a catalog; seeds on the longest wall
   addOpening: (item, wall) => {
-    const id = `o${++openingSeq}`;
+    const id = wallItemId("o");
     set((s) => {
       const n = s.roomPoints.length;
       let w = wall ?? 0;
@@ -1006,7 +1116,7 @@ export const useStore = create<AppState>((set, get) => ({
   duplicateOpening: (id) => {
     const src = get().openings.find((o) => o.id === id);
     if (!src) return null;
-    const nid = `o${++openingSeq}`;
+    const nid = wallItemId("o");
     set((s) => ({
       past: [...s.past.slice(-49), snapshot(s)],
       future: [],
@@ -1068,7 +1178,7 @@ export const useStore = create<AppState>((set, get) => ({
   // ---- wall fittings (electric / heating / vent) ----
   addFitting: (category, kind, wall = 0) => {
     const k = fittingKind(category, kind);
-    const id = `f${++fittingSeq}`;
+    const id = wallItemId("f");
     set((s) => ({
       past: [...s.past.slice(-49), snapshot(s)],
       future: [],
@@ -1117,13 +1227,102 @@ export const useStore = create<AppState>((set, get) => ({
       if (!it) return {};
       const seg = wallSegments(s.roomPoints, s.interiorWalls)[it.wall];
       const wl = seg ? Math.hypot(seg.b.x - seg.a.x, seg.b.y - seg.a.y) || 1 : 4000;
-      const w = Math.max(60, Math.min(wl - 200, snap100(width)));
+      // NOT snapped to 100: a socket is 90 and a pipe is Ø32 or Ø110, and rounding either to the
+      // nearest 100 makes the фартук's hole and the carcass's notch the wrong size. The floor is
+      // the narrowest thing worth drawing rather than the narrowest socket.
+      const w = Math.max(20, Math.min(wl - 200, Math.round(width)));
       return { fittings: s.fittings.map((e) => (e.id === id ? { ...e, width: w } : e)) };
     }),
+  // NOT snapped to 100, and the floor is 20mm — same reasoning as setFittingWidth: this number is
+  // a pipe's diameter as often as it is a radiator's height, and Ø32 must not round to 0.
   setFittingHeight: (id, height) =>
     set((s) => ({
-      fittings: s.fittings.map((e) => (e.id === id ? { ...e, height: Math.max(40, Math.min(2600, snap100(height))) } : e)),
+      fittings: s.fittings.map((e) => (e.id === id ? { ...e, height: Math.max(20, Math.min(4000, Math.round(height))) } : e)),
     })),
+  // TURNING A PIPE turns its PATH — a quarter turn about the run's own centre, so an L stays an L
+  // and simply faces the other way. It used to swap `width`/`height`, which said nothing about a
+  // path and could not turn a bend at all.
+  setFittingOrient: (id, orient) =>
+    set((s) => {
+      const it = s.fittings.find((e) => e.id === id);
+      if (!it || (it.orient ?? "v") === orient) return {};
+      const pts = pipePathOf(it, wallLenOf(s, it.wall));
+      const ca = pts.reduce((n, p) => n + p.a, 0) / pts.length;
+      const cy = pts.reduce((n, p) => n + p.y, 0) / pts.length;
+      const turned = pts.map((p) => ({
+        a: Math.round(ca + (p.y - cy)),
+        y: Math.max(0, Math.min(s.ceiling, Math.round(cy - (p.a - ca)))),
+      }));
+      return {
+        past: [...s.past.slice(-49), snapshot(s)],
+        future: [],
+        fittings: s.fittings.map((e) => (e.id === id ? { ...e, orient, path: turned } : e)),
+      };
+    }),
+  setFittingAlong: (id, mm) =>
+    set((s) => {
+      const it = s.fittings.find((e) => e.id === id);
+      if (!it) return {};
+      const seg = wallSegments(s.roomPoints, s.interiorWalls)[it.wall];
+      const wl = seg ? Math.hypot(seg.b.x - seg.a.x, seg.b.y - seg.a.y) || 1 : 4000;
+      const t = Math.max(0, Math.min(1, Math.round(mm) / wl));
+      return { fittings: s.fittings.map((e) => (e.id === id ? { ...e, t } : e)) };
+    }),
+  setFittingMountY: (id, mm) =>
+    set((s) => ({
+      fittings: s.fittings.map((e) => (e.id === id ? { ...e, mountY: Math.max(0, Math.min(s.ceiling, Math.round(mm))) } : e)),
+    })),
+  // ── A PIPE'S PATH ────────────────────────────────────────────────────────────────────────────
+  // Every edit resolves the path FIRST (`pipePathOf`), so a pipe placed before paths existed turns
+  // into one the moment you touch it rather than needing a migration.
+  setPipePoint: (id, i, a, y, live = false) =>
+    set((s) => {
+      const it = s.fittings.find((e) => e.id === id);
+      if (!it) return {};
+      const pts = [...pipePathOf(it, wallLenOf(s, it.wall))];
+      if (i < 0 || i >= pts.length) return {};
+      pts[i] = { a: Math.round(a), y: Math.max(0, Math.min(s.ceiling, Math.round(y))) };
+      return {
+        ...(live ? {} : { past: [...s.past.slice(-49), snapshot(s)], future: [] }),
+        fittings: s.fittings.map((e) => (e.id === id ? { ...e, path: pts } : e)),
+      };
+    }),
+  addPipeBend: (id, i) =>
+    set((s) => {
+      const it = s.fittings.find((e) => e.id === id);
+      if (!it) return {};
+      const pts = [...pipePathOf(it, wallLenOf(s, it.wall))];
+      if (i < 0 || i >= pts.length - 1) return {};
+      const mid = { a: Math.round((pts[i].a + pts[i + 1].a) / 2), y: Math.round((pts[i].y + pts[i + 1].y) / 2) };
+      pts.splice(i + 1, 0, mid);
+      return {
+        past: [...s.past.slice(-49), snapshot(s)],
+        future: [],
+        fittings: s.fittings.map((e) => (e.id === id ? { ...e, path: pts } : e)),
+      };
+    }),
+  removePipeBend: (id, i) =>
+    set((s) => {
+      const it = s.fittings.find((e) => e.id === id);
+      if (!it) return {};
+      const pts = pipePathOf(it, wallLenOf(s, it.wall));
+      if (pts.length <= 2 || i <= 0 || i >= pts.length - 1) return {}; // a pipe needs two ends
+      const next = pts.filter((_, k) => k !== i);
+      return {
+        past: [...s.past.slice(-49), snapshot(s)],
+        future: [],
+        fittings: s.fittings.map((e) => (e.id === id ? { ...e, path: next } : e)),
+      };
+    }),
+  setPipePath: (id, pts) =>
+    set((s) => {
+      if (pts.length < 2) return {};
+      return {
+        past: [...s.past.slice(-49), snapshot(s)],
+        future: [],
+        fittings: s.fittings.map((e) => (e.id === id ? { ...e, path: pts.map((p) => ({ a: Math.round(p.a), y: Math.round(p.y) })) } : e)),
+      };
+    }),
   // 3D drag: hop to whichever wall segment is nearest (x,y in mm), set along + height
   dragFitting3D: (id, x, y, heightMm) =>
     set((s) => {
@@ -1157,7 +1356,7 @@ export const useStore = create<AppState>((set, get) => ({
   duplicateFitting: (id) => {
     const src = get().fittings.find((e) => e.id === id);
     if (!src) return null;
-    const nid = `f${++fittingSeq}`;
+    const nid = wallItemId("f");
     set((s) => ({
       past: [...s.past.slice(-49), snapshot(s)],
       future: [],
@@ -2114,6 +2313,20 @@ export const useStore = create<AppState>((set, get) => ({
       const cabs = resizeCabs(s.cabs, id, newW, edge, bounds);
       return cabs ? { cabs } : {};
     }),
+  liftCab: (id, mm) =>
+    set((st) => ({
+      ...cabHist(st),
+      cabs: st.cabs.map((c) => {
+        if (c.id !== id || c.kind === "upper") return c;
+        if (mm == null) {
+          const { mountY: _drop, ...rest } = c;
+          return rest as Cabinet;
+        }
+        // it cannot go through the floor, and it cannot go through the ceiling either
+        const top = cabBand({ ...c, mountY: 0 }).y1;
+        return { ...c, mountY: Math.max(0, Math.min(Math.max(0, st.ceiling - top), Math.round(mm))) };
+      }),
+    })),
   setBaseHeight: (mm) =>
     set((s) => {
       const cabs = setBasesH(s.cabs, mm);
@@ -2430,8 +2643,12 @@ export const useStore = create<AppState>((set, get) => ({
     if (!restored.screen || MENU_SCREENS.includes(restored.screen) || !FLOW.includes(restored.screen)) {
       restored.screen = resumeScreen(restored);
     }
-    // repair any duplicate cab ids from projects saved before ids were collision-proof
+    // repair any duplicate ids from projects saved before ids were collision-proof. Cabinets have
+    // been healed here for a while; WALL ITEMS had the same bug and were not — a socket added after
+    // a reload took an id the pipe already held, and from then on moving one moved both.
     if (Array.isArray(restored.cabs)) restored.cabs = dedupeIds(restored.cabs as Cabinet[]);
+    if (Array.isArray(restored.fittings)) restored.fittings = dedupeWallItems(restored.fittings as Fitting[], "f");
+    if (Array.isArray(restored.openings)) restored.openings = dedupeWallItems(restored.openings as Opening[], "o");
     set({ ...freshDesign(), ...restored, currentProjectId: id, menuOpen: false });
     set((s) => ({ projectsRev: s.projectsRev + 1 }));
   },
@@ -2619,7 +2836,27 @@ if (supabase) {
       syncedUser = null;
     }
   };
-  supabase.auth.getSession().then(({ data }) => handle("INITIAL_SESSION", data.session));
+  // GUEST-FIRST HAS TO MEAN GUEST-FIRST, INCLUDING WHEN THE BACKEND IS UNREACHABLE.
+  //
+  // App.tsx renders nothing but a «Загрузка…» splash until `authReady` flips, and the only thing
+  // that flipped it was this promise resolving. It had no .catch() and no timeout — so a rejected
+  // or hanging getSession() (blocked DNS, a captive/proxied network, Supabase down or throttled,
+  // a TLS failure) left the app on that splash FOREVER, with no UI at all. Every feature would
+  // look absent, on a device where nothing we ship is at fault.
+  //
+  // Designing a kitchen needs no account and no network, so the app must never be gated on one.
+  // Fail OPEN: open up regardless, and let a session arrive late if it ever does — `handle` is
+  // safe to run afterwards and simply fills in the user.
+  const AUTH_READY_TIMEOUT_MS = 3000;
+  const openAnyway = () => {
+    if (!useStore.getState().authReady) useStore.setState({ authReady: true });
+  };
+  const authTimer = setTimeout(openAnyway, AUTH_READY_TIMEOUT_MS);
+  supabase.auth
+    .getSession()
+    .then(({ data }) => handle("INITIAL_SESSION", data.session))
+    .catch(openAnyway)
+    .finally(() => clearTimeout(authTimer));
   supabase.auth.onAuthStateChange((event, session) => handle(event, session));
 }
 
@@ -2643,4 +2880,17 @@ useStore.subscribe((s, prev) => {
 // dev-only: lets local tooling drive the store directly (stripped from prod builds)
 if (import.meta.env.DEV && typeof window !== "undefined") {
   (window as unknown as { __store: typeof useStore }).__store = useStore;
+}
+
+/** THE PANEL SPECS as one stable object — the фартук and the ceiling closer.
+ *
+ *  A hook rather than a raw selector because the 3D rebuilds when this reference changes: returning
+ *  a fresh `{ splash, closer }` on every render would rebuild the whole kitchen group on every
+ *  render. The two specs are only ever replaced wholesale (setSplash / setCloser), so memoising on
+ *  them is exact. */
+export function usePanelSpecs(): PanelSpecs {
+  const splash = useStore((s) => s.splash);
+  const closer = useStore((s) => s.closer);
+  const underside = useStore((s) => s.underside);
+  return useMemo(() => ({ splash, closer, underside }), [splash, closer, underside]);
 }

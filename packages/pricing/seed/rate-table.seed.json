@@ -66,6 +66,28 @@
       "name": "Навес регулируемый (комплект с планкой)",
       "sku": "HANG-BRACKET-01",
       "pricePerUnit": 7000
+    },
+    "3f2a1c88-5d47-4b90-9e33-7a1c0b5d2e64": {
+      "name": "Лента светодиодная 24В 12Вт/м",
+      "sku": "LED-STRIP-24V",
+      "pricePerUnit": 0,
+      "pricePerM": 25000
+    },
+    "c81b4d70-9e26-4a15-b3f8-2d6a94e07b11": {
+      "name": "Профиль алюминиевый с рассеивателем",
+      "sku": "LED-PROFILE-AL",
+      "pricePerUnit": 0,
+      "pricePerM": 35000
+    },
+    "5a9e3f02-7c14-4d68-8b2a-1f70c6d59a83": {
+      "name": "Блок питания 24В 40Вт",
+      "sku": "LED-PSU-40W",
+      "pricePerUnit": 90000
+    },
+    "d47c6a19-0b83-4e52-9fa6-3c85e12b7d40": {
+      "name": "Датчик-выключатель ИК",
+      "sku": "LED-SENSOR-IR",
+      "pricePerUnit": 65000
     }
   },
   "operations": {

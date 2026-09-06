@@ -4,7 +4,9 @@
 // are the next phases.
 
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { useStore, HW_GRADE_LABEL } from "../store";
+import { useStore, usePanelSpecs, HW_GRADE_LABEL } from "../store";
+import { useDesignPanels, useDesignBands, useBackCutouts } from "../pricing/usePrice";
+import { runLocalBands } from "../model/wallPanels";
 import { useProduction } from "../pricing/usePrice";
 import { registerExport } from "../lib/handoffExport";
 import { IconTelegram } from "../components/icons";
@@ -34,6 +36,8 @@ export function HandoffScreen() {
   const cabs = useStore((s) => s.cabs);
   const ceiling = useStore((s) => s.ceiling);
   const reveal = useStore((s) => s.reveal);
+  const panelSpecs = usePanelSpecs();
+  const led = useStore((s) => s.led);
   const roomName = useStore((s) => s.roomName);
   const points = useStore((s) => s.roomPoints);
   const openings = useStore((s) => s.openings);
@@ -80,7 +84,16 @@ export function HandoffScreen() {
   // the shop's build conventions (hangers per carcass) — the hardware list must show what
   // this workshop actually fits, and a merged row hangs on one set, not one per cabinet
   const shop = useProduction();
-  const prod = useMemo(() => production(cabs, shop), [cabs, shop]);
+  // the фартук and the ceiling closer are boards the shop cuts — they belong in the package
+  const wallPanels = useDesignPanels();
+  // the drawing sheets want the panels as GEOMETRY, in the run-local space the elevation lays out in
+  const derived = useDesignBands();
+  const drawPanels = useMemo(
+    () => (derived ? runLocalBands(derived.bands, derived.L) : []),
+    [derived],
+  );
+  const backCuts = useBackCutouts();
+  const prod = useMemo(() => production(cabs, shop, wallPanels, backCuts), [cabs, shop, wallPanels, backCuts]);
   // sheet nesting (Раскрой) — pack the cut list onto boards; offcuts on the rack fill first.
   // The offcut stock lives in localStorage (model/offcuts.ts), not in this component: a rack
   // of leftover boards belongs to the workshop, not to one quote, and retyping it per job was
@@ -93,7 +106,7 @@ export function HandoffScreen() {
   const [rh, setRh] = useState("");
   const [rGroup, setRGroup] = useState("");
   const { sheetW, sheetH, kerf, respectGrain } = settings;
-  const panels = useMemo(() => nestPanels(cabs, respectGrain), [cabs, respectGrain]);
+  const panels = useMemo(() => nestPanels(cabs, respectGrain, wallPanels, backCuts), [cabs, respectGrain, wallPanels, backCuts]);
   // the DISTINCT boards this job is cut from — an offcut can only be an offcut OF one of these,
   // so they are the choices the picker offers (never the whole catalog)
   const boards = useMemo(() => {
@@ -196,7 +209,7 @@ export function HandoffScreen() {
       return c.kind === "upper" ? t.labels.kindUpper : c.kind === "tall" ? t.labels.kindTall : t.labels.kindBase;
     };
     return {
-      runs: drawRuns, ceiling, reveal, numberOf, points, cabs, openings, waterWall, layout,
+      runs: drawRuns, ceiling, reveal, numberOf, points, cabs, openings, waterWall, layout, panels: drawPanels,
       summary: [
         { label: th.dwModules, value: String(prod?.moduleCount ?? 0) },
         { label: th.dwWalls, value: String(drawRuns.length) },
@@ -511,6 +524,8 @@ export function HandoffScreen() {
           points={points}
           ceiling={ceiling}
           reveal={reveal}
+          panels={panelSpecs}
+          led={led}
           openings={openings}
           coveringColor={coveringColor}
           floorId={FLOOR_COVERINGS[floorCovering]?.id}

@@ -4,13 +4,18 @@
 
 import { production } from "./cncExport";
 import type { Cabinet } from "./cabinet";
+import type { FlatPanel, PanelCutout } from "@mebelchi/schema";
 
 const ROW_WRAP = 2800; // wrap to a new row past this width (≈ a board width)
 const GAP = 40;
 const ROW_GAP = 300;
 
-export function panelsDXF(cabs: Cabinet[]): string | null {
-  const prod = production(cabs);
+export function panelsDXF(
+  cabs: Cabinet[],
+  wallPanels: FlatPanel[] = [],
+  backCuts: Map<string, PanelCutout[]> = new Map(),
+): string | null {
+  const prod = production(cabs, undefined, wallPanels, backCuts);
   if (!prod) return null;
 
   const out: (string | number)[] = [];
@@ -69,6 +74,17 @@ export function panelsDXF(cabs: Cabinet[]): string | null {
       rowH = 0;
     }
     rect(cx, topY - h, w, h);
+    // THE HOLES ARE PART OF THE PANEL. A back cut around a riser, a фартук cut around its sockets —
+    // exported as real closed contours on the same layer, so a nester or a CAM package sees a panel
+    // with holes rather than a rectangle plus a note nobody reads. Panel-local mm, measured from
+    // the panel's bottom-left, which is (cx, topY − h) here.
+    for (const c of p.cutouts ?? []) {
+      const x0 = cx + c.x;
+      const y0 = topY - h + c.y;
+      // a hole that does not fit inside the panel is a derivation bug, not something to draw
+      if (c.x < 0 || c.y < 0 || c.x + c.w > w || c.y + c.h > h) continue;
+      rect(x0, y0, c.w, c.h);
+    }
     // two label lines placed INSIDE the box (top-left), scaled so they fit its width &
     // height — keeps every label within its own rectangle, so they never overlap neighbours
     const lab1 = shortPart(p.partEn);

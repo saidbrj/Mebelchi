@@ -5,8 +5,8 @@
 import { useEffect, useRef, useState, useCallback } from "react";
 import * as THREE from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { polygonBoundsMm, offsetPolygon, defaultOpeningSill, defaultOpeningHeight, openingSpan, wallSegments, openingFinish, type Pt, type Opening, type Fitting } from "../model/room";
-import { leafRects, coveringColor, defaultSurface, type Surface } from "../model/walls";
+import { polygonBoundsMm, offsetPolygon, defaultOpeningSill, defaultOpeningHeight, defaultFittingHeight, fittingCentreY, pipePathOf, pipeDiameter, snapPipePoint, openingSpan, wallSegments, openingFinish, type Pt, type Opening, type Fitting } from "../model/room";
+import { leafRects, coveringColor, defaultSurface, WALL_PAINT_OFFSET_M, type Surface } from "../model/walls";
 import { PBR, applyPbrFloor, onTexturesReady, texturedMaterial } from "./pbr";
 import { buildRig } from "./lighting";
 
@@ -209,7 +209,11 @@ function makeFitting(
     yc = ceilingM - 0.45; // near the ceiling
     color = 0xd0d0d0;
   } else {
-    w = 0.12; // socket / switch plate
+    // THE PLATE IS THE FITTING'S REAL WIDTH. It used to be a fixed 120mm square whatever the
+    // catalog said, so a 300mm four-gang block drew as one small socket — and, now that the фартук
+    // is cut around these (model/wallPanels), the hole in the panel would not have matched the
+    // thing standing in it.
+    w = Math.max(widthM, 0.09);
     h = 0.12;
     depth = 0.035;
     yc = fit.kind.startsWith("switch") ? 1.25 : 1.05;
@@ -218,21 +222,77 @@ function makeFitting(
   if (fit.height != null && fit.category !== "electric") h = Math.max(0.1, fit.height / 1000);
   if (fit.mountY != null) yc = Math.max(h / 2, Math.min(ceilingM - h / 2, fit.mountY / 1000));
 
-  const plate = new THREE.Mesh(
-    new THREE.BoxGeometry(w, h, depth),
-    new THREE.MeshStandardMaterial({ color, roughness: 0.85 }),
-  );
-  const meshes = [plate];
-  // a darker inset face so it reads against the wall
-  if (fit.category === "electric") {
-    const face = new THREE.Mesh(
-      new THREE.BoxGeometry(w * 0.55, h * 0.55, depth + 0.01),
-      new THREE.MeshStandardMaterial({ color: 0x8a8a8a, roughness: 0.7 }),
-    );
-    meshes.push(face);
+  // A PIPE IS A PATH, so it is a CHAIN of barrels with an elbow at every bend — built here and
+  // returned early, because everything below assumes a single plate centred on `t`.
+  if (fit.category === "plumbing") {
+    const wallLen = Math.hypot(I1.x - I0.x, I1.z - I0.z) * 1000 || 1;
+    const pts = pipePathOf(fit, wallLen);
+    const r = Math.max(0.008, pipeDiameter(fit) / 2000);
+    const mat = new THREE.MeshStandardMaterial({ color: 0xb9bcc0, roughness: 0.5, metalness: 0.25 });
+    const stand = r + 0.012; // clear of the wall's paint, the way the фартук does
+    const ux = (I1.x - I0.x) / (wallLen / 1000);
+    const uz = (I1.z - I0.z) / (wallLen / 1000);
+    // wall space (mm along, mm up) → world metres, standing off the wall's inner face
+    const world = (pt: { a: number; y: number }) =>
+      new THREE.Vector3(
+        I0.x + ux * (pt.a / 1000) + inwardX * stand,
+        pt.y / 1000,
+        I0.z + uz * (pt.a / 1000) + inwardZ * stand,
+      );
+    const out: THREE.Mesh[] = [];
+    for (let i = 0; i < pts.length - 1; i++) {
+      const a = world(pts[i]);
+      const b = world(pts[i + 1]);
+      const len = a.distanceTo(b);
+      if (len < 0.001) continue;
+      const barrel = new THREE.Mesh(new THREE.CylinderGeometry(r, r, len, 14), mat);
+      // a cylinder's axis is +Y; turn it onto the segment
+      barrel.quaternion.setFromUnitVectors(
+        new THREE.Vector3(0, 1, 0),
+        b.clone().sub(a).normalize(),
+      );
+      barrel.position.copy(a).add(b).multiplyScalar(0.5);
+      out.push(barrel);
+    }
+    // an elbow at each interior bend, so a corner reads as a joint rather than two barrels ending
+    for (let i = 1; i < pts.length - 1; i++) {
+      const knee = new THREE.Mesh(new THREE.SphereGeometry(r * 1.12, 12, 10), mat);
+      knee.position.copy(world(pts[i]));
+      out.push(knee);
+    }
+    for (const m of out) m.userData.fitting = fit.id;
+    return out;
   }
+
+  const plate =
+    new THREE.Mesh(
+          new THREE.BoxGeometry(w, h, depth),
+          new THREE.MeshStandardMaterial({ color, roughness: 0.85 }),
+        );
+  const meshes = [plate];
+  // a darker inset face per GANG, so a block reads as the block it is rather than as one big plate
+  const gangFaces: { face: THREE.Mesh; dx: number }[] = [];
+  if (fit.category === "electric") {
+    const gangs = Math.max(1, Math.round(w / 0.075));
+    const faceMat = new THREE.MeshStandardMaterial({ color: 0x8a8a8a, roughness: 0.7 });
+    const fw = Math.min(0.055, (w / gangs) * 0.7);
+    for (let i = 0; i < gangs; i++) {
+      const face = new THREE.Mesh(new THREE.BoxGeometry(fw, h * 0.55, depth + 0.01), faceMat);
+      gangFaces.push({ face, dx: (i - (gangs - 1) / 2) * (w / gangs) });
+      meshes.push(face);
+    }
+  }
+  const offOf = (m: THREE.Mesh) => gangFaces.find((gf) => gf.face === m)?.dx ?? 0;
+  // the plate lies ALONG the wall, so a gang's offset is measured along the wall's own direction
+  const alongX = Math.cos(angle);
+  const alongZ = Math.sin(angle);
   for (const m of meshes) {
-    m.position.set(cx + inwardX * (depth / 2 + 0.01), yc, cz + inwardZ * (depth / 2 + 0.01));
+    const d = offOf(m);
+    m.position.set(
+      cx + inwardX * (depth / 2 + 0.01) + alongX * d,
+      yc,
+      cz + inwardZ * (depth / 2 + 0.01) + alongZ * d,
+    );
     m.rotation.y = -angle;
     m.userData.fitting = fit.id; // raycast target → selects/drags this item
   }
@@ -267,6 +327,27 @@ export function makeRoom(
   const floor = new THREE.Mesh(floorGeo, floorMat);
   floor.userData.floor = true; // raycast target → selects the floor
   g.add(floor);
+
+  // THE CEILING.
+  //
+  // The room had five surfaces and a sky where the sixth should be, which is why no render could
+  // ever show a room's own lighting: the fixtures had nothing to hang from and the bounce had
+  // nothing to come off. It is the floor's polygon, lifted and turned over.
+  //
+  // It CULLS like a wall (three/VariantScene updateCull): from a 3/4 view outside the room you are
+  // above it and it would cover everything, so it shows only when the camera is under it — which is
+  // exactly when you are standing in the room and can see it.
+  const ceilGeo = new THREE.ShapeGeometry(floorShape);
+  ceilGeo.rotateX(Math.PI / 2);
+  ceilGeo.translate(0, ceilingM, 0);
+  const ceil = new THREE.Mesh(
+    ceilGeo,
+    // matte white, and NOT double-sided: seen from above it should not exist at all
+    new THREE.MeshStandardMaterial({ color: 0xf3f2ef, roughness: 0.96, side: THREE.BackSide }),
+  );
+  ceil.userData.ceiling = true;
+  ceil.receiveShadow = true;
+  g.add(ceil);
 
   const cx = outer.reduce((s, p) => s + p.x, 0) / outer.length;
   const cz = outer.reduce((s, p) => s + p.z, 0) / outer.length;
@@ -413,7 +494,7 @@ export function makeRoom(
     for (const lr of leafRects(surf)) {
       const col = coveringColor(lr.c);
       if (!col) continue;
-      facePlane(lr.x0, lr.x1, lr.y0, lr.y1, 0.012, new THREE.MeshStandardMaterial({ color: col, roughness: 0.9, side: THREE.DoubleSide }));
+      facePlane(lr.x0, lr.x1, lr.y0, lr.y1, WALL_PAINT_OFFSET_M, new THREE.MeshStandardMaterial({ color: col, roughness: 0.9, side: THREE.DoubleSide }));
     }
     if (selected === i) {
       facePlane(0, 1, 0, 1, 0.02, new THREE.MeshStandardMaterial({ color: 0x00ac7a, transparent: true, opacity: 0.22, side: THREE.DoubleSide, depthWrite: false }));
@@ -578,6 +659,32 @@ interface Api {
   dispose: () => void;
 }
 
+/** A READ-ONLY measurement, projected to screen: where a selected wall item sits, measured to each
+ *  end of its wall and to the floor and ceiling. Deliberately not a `ProjectedDim`: those carry
+ *  drag handles that resize the ROOM, and nothing here should move a wall. */
+interface FitDim {
+  id: string;
+  x1: number;
+  y1: number;
+  x2: number;
+  y2: number;
+  label: string;
+}
+
+/** ONE GRAB POINT on the selected pipe's path, projected to screen. Dragging one moves that end or
+ *  that bend — which is how a path is both re-shaped and resized, since it has no separate width. */
+interface PipeHandle {
+  i: number;
+  x: number;
+  y: number;
+  /** where this point IS, in wall space — mm along the wall, mm above the floor */
+  a: number;
+  up: number;
+  /** the midpoint of the segment AFTER this point, where the "add a bend" control sits */
+  midX?: number;
+  midY?: number;
+}
+
 interface ProjectedDim {
   id: string;
   wallIndex: number;
@@ -641,6 +748,9 @@ export function ThreeScene({
   onSetOpeningWidth,
   onSetOpeningHeight,
   onSetOpeningSill,
+  onPipePoint,
+  onPipeBend,
+  onPipeUnbend,
 }: {
   points: Pt[];
   ceiling: number;
@@ -671,6 +781,13 @@ export function ThreeScene({
   onBeginEdit?: () => void;
   /** drag a door/window/opening to a room-mm point — it hops to the nearest wall there (like fittings) */
   onOpeningDrag?: (id: string, x: number, y: number) => void;
+  /** DRAG A PIPE'S END OR BEND — wall space (mm along, mm up). `live` skips the undo stack; the
+   *  gesture pushes one entry when it begins. */
+  onPipePoint?: (id: string, i: number, a: number, y: number, live: boolean) => void;
+  /** put a bend in the middle of the segment after point `i` */
+  onPipeBend?: (id: string, i: number) => void;
+  /** straighten a bend out */
+  onPipeUnbend?: (id: string, i: number) => void;
   /** resize handles on the opening gizmo */
   onSetOpeningWidth?: (id: string, width: number) => void;
   onSetOpeningHeight?: (id: string, height: number) => void;
@@ -680,8 +797,8 @@ export function ThreeScene({
   const apiRef = useRef<Api | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
-  const cbRef = useRef({ onWallClick, onFittingClick, onFittingDrag, onOpeningClick, onFloorClick, onSetWallLength, onSetCeilingValue, onMoveCorner, onMoveWall, onBeginEdit, onOpeningDrag, onSetOpeningWidth, onSetOpeningHeight, onSetOpeningSill });
-  cbRef.current = { onWallClick, onFittingClick, onFittingDrag, onOpeningClick, onFloorClick, onSetWallLength, onSetCeilingValue, onMoveCorner, onMoveWall, onBeginEdit, onOpeningDrag, onSetOpeningWidth, onSetOpeningHeight, onSetOpeningSill };
+  const cbRef = useRef({ onWallClick, onFittingClick, onFittingDrag, onOpeningClick, onFloorClick, onSetWallLength, onSetCeilingValue, onMoveCorner, onMoveWall, onBeginEdit, onOpeningDrag, onSetOpeningWidth, onSetOpeningHeight, onSetOpeningSill, onPipePoint, onPipeBend, onPipeUnbend });
+  cbRef.current = { onWallClick, onFittingClick, onFittingDrag, onOpeningClick, onFloorClick, onSetWallLength, onSetCeilingValue, onMoveCorner, onMoveWall, onBeginEdit, onOpeningDrag, onSetOpeningWidth, onSetOpeningHeight, onSetOpeningSill, onPipePoint, onPipeBend, onPipeUnbend };
 
   // latest inputs, read by the (stable) projection so it never draws the overlay off STALE points, and
   // the room CENTRE it is projected against — the same one `rebuild` last used (frozen during a drag).
@@ -691,6 +808,11 @@ export function ThreeScene({
   ceilingRef.current = ceiling;
   const selWallRef = useRef(selectedWall3D);
   selWallRef.current = selectedWall3D;
+  // the SELECTED wall item's measurement chain reads these live, the same way the gizmo does
+  const selectedFitRef = useRef(selectedFit3D);
+  selectedFitRef.current = selectedFit3D;
+  const fittingsRef = useRef(fittings);
+  fittingsRef.current = fittings;
   const centerRef = useRef({ cx: 0, cy: 0 });
   // the selected door/window's gizmo reads these live
   const openingsRef = useRef(openings);
@@ -701,6 +823,12 @@ export function ThreeScene({
   selOpenRef.current = selectedOpen3D;
 
   const [dims, setDims] = useState<ProjectedDim[]>([]);
+  const [fitDims, setFitDims] = useState<FitDim[]>([]);
+  const [pipeHandles, setPipeHandles] = useState<PipeHandle[]>([]);
+  const fitDimsRef = useRef(fitDims);
+  fitDimsRef.current = fitDims;
+  const pipeHandlesRef = useRef(pipeHandles);
+  pipeHandlesRef.current = pipeHandles;
   const [gizmo, setGizmo] = useState<ItemGizmo | null>(null);
 
   const updateDims = useCallback(() => {
@@ -780,6 +908,108 @@ export function ThreeScene({
     }
 
     setDims(result);
+
+    // ── WHERE THE SELECTED ITEM IS ────────────────────────────────────────────────────────────
+    // Four numbers, and they are the four a fitter takes: to each end of the wall, and to the floor
+    // and the ceiling. Measured to the item's CENTRE, so the number on screen is the same number
+    // the editor's «От угла стены» / «От пола» fields hold — two readings of one position is worse
+    // than none. Only for the SELECTED item: all of them at once is not a drawing, it is a mess.
+    const selFitId = selectedFitRef.current;
+    const fit = selFitId ? fittingsRef.current.find((f) => f.id === selFitId) : null;
+    const seg = fit ? points[fit.wall] : null;
+    const segB = fit ? points[(fit.wall + 1) % n] : null;
+    // A PIPE IS EXEMPT. These four chains measure to ONE centre, and a path has no such point — a
+    // bent run measured to "its centre" would be a number about nothing. Its grab points carry
+    // their own coordinates instead, which is both unambiguous and what a fitter writes down.
+    if (fit && fit.category !== "plumbing" && seg && segB) {
+      const px = seg.x + (segB.x - seg.x) * fit.t;
+      const py = seg.y + (segB.y - seg.y) * fit.t;
+      const yc = fittingCentreY(fit) / 1000;
+      const wallLen = Math.round(Math.hypot(segB.x - seg.x, segB.y - seg.y));
+      const along = Math.round(wallLen * fit.t);
+      const centreY = Math.round(fittingCentreY(fit));
+
+      const at = (x: number, y: number, h: number) => new THREE.Vector3((x - cx) / 1000, h, (y - cy) / 1000);
+      const chain = (id: string, a: THREE.Vector3, b: THREE.Vector3, mm: number): FitDim | null => {
+        if (mm < 30) return null; // a 12mm gap has no room for a label and nothing useful to say
+        const va = a.clone().project(camera);
+        const vb = b.clone().project(camera);
+        if (va.z >= 1 || vb.z >= 1) return null;
+        const x1 = (va.x * 0.5 + 0.5) * width;
+        const y1 = (-va.y * 0.5 + 0.5) * height;
+        const x2 = (vb.x * 0.5 + 0.5) * width;
+        const y2 = (-vb.y * 0.5 + 0.5) * height;
+        if (Math.hypot(x2 - x1, y2 - y1) < 24) return null;
+        return { id, x1, y1, x2, y2, label: `${mm} мм` };
+      };
+      const out = [
+        chain("fit-a", at(seg.x, seg.y, yc), at(px, py, yc), along),
+        chain("fit-b", at(px, py, yc), at(segB.x, segB.y, yc), wallLen - along),
+        chain("fit-f", at(px, py, 0.02), at(px, py, yc), centreY),
+        chain("fit-c", at(px, py, yc), at(px, py, ceiling / 1000), Math.round(ceiling - centreY)),
+      ].filter((d): d is FitDim => d !== null);
+      setFitDims(out);
+    } else if (fitDimsRef.current.length && fit?.category !== "plumbing") {
+      // a pipe fills these in itself, below — clearing here would fight it
+      setFitDims([]);
+    }
+
+    // ── THE SELECTED PIPE'S GRAB POINTS ───────────────────────────────────────────────────────
+    // A path has no width to pull, so its ENDS and its BENDS are the handles: drag one and the pipe
+    // both re-shapes and resizes. Projected here for the same reason the chains are — the overlay
+    // is SVG on top of the canvas, and it needs screen coordinates.
+    if (fit && fit.category === "plumbing" && seg && segB) {
+      const wallLen = Math.hypot(segB.x - seg.x, segB.y - seg.y) || 1;
+      const ux = (segB.x - seg.x) / wallLen;
+      const uy = (segB.y - seg.y) / wallLen;
+      const toScreen = (pt: { a: number; y: number }) => {
+        const v = new THREE.Vector3((seg.x + ux * pt.a - cx) / 1000, pt.y / 1000, (seg.y + uy * pt.a - cy) / 1000);
+        v.project(camera);
+        return v.z < 1 ? { x: (v.x * 0.5 + 0.5) * width, y: (-v.y * 0.5 + 0.5) * height } : null;
+      };
+      const pts = pipePathOf(fit, wallLen);
+      const screen = pts.map(toScreen);
+      setPipeHandles(
+        screen.flatMap((p, i) => {
+          if (!p) return [];
+          const nxt = screen[i + 1];
+          const mid = nxt ? { midX: (p.x + nxt.x) / 2, midY: (p.y + nxt.y) / 2 } : {};
+          return [{ i, x: p.x, y: p.y, a: Math.round(pts[i].a), up: Math.round(pts[i].y), ...mid }];
+        }),
+      );
+
+      // ── DIMENSION IT THE WAY A DRAWING DOES ────────────────────────────────────────────────
+      // A pair of numbers in one chip («2160 · 2700») cannot say which is which. So each number
+      // goes ON the thing it measures: the run's start is located by an arrow to the wall's corner
+      // and an arrow down to the floor, and every leg carries its own length along itself.
+      const dims: FitDim[] = [];
+      const chainPx = (id: string, a: { x: number; y: number }, b: { x: number; y: number }, mm: number, off = 0) => {
+        if (mm < 30 || Math.hypot(b.x - a.x, b.y - a.y) < 24) return;
+        // dimension lines sit OUTSIDE what they measure, or they land on the pipe and its handles
+        const dx = b.x - a.x, dy = b.y - a.y, l = Math.hypot(dx, dy) || 1;
+        const nx = (-dy / l) * off, ny = (dx / l) * off;
+        dims.push({ id, x1: a.x + nx, y1: a.y + ny, x2: b.x + nx, y2: b.y + ny, label: `${mm} мм` });
+      };
+      const p0 = screen[0];
+      if (p0) {
+        // where the run STARTS: along the wall, and up from the floor
+        const corner = toScreen({ a: 0, y: pts[0].y });
+        const floor = toScreen({ a: pts[0].a, y: 0 });
+        if (corner) chainPx("pipe-a", corner, p0, Math.round(pts[0].a));
+        if (floor) chainPx("pipe-y", floor, p0, Math.round(pts[0].y));
+      }
+      // then each leg's own length, offset clear of the barrel
+      for (let i = 0; i < screen.length - 1; i++) {
+        const a = screen[i];
+        const b = screen[i + 1];
+        if (!a || !b) continue;
+        const mm = Math.round(Math.hypot(pts[i + 1].a - pts[i].a, pts[i + 1].y - pts[i].y));
+        chainPx(`pipe-seg${i}`, a, b, mm, 34);
+      }
+      setFitDims(dims);
+    } else if (pipeHandlesRef.current.length) {
+      setPipeHandles([]);
+    }
 
     // ── the selected door/window's transform gizmo: its face corners + centre, projected to screen ──
     let g: ItemGizmo | null = null;
@@ -868,6 +1098,10 @@ export function ThreeScene({
 
     let room: THREE.Group | null = null;
     let walls: WallInfo[] = [];
+    /** the room's ceiling surface + the height it hangs at — culled by height, the way a wall is
+     *  culled by facing (see updateCull) */
+    let ceilingMesh: THREE.Mesh | null = null;
+    const ceilingMRef = { current: 2.7 };
     let woodColor = "";
     const bounds = { cx: 0, cy: 0 };
     // while a resize drag holds this, `rebuild` keeps the room centred where it was when the drag began
@@ -916,6 +1150,11 @@ export function ThreeScene({
       );
       room = built.group;
       walls = built.walls;
+      ceilingMRef.current = ceilMm / 1000;
+      ceilingMesh = null;
+      room.traverse((o) => {
+        if ((o as THREE.Mesh).isMesh && o.userData.ceiling) ceilingMesh = o as THREE.Mesh;
+      });
       applyPbrFloor(room, color, floor);
       scene.add(room);
       invalidate();
@@ -949,6 +1188,10 @@ export function ThreeScene({
         const dot = (camera.position.x - wll.mx) * wll.nx + (camera.position.z - wll.mz) * wll.nz;
         wll.mesh.visible = dot <= 0.001;
       }
+      // THE CEILING CULLS TOO, on the same principle: a wall by which side of it you are on, the
+      // ceiling by whether you are under it. Without this it sat over the room editor as a lid and
+      // there was nothing to do but look at it.
+      if (ceilingMesh) ceilingMesh.visible = camera.position.y < ceilingMRef.current - 0.05;
     };
 
     const ro = new ResizeObserver(() => {
@@ -1222,6 +1465,61 @@ export function ThreeScene({
   // The opening gizmo: MOVE the door/window along the walls, or resize its WIDTH (symmetric about its
   // centre), HEIGHT (top edge, sill held) or SILL (bottom edge, top held — windows only). All 1:1 off a
   // wall raycast, snapped to 10mm, committed only on a change so the room isn't rebuilt every pixel.
+  /**
+   * DRAG ONE POINT of the selected pipe.
+   *
+   * Read against the pipe's OWN wall plane, the same way an opening's gizmo is: a ray that hits
+   * whatever mesh is nearest would let the point jump to a wall behind it. The result comes back in
+   * room mm, and the pipe's path is in wall space, so it is projected onto the wall's direction.
+   */
+  const beginPipeDrag = (id: string, i: number, e: React.PointerEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    const api = apiRef.current;
+    const controls = controlsRef.current;
+    if (controls) controls.enabled = false;
+    const f = fittings.find((x) => x.id === id);
+    const seg = f ? wallSegments(points, interiorWalls)[f.wall] : null;
+    if (!f || !seg) return;
+    const wallLen = Math.hypot(seg.b.x - seg.a.x, seg.b.y - seg.a.y) || 1;
+    const ux = (seg.b.x - seg.a.x) / wallLen;
+    const uy = (seg.b.y - seg.a.y) / wallLen;
+    // the legs this point snaps against (model/room `snapPipePoint`): captured once, because the
+    // point being dragged moves and re-reading the path mid-gesture would chase itself
+    const path0 = pipePathOf(f, wallLen);
+    const anchors = [path0[i - 1], path0[i + 1]].filter(Boolean);
+    const startX = e.clientX, startY = e.clientY;
+    let began = false, lastKey = "";
+
+    const onMove = (ev: PointerEvent) => {
+      if (!began && Math.hypot(ev.clientX - startX, ev.clientY - startY) <= 4) return;
+      if (!began) { began = true; cbRef.current.onBeginEdit?.(); }
+      const hit = api?.wallPlaneHit(ev.clientX, ev.clientY, seg.a.x, seg.a.y, seg.b.x, seg.b.y);
+      if (!hit) return;
+      // room mm → this wall's own frame, on a 10mm grid so a dragged pipe lands on a round number
+      const rawA = Math.round((((hit.x - seg.a.x) * ux + (hit.y - seg.a.y) * uy)) / 10) * 10;
+      const rawY = Math.round(Math.max(0, Math.min(ceiling, hit.height)) / 10) * 10;
+      const { a, y } = snapPipePoint(anchors, rawA, rawY);
+      const key = `${a},${y}`;
+      if (key === lastKey) return;
+      lastKey = key;
+      cbRef.current.onPipePoint?.(
+        id,
+        i,
+        Math.max(0, Math.min(wallLen, a)),
+        Math.max(0, Math.min(ceiling, y)),
+        true,
+      );
+    };
+    const onUp = () => {
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      if (controls) controls.enabled = true;
+    };
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+  };
+
   const beginItemDrag = (gz: ItemGizmo, e: React.PointerEvent, mode: "move" | "width" | "top" | "bottom") => {
     e.preventDefault();
     e.stopPropagation();
@@ -1315,6 +1613,70 @@ export function ThreeScene({
         // instead of being swallowed (page-zoom itself is blocked globally in main.tsx)
         onWheel={(e) => apiRef.current?.zoomBy(e.deltaY, e.clientX, e.clientY)}
       >
+        {/* ── THE SELECTED PIPE'S GRAB POINTS ── amber, like the cabinets' resize arrows, because
+            that is what they do: drag an END to lengthen the run, drag a BEND to re-shape it. The
+            small ⊕ between two points puts a new bend there; a bend can be pulled out again with a
+            long-press (double-click), which straightens that corner. */}
+        {pipeHandles.map((hp) => (
+          <g key={`ph${hp.i}`}>
+            {hp.midX != null && hp.midY != null && (
+              <g
+                style={{ cursor: "copy", pointerEvents: "all" }}
+                onPointerDown={(e) => { e.stopPropagation(); cbRef.current.onPipeBend?.(selectedFit3D!, hp.i); }}
+              >
+                <circle cx={hp.midX} cy={hp.midY} r={9} fill="#fff" stroke="#F0A202" strokeWidth={2.5} opacity={0.95} />
+                <path d={`M${hp.midX - 4} ${hp.midY} h8 M${hp.midX} ${hp.midY - 4} v8`} stroke="#F0A202" strokeWidth={2.5} strokeLinecap="round" />
+              </g>
+            )}
+            <circle
+              cx={hp.x}
+              cy={hp.y}
+              r={10}
+              fill="#F0A202"
+              stroke="#fff"
+              strokeWidth={3}
+              filter="drop-shadow(0px 2px 4px rgba(0,0,0,0.3))"
+              style={{ cursor: "grab", pointerEvents: "all", touchAction: "none" }}
+              onPointerDown={(e) => beginPipeDrag(selectedFit3D!, hp.i, e)}
+              onDoubleClick={(e) => { e.stopPropagation(); cbRef.current.onPipeUnbend?.(selectedFit3D!, hp.i); }}
+            />
+
+          </g>
+        ))}
+
+        {/* ── WHERE THE SELECTED ITEM SITS ── four read-only chains: to each end of its wall, and to
+            the floor and the ceiling. Arrows at both ends and the number in the middle, which is
+            how a shop drawing states a position. No handles: these measure, they do not move. */}
+        {fitDims.map((d) => {
+          const mx = (d.x1 + d.x2) / 2;
+          const my = (d.y1 + d.y2) / 2;
+          const angle = segAngle(d.x1, d.y1, d.x2, d.y2);
+          const sc = arrowScale(Math.hypot(d.x2 - d.x1, d.y2 - d.y1));
+          // the ARROWHEADS shrink on a short line so they don't swamp it — the NUMBER must not.
+          // A 900mm dimension rendered at 0.45 scale is a label nobody can read, and an unreadable
+          // measurement is the same as no measurement.
+          const ls = Math.max(0.85, Math.min(1.1, sc));
+          const w = d.label.length * 6.6 * ls + 12 * ls;
+          return (
+            <g key={d.id} style={{ pointerEvents: "none" }}>
+              <line x1={d.x1} y1={d.y1} x2={d.x2} y2={d.y2} stroke="#00AC7A" strokeWidth={2 * sc} />
+              {/* an arrowhead at each end, turned to the line */}
+              {[[d.x1, d.y1, 1], [d.x2, d.y2, -1]].map(([ax, ay, dir], i) => (
+                <polygon
+                  key={i}
+                  points={`0,0 ${9 * sc * (dir as number)},${3.5 * sc} ${9 * sc * (dir as number)},${-3.5 * sc}`}
+                  fill="#00AC7A"
+                  transform={`translate(${ax}, ${ay}) rotate(${angle.toFixed(1)})`}
+                />
+              ))}
+              <g transform={`translate(${mx.toFixed(1)}, ${my.toFixed(1)}) rotate(${angle.toFixed(1)}) scale(${ls.toFixed(2)}) translate(0, -14)`}>
+                <rect x={-w / (2 * ls)} y={-9} width={w / ls} height={18} rx={9} fill="#ffffff" stroke="#00AC7A" strokeWidth={1.5} />
+                <text x={0} y={5} textAnchor="middle" fontSize={12} fontWeight={600} fill="#0d7a58">{d.label}</text>
+              </g>
+            </g>
+          );
+        })}
+
         {/* the measurements + resize handles are an EDIT tool, not scene furniture: show them only once
             the room is being edited — a wall or the floor is selected — and keep the scene clean otherwise */}
         {(selectedWall3D != null || floorSel3D) && dims.map((dim: ProjectedDim) => {

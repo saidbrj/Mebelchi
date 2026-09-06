@@ -33,8 +33,9 @@ export interface ShopConstruction {
   bottomMode: "nakladnoe" | "vkladnoe";
   /** Carcass top: a `full` lid, two `stretchers` (царги), or `none`. */
   topMode: "full" | "stretchers" | "none";
-  /** Base support: `box` plinth (цокольная коробка), `sides` to the floor, or `legs`. */
-  plinthMode: "box" | "sides" | "legs";
+  /** Base support: `box` plinth (цокольная коробка), `sides` to the floor, `legs` — or `none`,
+   *  which is not a shop preference but a fact: a box lifted off the floor stands on nothing. */
+  plinthMode: "box" | "sides" | "legs" | "none";
   /** Handleless (GOLA aluminium profile) instead of handles, shop-wide. */
   gola: boolean;
 }
@@ -90,11 +91,25 @@ export function constructionOf(cab: Cabinet, shop: ShopConstruction = current): 
     backMount: backMountOf(cab, shop),
     grooveSetback: cab.grooveSetback ?? shop.grooveSetback,
     bottomMode: cab.bottomMode ?? shop.bottomMode,
-    topMode: cab.topMode ?? shop.topMode,
-    plinthMode: cab.plinthMode ?? shop.plinthMode,
+    // A BOX WITH A HOLE IN ITS COUNTER CANNOT HAVE A LID. The sink's bowl drops through it, so the
+    // shop builds that module on two stretcher rails — and a full top is not merely invisible, it
+    // is a board nobody can fit and nobody should be cutting. Overridable, like everything here,
+    // but the default has to be the one that can actually be built.
+    topMode: cab.topMode ?? (needsOpenTop(cab) ? "stretchers" : shop.topMode),
+    // A HUNG BOX STANDS ON NOTHING. The plinth is the thing a base stands on, so lifting one off
+    // the floor does not merely hide the toe-kick — there is no toe-kick, and the shop should not
+    // be cutting a board for one. Overridable like everything else (a fitter may still want legs).
+    plinthMode: cab.plinthMode ?? (isFloating(cab) ? "none" : shop.plinthMode),
     gola: cab.gola != null ? true : shop.gola,
   };
 }
+
+/** A module whose counter is cut through — a sink or a drop-in cooktop. */
+/** Lifted off the floor — see model/bands.ts. */
+const isFloating = (cab: Cabinet): boolean => cab.kind !== "upper" && cab.mountY != null;
+
+const needsOpenTop = (cab: Cabinet): boolean =>
+  !cab.furniture && (cab.appliance === "sink" || cab.appliance === "cooktop");
 
 /** Does this cabinet have a back panel at all? Derived — never store the two independently. */
 export const hasBackOf = (cab: Cabinet, shop: ShopConstruction = current): boolean =>

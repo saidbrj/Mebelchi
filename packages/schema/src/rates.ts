@@ -27,6 +27,13 @@ export interface HardwareRate {
   name: string;
   sku: string;
   pricePerUnit: number;
+  /**
+   * For hardware sold OFF A REEL rather than in a box — LED strip, aluminium profile, edging by the
+   * metre. A BOM line whose `unit` is "m" reads this; everything else reads `pricePerUnit`. Two
+   * fields rather than one renamed one, because a hinge really is priced per hinge and a quote that
+   * silently reinterprets its own unit is a quote nobody can check.
+   */
+  pricePerM?: number;
 }
 
 /** Per-unit machining operation rates. */

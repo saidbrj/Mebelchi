@@ -231,7 +231,43 @@ export function openingSpan(a: Pt, b: Pt, t: number, width: number) {
 
 // ---- wall fittings (electrical / heating / ventilation) — items placed on a
 // wall, dragged along / between walls just like an opening. Shared by 2D + 3D ----
-export type FittingCategory = "electric" | "heating" | "vent";
+/** `plumbing` is the one that CANNOT be avoided: a riser or a supply pipe running up the face of
+ *  the wall. Unlike a radiator it does not stop you putting a cabinet there — the cabinet is cut to
+ *  fit around it, which is exactly what a shop does and what this app could not express. */
+/**
+ * UNIQUE IDS FOR WALL ITEMS.
+ *
+ * A bare counter is not enough. It lives in a module, so it restarts at 0 on every page load —
+ * while the project you just reopened still holds `f1`, `f2`, `f3`. The next item you add or
+ * duplicate is handed `f1` again, and from then on two records answer to one id: every action maps
+ * `e.id === id`, so dragging the socket drags the pipe with it. Cabinets hit this exact bug and
+ * were fixed the same way (model/cabinet `uid` / `dedupeIds`); wall items never were.
+ *
+ * The tag is per SESSION, so an id minted now can never collide with one restored from disk.
+ */
+const _tag = Math.random().toString(36).slice(2, 6);
+let _seq = 0;
+export const wallItemId = (prefix: "f" | "o"): string => `${prefix}${++_seq}-${_tag}`;
+
+/** Give every item a unique id, regenerating any missing or duplicated one. Repairs a project
+ *  already saved with a collision — the reason a copied socket moved the pipe. */
+export function dedupeWallItems<T extends { id: string }>(items: T[], prefix: "f" | "o"): T[] {
+  const seen = new Set<string>();
+  let changed = false;
+  const out = items.map((it) => {
+    if (it.id && !seen.has(it.id)) {
+      seen.add(it.id);
+      return it;
+    }
+    changed = true;
+    const fresh = wallItemId(prefix);
+    seen.add(fresh);
+    return { ...it, id: fresh };
+  });
+  return changed ? out : items;
+}
+
+export type FittingCategory = "electric" | "heating" | "vent" | "plumbing";
 
 export interface Fitting {
   id: string;
@@ -242,11 +278,155 @@ export interface Fitting {
   height?: number; // mm (radiators / vents); undefined = category default
   kind: string; // catalog id within its category
   mountY?: number; // centre height (mm); undefined = category default
+  /** THE PIPE'S PATH along its wall — the polyline it actually follows.
+   *
+   *  A pipe is rarely a single straight barrel: it comes up out of the floor, turns, and runs along
+   *  under the counter. So a pipe is a PATH, and a plain riser is simply a two-point one. Points
+   *  are in WALL space (`a` mm along the wall from its start corner, `y` mm above the floor), which
+   *  is the frame the notch derivation, the elevation and the blocking all already measure in.
+   *
+   *  Absent → the pipe is the straight run its `t`/`width`/`height`/`orient` describe, so anything
+   *  placed before paths existed still draws and still cuts. `pipePathOf` resolves the two. */
+  path?: PipePoint[];
+  /** WHICH WAY A PIPE RUNS. Plumbing only — everything else is a plate on the wall and has no run.
+   *
+   *  `width` and `height` keep their meaning whatever this says: width is the extent ALONG the
+   *  wall, height the extent UP it. So a vertical riser is (diameter × length) and a horizontal
+   *  run is (length × diameter) — the same two numbers, read the other way round. That is what
+   *  lets the notch derivation, the elevation and the "+"-cell blocking stay untouched: they all
+   *  measure a rectangle on the wall, and a pipe is one either way. Absent → vertical. */
+  orient?: "v" | "h";
+}
+
+/** A point on a pipe's path, in WALL space. `a` = mm along the wall from its start corner,
+ *  `y` = mm above the floor. */
+export interface PipePoint {
+  a: number;
+  y: number;
+}
+
+/** One straight length of pipe between two bends. */
+export interface PipeSegment {
+  a0: number;
+  y0: number;
+  a1: number;
+  y1: number;
+}
+
+/**
+ * THE PATH A PIPE FOLLOWS, whether it was drawn or placed as a straight run.
+ *
+ * One resolver so nothing downstream has to care which it was: a legacy straight pipe becomes the
+ * two-point path it always was, and everything — the 3D, the notches, the blocking — reads paths.
+ */
+export function pipePathOf(f: Fitting, wallLenMm: number): PipePoint[] {
+  if (f.path && f.path.length >= 2) return f.path;
+  const centre = f.t * wallLenMm;
+  const len = pipeLength(f);
+  const yc = fittingCentreY(f);
+  return f.orient === "h"
+    ? [{ a: centre - len / 2, y: yc }, { a: centre + len / 2, y: yc }]
+    : [{ a: centre, y: yc - len / 2 }, { a: centre, y: yc + len / 2 }];
+}
+
+/** The path as segments — what clashes with a cabinet, one at a time. */
+export function pipeSegments(f: Fitting, wallLenMm: number): PipeSegment[] {
+  const pts = pipePathOf(f, wallLenMm);
+  const out: PipeSegment[] = [];
+  for (let i = 0; i < pts.length - 1; i++) {
+    out.push({ a0: pts[i].a, y0: pts[i].y, a1: pts[i + 1].a, y1: pts[i + 1].y });
+  }
+  return out;
+}
+
+/** A pipe's DIAMETER (mm) — the number the carcass is notched around. */
+export function pipeDiameter(f: Fitting): number {
+  return f.orient === "h" ? f.height ?? defaultFittingHeight(f.category) : f.width;
+}
+
+/** How far a pipe RUNS (mm) — floor-to-ceiling for a riser, a metre or two for a branch. */
+export function pipeLength(f: Fitting): number {
+  return f.orient === "h" ? f.width : f.height ?? defaultFittingHeight(f.category);
+}
+
+/** Angle snap tolerance (radians) — how close a leg has to land before it is pulled onto plumb. */
+export const PIPE_SNAP_RAD = (9 * Math.PI) / 180;
+
+/**
+ * PULL A DRAGGED PIPE POINT ONTO 90° / 45°.
+ *
+ * Pipes run plumb, level, or on a 45° elbow — those are the fittings that exist, so those are the
+ * angles a drag should land on exactly rather than 89.6°. A leg within `PIPE_SNAP_RAD` of one is
+ * pulled onto it; anything further away is left alone. A magnet, not a constraint: an odd angle is
+ * still drawable, it just has to be meant.
+ *
+ * `anchors` are the neighbouring points — one for an end of the run, two for a bend. A bend snaps
+ * to whichever leg it is closer to aligning, which is what makes squaring up an L one gesture
+ * instead of two.
+ *
+ * The snapped point is placed by its OFFSET from the anchor, rounded to the 10mm grid. That keeps
+ * a right angle exactly right whatever the anchor sits on (a zero offset stays zero), and keeps a
+ * 45° exactly 45° — its two offsets are equal in magnitude, so they round together.
+ */
+export function snapPipePoint(
+  anchors: PipePoint[],
+  a: number,
+  y: number,
+): { a: number; y: number; snapped: boolean } {
+  const STEP = Math.PI / 4;
+  const grid = (v: number) => Math.round(v / 10) * 10;
+  const hits: { a: number; y: number; err: number; an: PipePoint; to: number }[] = [];
+  for (const an of anchors) {
+    const len = Math.hypot(a - an.a, y - an.y);
+    // too short to have a direction worth respecting — snapping here would fling the point
+    if (len < 20) continue;
+    const ang = Math.atan2(y - an.y, a - an.a);
+    const to = Math.round(ang / STEP) * STEP;
+    // shortest signed angle between where the leg is and where it would go
+    if (Math.abs(Math.atan2(Math.sin(ang - to), Math.cos(ang - to))) > PIPE_SNAP_RAD) continue;
+    const na = an.a + grid(Math.cos(to) * len);
+    const ny = an.y + grid(Math.sin(to) * len);
+    hits.push({ a: na, y: ny, err: Math.hypot(na - a, ny - y), an, to });
+  }
+  if (!hits.length) return { a, y, snapped: false };
+
+  // BOTH legs land near an angle → put the corner where the two lines actually cross, so an L
+  // comes out square in one gesture instead of needing the corner nudged once per leg. The two
+  // directions are multiples of 45°, so distinct ones are at least that far apart and the crossing
+  // is always close by; identical ones give no crossing and fall through to the single-leg case.
+  if (hits.length > 1) {
+    const [p, q] = hits;
+    const x = lineIntersect(
+      p.an.a, p.an.y, Math.cos(p.to), Math.sin(p.to),
+      q.an.a, q.an.y, Math.cos(q.to), Math.sin(q.to),
+    );
+    if (x) return { a: grid(x.x), y: grid(x.y), snapped: true };
+  }
+  const best = hits.reduce((m, h) => (h.err < m.err ? h : m));
+  return { a: best.a, y: best.y, snapped: true };
 }
 
 /** Default height (mm) for a fitting category. */
 export function defaultFittingHeight(category: FittingCategory): number {
+  // a riser runs the full height of the room — it is a column, not a fixture on the wall
+  if (category === "plumbing") return 2500;
   return category === "heating" ? 500 : category === "vent" ? 250 : 120;
+}
+
+/**
+ * HOW HIGH AN ITEM'S CENTRE SITS (mm above the floor).
+ *
+ * One definition, because three things now measure it: the wall features the layout blocks and
+ * notches against, the 3D that draws the item, and the dimension chain that tells the fitter where
+ * to put it. If they disagree, the number on screen is not the number in the wall.
+ */
+export function fittingCentreY(f: Fitting): number {
+  if (f.mountY != null) return f.mountY;
+  const h = f.category === "electric" ? 120 : f.height ?? defaultFittingHeight(f.category);
+  if (f.category === "plumbing") return h / 2; // a riser stands on the floor
+  if (f.category === "heating") return 400;
+  if (f.category === "vent") return 2250;
+  return f.kind.startsWith("switch") ? 1250 : 1050;
 }
 
 export interface FittingKind {
@@ -266,6 +446,12 @@ export const ELECTRIC_CATALOG: FittingKind[] = [
   { id: "switch2", name: "Двойной выключатель света", desc: FIT_DESC, width: 160, symbol: "switch2" },
   { id: "socketG", name: "Розетка с заземлением", desc: FIT_DESC, width: 90, symbol: "socket" },
   { id: "usb", name: "USB-розетка", desc: FIT_DESC, width: 90, symbol: "socket2" },
+  // BLOCKS. Above a worktop nobody fits single sockets in a row — they fit one block, on one
+  // backing box, and the фартук is cut once for it. Widths are the real thing: a gang is ~71mm of
+  // frame plus the surround, so 3 ≈ 230 and 4 ≈ 300.
+  { id: "socket3", name: "Блок из 3 розеток", desc: FIT_DESC, width: 230, symbol: "socket3" },
+  { id: "socket4", name: "Блок из 4 розеток", desc: FIT_DESC, width: 300, symbol: "socket4" },
+  { id: "socketSw", name: "Блок: розетки + выключатель", desc: FIT_DESC, width: 230, symbol: "socketSw" },
 ];
 
 export const HEATING_CATALOG: FittingKind[] = [
@@ -273,6 +459,16 @@ export const HEATING_CATALOG: FittingKind[] = [
   { id: "rad-bimetal", name: "Биметаллический радиатор", desc: FIT_DESC, width: 800, symbol: "radiator" },
   { id: "convector", name: "Конвектор", desc: FIT_DESC, width: 700, symbol: "radiator" },
   { id: "towel", name: "Полотенцесушитель", desc: FIT_DESC, width: 500, symbol: "radiator" },
+];
+
+/** PIPES AND RISERS. `width` is the OUTSIDE diameter of the pipe (or the width of a boxed pair) —
+ *  what the carcass has to be cut around, so it is the number the notch is derived from. */
+export const PLUMBING_CATALOG: FittingKind[] = [
+  { id: "pipe-water", name: "Водопроводная труба", desc: "Ø32 · по стене", width: 32, symbol: "pipe" },
+  { id: "pipe-heat", name: "Труба отопления", desc: "Ø50 · по стене", width: 50, symbol: "pipe" },
+  { id: "riser-sewer", name: "Канализационный стояк", desc: "Ø110 · от пола до потолка", width: 110, symbol: "pipe" },
+  { id: "riser-pair", name: "Стояк: подача + обратка", desc: "две трубы в коробе", width: 180, symbol: "pipe" },
+  { id: "pipe-gas", name: "Газовая труба", desc: "Ø25 · по стене", width: 25, symbol: "pipe" },
 ];
 
 export const VENT_CATALOG: FittingKind[] = [
@@ -283,6 +479,7 @@ export const VENT_CATALOG: FittingKind[] = [
 ];
 
 export function fittingCatalog(cat: FittingCategory): FittingKind[] {
+  if (cat === "plumbing") return PLUMBING_CATALOG;
   return cat === "heating" ? HEATING_CATALOG : cat === "vent" ? VENT_CATALOG : ELECTRIC_CATALOG;
 }
 

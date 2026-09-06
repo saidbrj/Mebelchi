@@ -19,7 +19,10 @@ import {
   defaultOpeningHeight,
   defaultOpeningSill,
   defaultFittingHeight,
+  fittingCentreY,
   fittingKind,
+  pipeDiameter,
+  pipeSegments,
   type Pt,
   type Opening,
   type Fitting,
@@ -97,7 +100,7 @@ export function runCeil(run: PlannedRun | undefined, depthMm: number, runLenMm: 
  *  wall length, so an opening's stored `t` (0..1 along that wall) maps straight onto it. */
 export interface WallFeature {
   id: string;
-  kind: "window" | "door" | "opening" | "socket" | "heating" | "vent";
+  kind: "window" | "door" | "opening" | "socket" | "heating" | "vent" | "plumbing";
   x0: number;
   x1: number;
   y0: number;
@@ -129,20 +132,61 @@ export function wallFeatures(run: PlannedRun, wallLenMm: number, openings: Openi
   // fitting geometry mirrors the 3D (three/ThreeScene fittingMesh) so the two agree
   for (const f of fittings) {
     if (f.wall !== run.wall) continue;
-    const w = fittingKind(f.category, f.kind)?.width ?? f.width;
+    // THE INSTANCE'S OWN WIDTH WINS. Every fitting is created (and re-created on replace) carrying
+    // its kind's width, and the room editor lets the seller change it — so reading the catalog back
+    // over the top silently threw that edit away. It matters most for a pipe, where the diameter IS
+    // the notch, but a resized radiator was equally being ignored.
+    const w = f.width || fittingKind(f.category, f.kind)?.width || 120;
     const h = f.category === "electric" ? 120 : f.height ?? defaultFittingHeight(f.category);
-    const yc =
-      f.mountY ??
-      (f.category === "heating" ? 400 : f.category === "vent" ? 2250 : f.kind.startsWith("switch") ? 1250 : 1050);
+    // ONE definition of how high an item hangs (model/room), shared with the 3D and the dimension
+    // chain — a number the overlay disagrees with is a number the fitter cannot use
+    const yc = fittingCentreY(f);
+    const label = fittingKind(f.category, f.kind)?.name ?? f.kind;
+
+    // A PIPE IS A PATH, so it is not one rectangle but one PER SEGMENT. That is the whole reason
+    // the path is stored in wall space: a bend needs no new geometry downstream — the notch
+    // derivation, the "+"-cell blocking and the elevation all take rectangles, and a bent pipe is
+    // simply several of them. `pipeSegments` resolves a legacy straight run to a single segment, so
+    // nothing here has two behaviours to keep in step.
+    if (f.category === "plumbing") {
+      // the DIAMETER, not `f.width` — on a horizontal run that field holds the length
+      const r = pipeDiameter(f) / 2;
+      pipeSegments(f, wallLenMm).forEach((sg, i) => {
+        // A BARREL IS FAT ACROSS ITS AXIS, NOT ALONG IT. Its ends are flat and sit ON the path's
+        // points, so growing the box by the radius in both directions would lengthen the pipe by a
+        // diameter — and cut the cabinet for pipe that isn't there. Grow only perpendicular: for a
+        // unit direction (ux,uy) that is r·|uy| across and r·|ux| up, which is exactly r and 0 for
+        // the vertical and horizontal runs almost every pipe is.
+        const dx = sg.a1 - sg.a0;
+        const dy = sg.y1 - sg.y0;
+        const len = Math.hypot(dx, dy) || 1;
+        const growX = (r * Math.abs(dy)) / len;
+        const growY = (r * Math.abs(dx)) / len;
+        out.push({
+          id: `${f.id}#${i}`,
+          kind: "plumbing",
+          x0: Math.min(sg.a0, sg.a1) - growX,
+          x1: Math.max(sg.a0, sg.a1) + growX,
+          y0: Math.min(sg.y0, sg.y1) - growY,
+          y1: Math.max(sg.y0, sg.y1) + growY,
+          blocks: false, // a cabinet still goes here; its back is cut to fit (model/cutouts.ts)
+          label,
+        });
+      });
+      continue;
+    }
+
     out.push({
       id: f.id,
       kind: f.category === "electric" ? "socket" : f.category,
       ...span(f.t, w),
       y0: yc - h / 2,
       y1: yc + h / 2,
-      // a socket doesn't stop a cabinet (it ends up behind one all the time) — a radiator does
+      // A socket doesn't stop a cabinet (it ends up behind one all the time) — a radiator does.
+      // A PIPE does not either, and that is the whole point of it being here: the cabinet still
+      // goes in, and its back is cut to fit around the pipe (model/cutouts.ts).
       blocks: f.category === "heating",
-      label: fittingKind(f.category, f.kind)?.name ?? f.kind,
+      label,
     });
   }
   return out;

@@ -11,6 +11,8 @@ import {
   shelfCount,
   drawerCount,
   cutFronts,
+  panelBandMm,
+  type DerivedPanel,
 } from "./parts.js";
 import { groupCarcasses, hangingCount, resolveProduction, carcassWidth, type Carcass } from "./carcass.js";
 import { millContourMm, fluteAreaMm2 } from "./fronts.js";
@@ -62,6 +64,23 @@ function fluteMm2(m: Module): number {
  *
  * A single-module box gives 2(w + h) — unchanged.
  */
+/**
+ * VISIBLE banding on the INTERIOR boards of one box (mm).
+ *
+ * The shelf and divider edges you see when the door is open. This engine counted none of them: the
+ * visible tape was the fronts' perimeter and the hidden tape was the box's front frame, and the
+ * boards between them fell through the gap. Every shop bands them, so every quote was short by it.
+ *
+ * Per ROLE (parts.ts `panelBanding`), so a shop that leaves them raw can say so.
+ */
+function interiorEdgeMm(c: Carcass, panels: DerivedPanel[]): number {
+  const byId = new Map(c.modules.map((m) => [m.id, m]));
+  return panels.reduce((mm, p) => {
+    const m = p.moduleId ? byId.get(p.moduleId) : undefined;
+    return m ? mm + panelBandMm(m, p) : mm;
+  }, 0);
+}
+
 function hiddenEdgeMm(c: Carcass): number {
   const h = c.modules[0].h;
   return 2 * (carcassWidth(c) + h) + (c.modules.length - 1) * h;
@@ -86,7 +105,7 @@ export function buildBom(project: Project): RawBomLine[] {
     }
 
     // --- edge banding (material). Visible edge is per FRONT, and merging changes no front. ---
-    const visM = ms.reduce((mm, m) => mm + visibleEdgeMm(m), 0) / 1000;
+    const visM = (ms.reduce((mm, m) => mm + visibleEdgeMm(m), 0) + interiorEdgeMm(c, panels)) / 1000;
     const hidM = hiddenEdgeMm(c) / 1000;
     if (visM > 0) lines.push({ kind: "edge", ref: mats.edgeVisibleId, qty: visM, unit: "m" });
     if (hidM > 0) lines.push({ kind: "edge", ref: mats.edgeHiddenId, qty: hidM, unit: "m" });
@@ -147,6 +166,60 @@ export function buildBom(project: Project): RawBomLine[] {
       }
     }
   }
+
+  // --- flat wall panels: the фартук + the strip to the ceiling ---
+  //
+  // These are NOT modules, so they sit outside the carcass loop entirely: no hinges, no dowels, no
+  // assembly line. A panel is a cut, an edge and (if it has sockets in it) some routing.
+  for (const fp of project.panels ?? []) {
+    if (fp.stock === "worktop") {
+      // cut from the counter slab — the same 600-wide постформинг the worktop comes off, so it
+      // bills the worktop's running-metre rate rather than a made-up per-m² one
+      if (mats.worktopId) lines.push({ kind: "worktop", ref: mats.worktopId, qty: fp.w / 1000, unit: "m" });
+    } else {
+      lines.push({
+        kind: "panel",
+        ref: fp.stock === "facade" ? mats.facadeId : mats.carcassId,
+        qty: (fp.w * fp.h) / 1_000_000,
+        unit: "m2",
+      });
+      // The TWO HORIZONTAL edges only. Those are always in view; the vertical ends of a wall panel
+      // almost always die into a side wall or a column. Banding all four would be the easy call and
+      // would overcharge every kitchen — a quote a seller cannot defend is worse than a small one.
+      const bandM = (2 * fp.w) / 1000;
+      lines.push({ kind: "edge", ref: mats.edgeVisibleId, qty: bandM, unit: "m" });
+      lines.push({ kind: "operation", ref: "edgebandPerM", qty: bandM, unit: "m" });
+    }
+    lines.push({ kind: "operation", ref: "cutPerPanel", qty: 1, unit: "panel" });
+    // a socket cut out of a фартук is routed contour, which is exactly what millPerM bills
+    const cutoutMm = (fp.cutouts ?? []).reduce((mm, c) => mm + 2 * (c.w + c.h), 0);
+    if (cutoutMm > 0) lines.push({ kind: "operation", ref: "millPerM", qty: cutoutMm / 1000, unit: "m" });
+  }
+
+  // --- the light built into the cabinetry ---
+  //
+  // Not a module and not a panel: a length off a reel, the profile it sits in, and the electronics
+  // that drive it. The METRES are derived from the layout upstream (model/ledStrips.ts) — nothing
+  // here knows or needs to know where a cabinet is.
+  const lit = project.lighting;
+  if (lit && lit.metres > 0) {
+    lines.push({ kind: "hardware", ref: DEFAULT_HARDWARE_SKUS.ledStrip, qty: lit.metres, unit: "m" });
+    if (lit.profileM > 0) {
+      lines.push({ kind: "hardware", ref: DEFAULT_HARDWARE_SKUS.ledProfile, qty: lit.profileM, unit: "m" });
+    }
+    if (lit.psu > 0) lines.push({ kind: "hardware", ref: DEFAULT_HARDWARE_SKUS.ledPsu, qty: lit.psu, unit: "unit" });
+    if (lit.sensors > 0) {
+      lines.push({ kind: "hardware", ref: DEFAULT_HARDWARE_SKUS.ledSensor, qty: lit.sensors, unit: "unit" });
+    }
+  }
+
+  // --- what was cut OUT of the counter ---
+  //
+  // A sink's bowl and a cooktop are one operation to the shop: a rectangle routed out of the slab.
+  // The counter itself bills by the running metre, so the hole cannot ride on a panel line the way
+  // a фартук's sockets do — it is its own contour. Sized upstream, where the sink's MOUNT is known.
+  const cutMm = (project.worktopCuts ?? []).reduce((mm, k) => mm + 2 * (k.w + k.d), 0);
+  if (cutMm > 0) lines.push({ kind: "operation", ref: "millPerM", qty: cutMm / 1000, unit: "m" });
 
   // --- labor + delivery (project level) ---
   // BOXES, not cabinets: the shop assembles one merged carcass and puts one carcass on the van.

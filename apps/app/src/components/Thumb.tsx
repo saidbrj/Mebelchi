@@ -72,27 +72,43 @@ export function FittingThumb({ symbol }: { symbol: string }) {
       </svg>
     );
   }
-  // socket / switch
-  const dbl = symbol.endsWith("2");
+  if (symbol === "pipe") {
+    // a length of pipe with its collars — seen from the room, which is how it is placed
+    return (
+      <svg className="thumb" viewBox="0 0 92 92">
+        <rect x={38} y={10} width={16} height={72} rx={3} fill="#eef0f1" stroke="#a8adb1" strokeWidth={3} />
+        {[26, 58].map((cy) => (
+          <rect key={cy} x={33} y={cy} width={26} height={9} rx={2} fill="#dfe3e6" stroke="#a8adb1" strokeWidth={3} />
+        ))}
+      </svg>
+    );
+  }
+  // socket / switch — one glyph for every gang count, so a 3- or 4-gang BLOCK is a block on the
+  // picker and not another picture of a single socket. `socketSw` is the mixed block: two sockets
+  // and a switch, which is what actually goes above a worktop.
   const isSwitch = symbol.startsWith("switch");
+  const mixed = symbol === "socketSw";
+  const gangs = mixed ? 3 : Number(symbol.replace(/\D/g, "")) || 1;
+  const PLATE = 76; // the widest the glyph may be, centred in the 92 box
+  const w = Math.min(PLATE, 22 + gangs * 18);
+  const x0 = (92 - w) / 2;
+  const step = w / gangs;
   return (
     <svg className="thumb" viewBox="0 0 92 92">
-      <rect x={dbl ? 22 : 30} y={28} width={dbl ? 48 : 32} height={36} rx={6} fill="#f4f4f4" stroke="#b6b6b6" strokeWidth={3} />
-      {isSwitch ? (
-        <rect x={dbl ? 30 : 38} y={34} width={dbl ? 14 : 16} height={24} rx={3} fill="none" stroke="#7a7a7a" strokeWidth={3} />
-      ) : (
-        <>
-          <circle cx={dbl ? 34 : 40} cy={46} r={4} fill="#8a8a8a" />
-          <circle cx={dbl ? 44 : 52} cy={46} r={4} fill="#8a8a8a" />
-        </>
-      )}
-      {dbl && isSwitch && <rect x={50} y={34} width={14} height={24} rx={3} fill="none" stroke="#7a7a7a" strokeWidth={3} />}
-      {dbl && !isSwitch && (
-        <>
-          <circle cx={56} cy={46} r={4} fill="#8a8a8a" />
-          <circle cx={64} cy={46} r={4} fill="#8a8a8a" />
-        </>
-      )}
+      <rect x={x0} y={28} width={w} height={36} rx={6} fill="#f4f4f4" stroke="#b6b6b6" strokeWidth={3} />
+      {Array.from({ length: gangs }, (_, i) => {
+        const cx = x0 + step * (i + 0.5);
+        // a mixed block puts the switch last; a pure switch plate is switches all the way
+        const asSwitch = isSwitch || (mixed && i === gangs - 1);
+        return asSwitch ? (
+          <rect key={i} x={cx - 6} y={36} width={12} height={20} rx={3} fill="none" stroke="#7a7a7a" strokeWidth={3} />
+        ) : (
+          <g key={i}>
+            <circle cx={cx - 4} cy={46} r={3.4} fill="#8a8a8a" />
+            <circle cx={cx + 4} cy={46} r={3.4} fill="#8a8a8a" />
+          </g>
+        );
+      })}
     </svg>
   );
 }

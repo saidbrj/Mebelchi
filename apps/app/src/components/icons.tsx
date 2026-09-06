@@ -170,6 +170,17 @@ export const IconVent = () => (
   </svg>
 );
 
+/** A RISER — a pipe running up the wall with its collars, which is the thing a carcass gets cut
+ *  around. Drawn as a column rather than a fixture, because that is what it is. */
+export const IconPipe = () => (
+  <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
+    <path
+      d="M12 3h8v3h-8V3Zm1 5h6v6h-6V8Zm-1 8h8v3h-8v-3Zm1 5h6v6h-6v-6Zm-1 8h8v3h-8v-3Z"
+      fill="var(--accent)"
+    />
+  </svg>
+);
+
 export const IconDuplicate = () => (
   <svg width="32" height="32" viewBox="0 0 32 32" fill="none">
     <path d="M10 5V10H5V11V27H22V22H27V5H10ZM12 7H25V20H22V10H12V7ZM7 12H20V25H7V12Z" fill="black" />

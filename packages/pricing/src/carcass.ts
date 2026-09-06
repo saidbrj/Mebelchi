@@ -100,8 +100,15 @@ export function carcassKind(c: Carcass): Module["kind"] {
  * With `hangingSpanMm: 0` (the default) a box gets one set however wide it is — the mounting-rail
  * build. Set a span and wide boxes get proportionally more.
  */
+/** Is this box carried by the WALL? Every upper, plus a floor module lifted off the floor. */
+export function carcassHangs(c: Carcass): boolean {
+  return carcassKind(c) === "upper" || c.modules.some((m) => m.hung);
+}
+
 export function hangingCount(c: Carcass, opts: ProductionOpts): number {
-  if (carcassKind(c) !== "upper") return 0;
+  // WHAT CARRIES THE BOX, not what kind it is. A base lifted off the floor hangs on навесы exactly
+  // like a wall unit does — quoting it without them is quoting a cabinet nobody can fit.
+  if (!carcassHangs(c)) return 0;
   // AN EXPLICIT OVERRIDE ON THE BOX BEATS THE RULE. The shop's width rule is right nearly always,
   // but it cannot know that this box holds the microwave or hangs on plasterboard — and that is
   // precisely when the fitter wants another pair of навесы. Zero is a legitimate answer (a box
