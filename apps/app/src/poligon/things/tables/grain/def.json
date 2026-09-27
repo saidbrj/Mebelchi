@@ -1,0 +1,48 @@
+{
+  "id": "qorasu.table.grain",
+  "uid": "01J8K2QF7M3NRA9V0070",
+  "version": "1.0.0",
+  "schema": 1,
+  "kind": "table",
+  "origin": {
+    "source": "local"
+  },
+  "name": {
+    "ru": "Направление волокон по ролям",
+    "en": "Grain direction by role",
+    "uz": "Tola yo'nalishi"
+  },
+  "fields": {
+    "roleGrain": {
+      "type": "text",
+      "value": "front:lengthwise,side:lengthwise,shelf:lengthwise,bottom:lengthwise,top:lengthwise,worktop:lengthwise,plinth:lengthwise,filler:lengthwise,cornice:lengthwise,back:free,drawer-side:free,drawer-back:free,drawer-bottom:free"
+    },
+    "lockedYieldPct": {
+      "type": "number",
+      "value": 79,
+      "unit": "ratio",
+      "domain": {
+        "min": 60,
+        "max": 95
+      }
+    },
+    "freeYieldPct": {
+      "type": "number",
+      "value": 90,
+      "unit": "ratio",
+      "domain": {
+        "min": 60,
+        "max": 99
+      }
+    },
+    "clusterYieldPct": {
+      "type": "number",
+      "value": 71,
+      "unit": "ratio",
+      "domain": {
+        "min": 50,
+        "max": 90
+      }
+    }
+  }
+}

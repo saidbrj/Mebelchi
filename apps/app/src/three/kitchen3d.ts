@@ -47,8 +47,8 @@ export function groupBackOffM(c: Cabinet): number {
   return c.corner ? 0 : cabDepth(c) / 2000;
 }
 
-/** the standard counter's top surface (m) — what a wall unit's contact shadow lands on */
-const WORKTOP_TOP = 0.86;
+/** the standard counter's top surface (m) — plinth (120) + base (720) + worktop (40) = 880mm */
+const WORKTOP_TOP = (GEOM.plinth + GEOM.baseH + GEOM.worktop) / 1000;
 
 const STEEL = 0xd2d7da;
 const STEEL_DARK = 0x2f3338;
@@ -583,13 +583,14 @@ export function buildKitchen(
             // strip visible above the dark patch. The corner unit's two BACK sides are against the
             // two walls, so its light falls on the splashback in that corner from both — which is
             // exactly the gap between where one wall's wash ends and the next one's begins.
-            const wash = ledWashMat(s);
+            const wash = ledWashMat(s, "wall");
             const side = 2 * half;
+            const hCorner = s.dir === "down" ? Math.max(0.48, yM - WORKTOP_TOP) : LED_WASH;
             const q = (rotY: number, px: number, pz: number) => {
-              const m = new THREE.Mesh(new THREE.PlaneGeometry(side, LED_WASH), wash);
+              const m = new THREE.Mesh(new THREE.PlaneGeometry(side, hCorner), wash);
               m.rotation.y = rotY;
               if (s.dir === "up") m.rotation.z = Math.PI; // ramp's bright end down at the strip
-              m.position.set(px, yM + (s.dir === "down" ? -LED_WASH / 2 : LED_WASH / 2), pz);
+              m.position.set(px, yM + (s.dir === "down" ? -hCorner / 2 : hCorner / 2), pz);
               m.castShadow = m.receiveShadow = false;
               m.userData.led = true;
               g.add(m);
@@ -600,6 +601,26 @@ export function buildKitchen(
             const off = wallStandoff + LED_WASH_CLEAR - half;
             q(sz > 0 ? 0 : Math.PI, 0, sz * off);
             q(sx > 0 ? Math.PI / 2 : -Math.PI / 2, sx * off, 0);
+
+            // Countertop wash in the corner
+            if (s.dir === "down") {
+              const ccw = new THREE.Mesh(new THREE.PlaneGeometry(side, side), ledWashMat(s, "counter"));
+              ccw.geometry.rotateX(-Math.PI / 2);
+              ccw.position.set(0, WORKTOP_TOP + 0.004, 0);
+              ccw.renderOrder = 8;
+              ccw.castShadow = ccw.receiveShadow = false;
+              ccw.userData.led = true;
+              g.add(ccw);
+            } else if (s.dir === "up") {
+              // Cornice ceiling wash in the corner
+              const ccw = new THREE.Mesh(new THREE.PlaneGeometry(side, side), ledWashMat(s, "ceiling"));
+              ccw.geometry.rotateX(Math.PI / 2);
+              ccw.position.set(0, yM + 0.01, 0);
+              ccw.renderOrder = 8;
+              ccw.castShadow = ccw.receiveShadow = false;
+              ccw.userData.led = true;
+              g.add(ccw);
+            }
           }
         }
       }
@@ -1272,41 +1293,114 @@ export function buildKitchen(
       const sC = (s.x0 + s.x1) / 2000;
       const yM = s.y / 1000;
       const down = s.dir === "down";
+
+      const baseAngle = -Math.atan2(p.uz, p.ux);
+      const localZIsInward = -p.uz * p.ix + p.ux * p.iz > 0;
+      const rotY = localZIsInward ? baseAngle : baseAngle + Math.PI;
+
       // seat a mesh in this run's frame, `into` metres out from the wall
       const seat = (m: THREE.Mesh, into: number, y: number) => {
         m.position.set(p.ax + p.ux * sC + p.ix * into, y, p.az + p.uz * sC + p.iz * into);
-        m.rotation.y = -Math.atan2(p.uz, p.ux);
+        m.rotation.y = rotY;
+        m.castShadow = m.receiveShadow = false;
+        m.userData.led = true;
         led.add(m);
       };
 
+      // Determine top surface of the worktop for this run (m)
+      let runWorktopTop = WORKTOP_TOP;
+      const onRunBases = cabs.filter(
+        (oc) => (oc.run ?? 0) === s.run && oc.px == null && oc.appliance !== "filler" && !oc.furniture && !oc.corner && oc.kind === "base",
+      );
+      if (onRunBases.length > 0) {
+        const highest = Math.max(...onRunBases.map((bc) => cabBand(bc).y1));
+        if (highest > 0) runWorktopTop = highest / 1000;
+      }
+
       // the lit line: a shallow bar tucked against the board it is screwed to
       const bar = new THREE.Mesh(new THREE.BoxGeometry(wRun, LED_BAR, LED_BAR * 1.6), ledBarMat(s));
+      bar.castShadow = bar.receiveShadow = false;
+      bar.userData.led = true;
       seat(bar, s.z / 1000, yM + (down ? -LED_BAR / 2 : LED_BAR / 2));
 
-      // THE WASH IS THE WHOLE EFFECT. The strip itself is set back where you cannot see it — that
-      // is the point of a setback — so what reads as under-cabinet lighting is the lit splashback,
-      // not the diode. An `interior` strip gets none: inside a box the bar alone reads, and a
-      // gradient in there would paint over the shelves it is meant to light.
-      if (s.zone === "interior") continue;
-      if (s.zone === "plinth") {
-        // a pool on the FLOOR in front of the toe-kick, spreading AWAY from the cabinets. The
-        // strip is at the plinth, so that edge is the bright one.
-        const q = new THREE.Mesh(new THREE.PlaneGeometry(wRun, LED_POOL), ledWashMat(s));
+      if (s.zone === "interior") {
+        // INTERIOR CABINET ILLUMINATION:
+        // Illuminates the inside of the cabinet (shelves & back panel) with a warm additive glow.
+        const targetCab = s.cabId ? cabs.find((c) => c.id === s.cabId) : null;
+        const b = targetCab ? cabBand(targetCab) : null;
+        const cabH = b ? (b.carcass1 - b.carcass0) / 1000 : 0.72;
+        const cabD = targetCab ? cabDepth(targetCab) / 1000 : 0.35;
+        const bottomY = b ? b.carcass0 / 1000 : yM - cabH;
+
+        // 1. Back panel wash inside the cabinet (ramping from top strip down to bottom shelf)
+        const insideH = Math.max(0.3, cabH - 0.04);
+        const backWash = new THREE.Mesh(new THREE.PlaneGeometry(wRun, insideH), ledWashMat(s, "interior"));
+        backWash.renderOrder = 6;
+        backWash.castShadow = backWash.receiveShadow = false;
+        backWash.userData.led = true;
+        seat(backWash, wallStandoff + 0.02, yM - insideH / 2);
+
+        // 2. Interior shelf glow on the bottom shelf
+        const shelfGlow = new THREE.Mesh(
+          new THREE.PlaneGeometry(wRun, Math.max(0.15, cabD - 0.06)),
+          ledWashMat(s, "counter"),
+        );
+        shelfGlow.geometry.rotateX(-Math.PI / 2);
+        shelfGlow.renderOrder = 7;
+        shelfGlow.castShadow = shelfGlow.receiveShadow = false;
+        shelfGlow.userData.led = true;
+        seat(shelfGlow, wallStandoff + cabD / 2, bottomY + 0.015);
+      } else if (s.zone === "plinth") {
+        // PLINTH (TOE-KICK) GLOW:
+        // A vivid pool of light on the floor in front of and under the toe-kick
+        const poolDepth = 0.55;
+        const q = new THREE.Mesh(new THREE.PlaneGeometry(wRun, poolDepth), ledWashMat(s, "plinth"));
         q.geometry.rotateX(-Math.PI / 2);
-        seat(q, s.z / 1000 + LED_POOL / 2, 0.004);
+        q.renderOrder = 7;
+        q.castShadow = q.receiveShadow = false;
+        q.userData.led = true;
+        seat(q, s.z / 1000 + poolDepth / 2, 0.004);
+
+        // Also illuminate the vertical face of the plinth board itself!
+        const plinthH = GEOM.plinth / 1000;
+        const kickWash = new THREE.Mesh(new THREE.PlaneGeometry(wRun, plinthH), ledWashMat(s, "plinth"));
+        kickWash.renderOrder = 7;
+        kickWash.castShadow = kickWash.receiveShadow = false;
+        kickWash.userData.led = true;
+        seat(kickWash, s.z / 1000 + 0.005, plinthH / 2);
       } else {
-        // a gradient down (or up) the WALL behind, brightest at the strip.
-        //
-        // …AND IT HAS TO CLEAR THE ФАРТУК. The splashback is a panel standing off the wall, so a
-        // wash laid on the wall itself is drawn INSIDE it and the light vanishes on exactly the
-        // kitchens that have one — the same trap the фартук itself fell into against the paint
-        // (model/walls.ts). Stand off past the thickest panel on this run.
-        const h = LED_WASH;
-        const q = new THREE.Mesh(new THREE.PlaneGeometry(wRun, h), ledWashMat(s));
-        // the ramp runs 0→1 up the plane's local +Y, so it is already bright at the top: flip it
-        // only for a strip throwing UP, whose bright end is the bottom
+        // A gradient down (or up) the WALL / SPLASHBACK behind, brightest at the strip.
+        // For down-facing strips under upper cabinets, extend wash all the way down to the counter!
+        const h = down ? Math.max(0.48, yM - runWorktopTop) : LED_WASH;
+        const q = new THREE.Mesh(new THREE.PlaneGeometry(wRun, h), ledWashMat(s, "wall"));
         if (!down) q.rotation.z = Math.PI;
+        q.castShadow = q.receiveShadow = false;
+        q.userData.led = true;
         seat(q, wallStandoff + LED_WASH_CLEAR, yM + (down ? -h / 2 : h / 2));
+
+        // HORIZONTAL COUNTERTOP ILLUMINATION:
+        // When under-cabinet LED shines down, it powerfully illuminates the worktop surface below!
+        if (down) {
+          const counterDepth = 0.60;
+          const cw = new THREE.Mesh(new THREE.PlaneGeometry(wRun, counterDepth), ledWashMat(s, "counter"));
+          cw.geometry.rotateX(-Math.PI / 2);
+          cw.renderOrder = 8;
+          cw.castShadow = cw.receiveShadow = false;
+          cw.userData.led = true;
+          seat(cw, counterDepth / 2 + wallStandoff, runWorktopTop + 0.004);
+        }
+
+        // CEILING ILLUMINATION FOR CORNICE:
+        // When cornice strip shines UP at the top of the cabinets, illuminate the ceiling above!
+        if (!down && s.zone === "cornice") {
+          const ceilDepth = 0.65;
+          const ceilWash = new THREE.Mesh(new THREE.PlaneGeometry(wRun, ceilDepth), ledWashMat(s, "ceiling"));
+          ceilWash.geometry.rotateX(Math.PI / 2);
+          ceilWash.renderOrder = 8;
+          ceilWash.castShadow = ceilWash.receiveShadow = false;
+          ceilWash.userData.led = true;
+          seat(ceilWash, ceilDepth / 2 + wallStandoff, yM + 0.01);
+        }
       }
     }
     mergeIn(led);
@@ -1354,14 +1448,40 @@ function rampTexture(): THREE.DataTexture {
   const N = 64;
   const data = new Uint8Array(N * 4);
   for (let i = 0; i < N; i++) {
-    // squared, because light does not fade linearly and a linear ramp reads as a painted stripe
-    const a = Math.pow(i / (N - 1), 2.2);
+    // 1.8 exponent gives a gentle realistic falloff meeting the counter
+    const a = Math.pow(i / (N - 1), 1.8);
     data[i * 4] = data[i * 4 + 1] = data[i * 4 + 2] = 255;
     data[i * 4 + 3] = Math.round(a * 255);
   }
   RAMP = new THREE.DataTexture(data, 1, N, THREE.RGBAFormat);
   RAMP.needsUpdate = true;
   return RAMP;
+}
+
+/** Falloff across the horizontal countertop (depth-wise, from backsplash to user edge). */
+let COUNTER_RAMP: THREE.DataTexture | null = null;
+function counterRampTexture(): THREE.DataTexture {
+  if (COUNTER_RAMP) return COUNTER_RAMP;
+  const N = 128;
+  const data = new Uint8Array(N * 4);
+  for (let i = 0; i < N; i++) {
+    const u = i / (N - 1); // 0 = wall edge, 1 = user front edge of countertop (~0.60m)
+    // 120-degree diffused LED light pool on countertop:
+    // Peak is under the upper cabinet front (~0.45), softly and brightly covering the whole slab
+    const d = (u - 0.45) / 0.52;
+    const falloff = Math.max(0, Math.exp(-d * d * 1.6));
+    // Soft blend to 0 at extreme front edge so there is no hard seam
+    const edgeFade = u > 0.88 ? Math.cos(((u - 0.88) / 0.12) * (Math.PI / 2)) : 1.0;
+    const intensity = falloff * edgeFade;
+    const v = Math.round(Math.min(255, intensity * 255));
+    data[i * 4] = 255;
+    data[i * 4 + 1] = 255;
+    data[i * 4 + 2] = 255;
+    data[i * 4 + 3] = v;
+  }
+  COUNTER_RAMP = new THREE.DataTexture(data, 1, N, THREE.RGBAFormat);
+  COUNTER_RAMP.needsUpdate = true;
+  return COUNTER_RAMP;
 }
 
 /** ONE material per zone, so the whole kitchen's strips merge into a draw call each. */
@@ -1374,10 +1494,10 @@ function ledBarMat(s: LedStrip): THREE.Material {
   let m = LED_BAR_MATS.get(key);
   if (!m) {
     m = new THREE.MeshStandardMaterial({
-      color: 0x1a1a1a,
+      color: 0x222222,
       emissive: s.color,
-      emissiveIntensity: 1.6,
-      roughness: 0.4,
+      emissiveIntensity: 3.2,
+      roughness: 0.2,
     });
     LED_BAR_MATS.set(key, m);
   }
@@ -1385,15 +1505,22 @@ function ledBarMat(s: LedStrip): THREE.Material {
 }
 
 /** The painted light. Additive and depth-write-off, so it lies over whatever it falls on. */
-function ledWashMat(s: LedStrip): THREE.Material {
-  const key = `${s.zone}|${s.color}`;
+function ledWashMat(
+  s: LedStrip,
+  kind: "wall" | "counter" | "plinth" | "interior" | "ceiling" = "wall",
+): THREE.Material {
+  const key = `${s.zone}|${s.color}|${kind}`;
   let m = LED_WASH_MATS.get(key);
   if (!m) {
+    const isCounter = kind === "counter";
+    const isPlinth = kind === "plinth" || s.zone === "plinth";
+    const isInterior = kind === "interior" || s.zone === "interior";
+    const isCeiling = kind === "ceiling";
     m = new THREE.MeshBasicMaterial({
-      map: rampTexture(),
+      map: isCounter ? counterRampTexture() : rampTexture(),
       color: s.color,
       transparent: true,
-      opacity: s.zone === "plinth" ? 0.3 : 0.42,
+      opacity: isCounter ? 0.95 : isPlinth ? 0.85 : isInterior ? 0.90 : isCeiling ? 0.75 : 0.88,
       blending: THREE.AdditiveBlending,
       depthWrite: false,
       side: THREE.DoubleSide,

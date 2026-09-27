@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 120" role="img" aria-label="Shop standards: board thickness, minimum interior, transport limit">
+  <rect x="16" y="30" width="16" height="60" fill="#cfc6b4" stroke="#1a1a1a"/>
+  <rect x="182" y="30" width="16" height="60" fill="#cfc6b4" stroke="#1a1a1a"/>
+  <line x1="32" y1="60" x2="182" y2="60" stroke="#00815c" stroke-dasharray="5 4"/>
+  <text x="70" y="55" font-family="sans-serif" font-size="10" fill="#00815c">min 150 mm interior</text>
+  <text x="16" y="22" font-family="sans-serif" font-size="10">16 mm</text>
+  <text x="16" y="108" font-family="sans-serif" font-size="10">datum: inner faces · minimum measured face to face</text>
+</svg>

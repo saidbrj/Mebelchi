@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 320" width="560" height="320">
+  <style>
+    .c{fill:none;stroke:#1a1a1a;stroke-width:2}
+    .f{fill:#e8e2d4;stroke:#1a1a1a;stroke-width:2}
+    .d{stroke:#00815c;stroke-width:1.2;marker-start:url(#a);marker-end:url(#a)}
+    .x{stroke:#e53935;stroke-width:2.5;stroke-dasharray:5 4}
+    .t{font:600 15px system-ui,sans-serif;fill:#1a1a1a}
+    .n{font:600 13px system-ui,sans-serif;fill:#00815c}
+    .m{font:500 11.5px ui-monospace,monospace;fill:#6b6355}
+  </style>
+  <defs><marker id="a" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto">
+    <path d="M0,3.5 L7,0 L7,7 Z" fill="#00815c"/></marker></defs>
+  <text class="t" x="20" y="26">Aventos HF · дуга над крышей шкафа</text>
+
+  <line x1="40" y1="60" x2="520" y2="60" stroke="#1a1a1a" stroke-width="3"/>
+  <text class="m" x="44" y="52">потолок</text>
+
+  <rect class="c" x="120" y="140" width="300" height="150"/>
+  <text class="m" x="200" y="230">шкаф</text>
+  <rect class="f" x="120" y="128" width="300" height="14"/>
+
+  <path d="M120,128 Q270,66 420,128" fill="none" stroke="#00815c" stroke-width="2" stroke-dasharray="6 4"/>
+  <text class="n" x="238" y="92">дуга фасада</text>
+
+  <line class="d" x1="470" y1="60" x2="470" y2="128"/>
+  <text class="n" x="480" y="98">80</text>
+
+  <line class="x" x1="120" y1="72" x2="420" y2="72"/>
+  <text class="m" x="20" y="308">дуга ОБЪЯВЛЕНА в файле механизма: у HF она 80, у HK меньше — порог не может быть один на все</text>
+</svg>

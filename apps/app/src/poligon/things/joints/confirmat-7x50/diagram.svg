@@ -1,0 +1,43 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 380" width="560" height="380">
+  <style>
+    .c{fill:none;stroke:#1a1a1a;stroke-width:2}
+    .p{fill:#e8e2d4;stroke:#1a1a1a;stroke-width:2}
+    .hole{fill:#fff;stroke:#1a1a1a;stroke-width:1.4}
+    .screw{fill:#6b6355}
+    .bad{fill:#fde2d4;stroke:#c2410c;stroke-width:2}
+    .d{stroke:#00815c;stroke-width:1.2;marker-start:url(#a);marker-end:url(#a)}
+    .t{font:600 15px system-ui,sans-serif;fill:#1a1a1a}
+    .n{font:600 13px system-ui,sans-serif;fill:#00815c}
+    .w{font:600 13px system-ui,sans-serif;fill:#c2410c}
+    .m{font:500 11.5px ui-monospace,monospace;fill:#6b6355}
+  </style>
+  <defs><marker id="a" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto">
+    <path d="M0,3.5 L7,0 L7,7 Z" fill="#00815c"/></marker></defs>
+
+  <text class="t" x="20" y="26">Конфирмат 7×50 · ось присадки — это ПОЛОВИНА толщины</text>
+  <text class="m" x="20" y="46">торец горизонтали, вид сбоку · ось всегда T/2, никогда не «восемь»</text>
+
+  <text class="n" x="60" y="86">верно · плита 16, ось 8.0</text>
+  <rect class="p" x="60" y="96" width="180" height="64"/>
+  <rect class="hole" x="60" y="121" width="150" height="14" rx="2"/>
+  <line class="d" x1="45" y1="96" x2="45" y2="128"/>
+  <text class="n" x="14" y="118">8.0</text>
+  <text class="m" x="248" y="118">стенка 8 − 2.5 = 5.5 с каждой стороны</text>
+
+  <text class="n" x="60" y="196">верно · плита 18, ось 9.0</text>
+  <rect class="p" x="60" y="206" width="180" height="72"/>
+  <rect class="hole" x="60" y="235" width="150" height="14" rx="2"/>
+  <line class="d" x1="45" y1="206" x2="45" y2="242"/>
+  <text class="n" x="14" y="228">9.0</text>
+  <text class="m" x="248" y="228">стенка 9 − 2.5 = 6.5 с каждой стороны</text>
+
+  <text class="w" x="60" y="310">мимо · плита 18 сверлится программой для 16</text>
+  <rect class="bad" x="60" y="318" width="180" height="72"/>
+  <rect class="hole" x="60" y="336" width="150" height="14" rx="2"/>
+  <line class="d" x1="45" y1="318" x2="45" y2="343"/>
+  <text class="w" x="14" y="338">8.0</text>
+  <text class="w" x="248" y="338">тонкая стенка 5.5 против 6.5 — винт рвёт её,</text>
+  <text class="w" x="248" y="354">и ламинат вздувается пузырём снаружи</text>
+
+  <text class="m" x="20" y="374">faceDiameterMm 7 · coreDiameterMm 5 · coreDepthMm 38 · minWallMm 4</text>
+</svg>

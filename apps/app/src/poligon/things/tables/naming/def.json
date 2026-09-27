@@ -1,0 +1,25 @@
+{
+  "id": "qorasu.table.naming",
+  "uid": "01J8K2QF7M3NRA9V0080",
+  "version": "1.0.0",
+  "schema": 1,
+  "kind": "table",
+  "origin": {
+    "source": "local"
+  },
+  "name": {
+    "ru": "Двуязычный словарь ролей",
+    "en": "Bilingual role dictionary",
+    "uz": "Ikki tilli lug'at"
+  },
+  "fields": {
+    "roleNames": {
+      "type": "text",
+      "value": "side:BOK_EXT:Бок внеш,side-shared:BOK_SHR:Стойка общ,side-inner:BOK_INT:Стойка внутр,bottom:DNO:Дно,bottom-run:DNO_RUN:Дно единое,top:KRSH:Крышка,shelf:POLKA:Полка,shelf-fix:STYAZH:Полка-стяжка,back:HDF_BACK:Задняя ХДФ,front:FASAD:Фасад,front-drawer:FAS_DRW:Фасад ящика,drawer-side:DRW_SIDE:Бок ящика,drawer-back:DRW_BACK:Задник ящика,drawer-bottom:DRW_BTM:Дно ящика,worktop:STOL:Столешница,plinth:PLINTH:Цоколь,filler:STRIP_COR:Планка угл"
+    },
+    "handSuffix": {
+      "type": "text",
+      "value": "left:L:Лев,right:R:Прав"
+    }
+  }
+}

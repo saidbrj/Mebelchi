@@ -1,0 +1,26 @@
+{
+  "id": "qorasu.table.junction-rank",
+  "uid": "01J8K2QF7M3NRA9V0030",
+  "version": "1.0.0",
+  "schema": 1,
+  "kind": "table",
+  "origin": { "source": "local" },
+  "name": {
+    "ru": "Ранг ролей на стыке",
+    "en": "Junction role rank",
+    "uz": "Tutashuvda rollar darajasi"
+  },
+  "fields": {
+    "rank": {
+      "type": "text",
+      "value": "worktop:90,side:70,top:50,bottom:50,shelf:30,back:20,plinth:15,cornice:15,filler:10,front:0"
+    },
+    "confirmatStaggerMm": {
+      "type": "number", "value": 32, "unit": "mm", "domain": { "min": 16, "max": 96 },
+      "frame": {
+        "of": "shared-panel", "datum": "centre", "direction": "y",
+        "sign": "inward-positive", "compose": "max"
+      }
+    }
+  }
+}

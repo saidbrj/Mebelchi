@@ -1,0 +1,37 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 300" width="560" height="300">
+  <style>
+    .c{fill:none;stroke:#1a1a1a;stroke-width:2}
+    .b{fill:#f2efe9;stroke:#1a1a1a;stroke-width:2}
+    .s{fill:#00815c}
+    .d{stroke:#00815c;stroke-width:1.2;marker-start:url(#a);marker-end:url(#a)}
+    .t{font:600 15px system-ui,sans-serif;fill:#1a1a1a}
+    .n{font:500 13px system-ui,sans-serif;fill:#00815c}
+    .m{font:500 12px ui-monospace,monospace;fill:#6b6355}
+  </style>
+  <defs><marker id="a" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto">
+    <path d="M0,3.5 L7,0 L7,7 Z" fill="#00815c"/></marker></defs>
+
+  <text class="t" x="20" y="28">Направляющая шариковая 45 мм · вид сверху</text>
+
+  <!-- carcass -->
+  <rect class="c" x="60" y="60" width="440" height="170"/>
+  <text class="m" x="66" y="80">корпус, внутренний размер</text>
+
+  <!-- drawer box -->
+  <rect class="b" x="105" y="88" width="350" height="114"/>
+  <text class="m" x="240" y="150">ящик</text>
+
+  <!-- slides -->
+  <rect class="s" x="60" y="88" width="45" height="114" opacity=".35"/>
+  <rect class="s" x="455" y="88" width="45" height="114" opacity=".35"/>
+
+  <!-- clearance dims -->
+  <line class="d" x1="60" y1="250" x2="105" y2="250"/>
+  <text class="n" x="48" y="272">12.5</text>
+  <line class="d" x1="455" y1="250" x2="500" y2="250"/>
+  <text class="n" x="443" y="272">12.5</text>
+  <line class="d" x1="105" y1="250" x2="455" y2="250"/>
+  <text class="n" x="240" y="272">ширина ящика</text>
+
+  <text class="m" x="60" y="296">датум: внешняя грань ящика · знак: внутрь положительный · складывается: с обеих сторон = 25 мм</text>
+</svg>

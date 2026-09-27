@@ -1,0 +1,39 @@
+{
+  "id": "qorasu.table.system32",
+  "uid": "01J8K2QF7M3NRA9V0120",
+  "version": "1.0.0",
+  "schema": 1,
+  "kind": "table",
+  "origin": { "source": "local" },
+  "name": {
+    "ru": "Система 32: растр присадки",
+    "en": "System 32 boring raster",
+    "uz": "Tizim 32"
+  },
+  "fields": {
+    "pitchMm": {
+      "type": "number",
+      "value": 32,
+      "unit": "mm",
+      "domain": { "min": 32, "max": 32 }
+    },
+    "firstHoleMm": {
+      "type": "number",
+      "value": 37,
+      "unit": "mm",
+      "domain": { "min": 30, "max": 50 }
+    },
+    "slideAxisOffsetMm": {
+      "type": "number",
+      "value": 9,
+      "unit": "mm",
+      "domain": { "min": 0, "max": 32 }
+    },
+    "maxSnapMm": {
+      "type": "number",
+      "value": 16,
+      "unit": "mm",
+      "domain": { "min": 0, "max": 16 }
+    }
+  }
+}

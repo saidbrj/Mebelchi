@@ -1,0 +1,147 @@
+{
+  "id": "qorasu.table.corner",
+  "uid": "01J8K2QF7M3NRA9V0060",
+  "version": "1.0.0",
+  "schema": 1,
+  "kind": "table",
+  "origin": {
+    "source": "local"
+  },
+  "name": {
+    "ru": "Угол: добор, еврозапил, зазоры",
+    "en": "Corner: filler, euro-miter, clearances",
+    "uz": "Burchak"
+  },
+  "fields": {
+    "handleProtrusionMm": {
+      "type": "number",
+      "value": 30,
+      "unit": "mm",
+      "domain": {
+        "min": 0,
+        "max": 60
+      },
+      "frame": {
+        "of": "fasad",
+        "datum": "front",
+        "direction": "y",
+        "sign": "outward-positive",
+        "compose": "max"
+      }
+    },
+    "cornerClearanceMm": {
+      "type": "number",
+      "value": 5,
+      "unit": "mm",
+      "domain": {
+        "min": 2,
+        "max": 20
+      },
+      "frame": {
+        "of": "corner-filler",
+        "datum": "inner",
+        "direction": "x",
+        "sign": "inward-positive",
+        "compose": "add"
+      }
+    },
+    "minPassageMm": {
+      "type": "number",
+      "value": 900,
+      "unit": "mm",
+      "domain": {
+        "min": 700,
+        "max": 1500
+      },
+      "frame": {
+        "of": "passage",
+        "datum": "front",
+        "direction": "y",
+        "sign": "outward-positive",
+        "compose": "max"
+      }
+    },
+    "comfortPassageMm": {
+      "type": "number",
+      "value": 1200,
+      "unit": "mm",
+      "domain": {
+        "min": 900,
+        "max": 2000
+      },
+      "frame": {
+        "of": "passage",
+        "datum": "front",
+        "direction": "y",
+        "sign": "outward-positive",
+        "compose": "max"
+      }
+    },
+    "golaFillerMm": {
+      "type": "number",
+      "value": 35,
+      "unit": "mm",
+      "domain": {
+        "min": 20,
+        "max": 80
+      },
+      "frame": {
+        "of": "corner-filler",
+        "datum": "inner",
+        "direction": "x",
+        "sign": "inward-positive",
+        "compose": "max"
+      }
+    },
+    "miterBevelMm": {
+      "type": "number",
+      "value": 15,
+      "unit": "mm",
+      "domain": {
+        "min": 8,
+        "max": 30
+      },
+      "frame": {
+        "of": "worktop",
+        "datum": "front",
+        "direction": "y",
+        "sign": "inward-positive",
+        "compose": "replace"
+      }
+    },
+    "drawBoltCount": {
+      "type": "number",
+      "value": 3,
+      "unit": "count",
+      "domain": {
+        "min": 2,
+        "max": 6
+      }
+    },
+    "alignDowelCount": {
+      "type": "number",
+      "value": 4,
+      "unit": "count",
+      "domain": {
+        "min": 2,
+        "max": 8
+      }
+    },
+    "frontThicknessMm": {
+      "type": "number",
+      "value": 18,
+      "unit": "mm",
+      "domain": {
+        "min": 16,
+        "max": 22
+      },
+      "frame": {
+        "of": "fasad",
+        "datum": "front",
+        "direction": "y",
+        "sign": "inward-positive",
+        "compose": "replace"
+      }
+    }
+  }
+}

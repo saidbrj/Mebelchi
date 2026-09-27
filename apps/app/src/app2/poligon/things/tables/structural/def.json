@@ -1,0 +1,129 @@
+{
+  "id": "qorasu.table.structural",
+  "uid": "01J8K2QF7M3NRA9V0040",
+  "version": "1.0.0",
+  "schema": 1,
+  "kind": "table",
+  "origin": {
+    "source": "local"
+  },
+  "name": {
+    "ru": "Прочность и стыки",
+    "en": "Structure and joints",
+    "uz": "Mustahkamlik va ulanishlar"
+  },
+  "fields": {
+    "worktopFreeSpanMm": {
+      "type": "number",
+      "value": 900,
+      "unit": "mm",
+      "domain": {
+        "min": 400,
+        "max": 1600
+      },
+      "frame": {
+        "of": "worktop",
+        "datum": "centre",
+        "direction": "x",
+        "sign": "inward-positive",
+        "compose": "max"
+      }
+    },
+    "shelfFreeSpanMm": {
+      "type": "number",
+      "value": 800,
+      "unit": "mm",
+      "domain": {
+        "min": 300,
+        "max": 1400
+      },
+      "frame": {
+        "of": "shelf",
+        "datum": "centre",
+        "direction": "x",
+        "sign": "inward-positive",
+        "compose": "max"
+      }
+    },
+    "cutoutClearanceMm": {
+      "type": "number",
+      "value": 150,
+      "unit": "mm",
+      "domain": {
+        "min": 50,
+        "max": 400
+      },
+      "frame": {
+        "of": "worktop",
+        "datum": "centre",
+        "direction": "x",
+        "sign": "outward-positive",
+        "compose": "max"
+      }
+    },
+    "jointSearchRadiusMm": {
+      "type": "number",
+      "value": 150,
+      "unit": "mm",
+      "domain": {
+        "min": 50,
+        "max": 500
+      },
+      "frame": {
+        "of": "worktop",
+        "datum": "centre",
+        "direction": "x",
+        "sign": "outward-positive",
+        "compose": "max"
+      }
+    },
+    "cornerMitreClearMm": {
+      "type": "number",
+      "value": 200,
+      "unit": "mm",
+      "domain": {
+        "min": 100,
+        "max": 500
+      },
+      "frame": {
+        "of": "worktop",
+        "datum": "centre",
+        "direction": "x",
+        "sign": "outward-positive",
+        "compose": "max"
+      }
+    },
+    "clusterMaxMm": {
+      "type": "number",
+      "value": 2400,
+      "unit": "mm",
+      "domain": {
+        "min": 900,
+        "max": 3000
+      },
+      "frame": {
+        "of": "carcass-run",
+        "datum": "centre",
+        "direction": "x",
+        "sign": "inward-positive",
+        "compose": "max"
+      }
+    },
+    "seamStaggerMm": {
+      "type": "number",
+      "value": 600,
+      "unit": "mm",
+      "domain": {
+        "min": 200,
+        "max": 1200
+      },
+      "frame": {
+        "of": "carcass-run",
+        "datum": "centre",
+        "direction": "x",
+        "sign": "outward-positive",
+        "compose": "max"
+      }
+    }
+  }
+}

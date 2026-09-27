@@ -1,0 +1,52 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 420" width="620" height="420">
+  <style>
+    .c{fill:none;stroke:#1a1a1a;stroke-width:2}
+    .p{fill:#e8e2d4;stroke:#1a1a1a;stroke-width:2}
+    .top{fill:#d6cfbe;stroke:#1a1a1a;stroke-width:2}
+    .bowl{fill:#cfe0ea;stroke:#1a5c7a;stroke-width:1.6}
+    .pipe{fill:#e3d4ea;stroke:#6b3f8a;stroke-width:1.6;stroke-dasharray:4 3}
+    .vent{fill:#cfe6dc;opacity:.7}
+    .d{stroke:#00815c;stroke-width:1.2;marker-start:url(#a);marker-end:url(#a)}
+    .t{font:600 15px system-ui,sans-serif;fill:#1a1a1a}
+    .n{font:600 13px system-ui,sans-serif;fill:#00815c}
+    .w{font:600 13px system-ui,sans-serif;fill:#c2410c}
+    .m{font:500 11.5px ui-monospace,monospace;fill:#6b6355}
+  </style>
+  <defs><marker id="a" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto">
+    <path d="M0,3.5 L7,0 L7,7 Z" fill="#00815c"/></marker></defs>
+
+  <text class="t" x="20" y="26">Врезка — это объём, а не дырка в плоскости</text>
+  <text class="m" x="20" y="46">разрез поперёк тумбы · зона отчуждения падает ВНИЗ, в каркас</text>
+
+  <text class="n" x="40" y="80">мойка</text>
+  <rect class="top" x="40" y="86" width="240" height="14"/>
+  <rect class="bowl" x="90" y="100" width="150" height="66"/>
+  <text class="m" x="246" y="124">чаша 200</text>
+  <text class="m" x="246" y="140">сюда не идёт ни</text>
+  <text class="m" x="246" y="156">стяжная полка, ни стойка</text>
+  <rect class="pipe" x="130" y="166" width="70" height="84"/>
+  <text class="m" x="246" y="196">выпуск и сифон 350</text>
+  <text class="m" x="246" y="212">сюда не идёт полка</text>
+  <text class="m" x="246" y="228">и короб ящика</text>
+  <line class="d" x1="70" y1="100" x2="70" y2="166"/>
+  <text class="n" x="26" y="136">200</text>
+  <line class="d" x1="112" y1="166" x2="112" y2="250"/>
+  <text class="n" x="70" y="212">350</text>
+  <rect class="c" x="40" y="100" width="240" height="220"/>
+
+  <text class="n" x="360" y="80">варочная</text>
+  <rect class="top" x="360" y="86" width="230" height="14"/>
+  <rect class="bowl" x="410" y="100" width="130" height="18"/>
+  <rect class="vent" x="360" y="118" width="230" height="26"/>
+  <text class="m" x="380" y="136">воздух на охлаждение силовых ключей</text>
+  <line class="d" x1="390" y1="100" x2="390" y2="144"/>
+  <text class="n" x="350" y="126">75</text>
+  <text class="m" x="360" y="170">корпус опускается на 50, но глухая полка</text>
+  <text class="m" x="360" y="186">ближе 75 — перегрев и аварийная блокировка</text>
+  <rect class="c" x="360" y="100" width="230" height="220"/>
+
+  <text class="w" x="40" y="350">край выреза ближе 50 к стойке — столешнице не на чём лежать</text>
+  <text class="m" x="40" y="368">пересёк стойку — шов обязан стать открытым: мойка стоит в ОДНОЙ тумбе</text>
+  <text class="m" x="40" y="386">стяжная полка под чашей заменяется двумя узкими царгами 80</text>
+  <text class="m" x="20" y="410">sinkDropMm 200 · sinkPlumbingDropMm 350 · hobVentGapMm 75 · toPartitionMm 50 · railWidthMm 80</text>
+</svg>

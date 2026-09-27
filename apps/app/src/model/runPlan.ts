@@ -236,6 +236,17 @@ function pickWalls(points: Pt[], waterWall: number | null, layout: KitchenLayout
   }
 
   if (layout === "l" && n >= 4) {
+    if (valid) {
+      const w = waterWall!;
+      const nextW = (w + 1) % n;
+      return {
+        walls: [
+          { wall: w, cornerStart: false, cornerEnd: true },
+          { wall: nextW, cornerStart: true, cornerEnd: false },
+        ],
+        waterRun: 0,
+      };
+    }
     const pairScore = (a: number, b: number) => score(a) + score(b);
     let best: { walls: WallRun[]; waterRun: number } | null = null;
     let bestScore = -Infinity;
@@ -246,10 +257,7 @@ function pickWalls(points: Pt[], waterWall: number | null, layout: KitchenLayout
         best = { walls: [{ wall: a, cornerStart: false, cornerEnd: true }, { wall: b, cornerStart: true, cornerEnd: false }], waterRun };
       }
     };
-    if (valid) {
-      consider(waterWall!, (waterWall! + 1) % n, 0);
-      consider((waterWall! - 1 + n) % n, waterWall!, 1);
-    } else for (let w = 0; w < n; w++) consider(w, (w + 1) % n, 0);
+    for (let w = 0; w < n; w++) consider(w, (w + 1) % n, 0);
     return best!;
   }
 
@@ -260,6 +268,19 @@ function pickWalls(points: Pt[], waterWall: number | null, layout: KitchenLayout
   }
 
   if (layout === "u" && n === 4) {
+    if (valid) {
+      const m = waterWall!;
+      const a = (m - 1 + 4) % 4;
+      const b = (m + 1) % 4;
+      return {
+        walls: [
+          { wall: a, cornerStart: false, cornerEnd: true },
+          { wall: m, cornerStart: true, cornerEnd: true },
+          { wall: b, cornerStart: true, cornerEnd: false },
+        ],
+        waterRun: 1,
+      };
+    }
     // open the U toward the door (exclude the door wall), else the shortest wall
     let excluded = -1;
     let md = 0;

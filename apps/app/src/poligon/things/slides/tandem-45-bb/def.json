@@ -1,0 +1,25 @@
+{
+  "id": "qorasu.slide.ball-45",
+  "uid": "01J8K2QF7M3NRA9V0020",
+  "version": "1.0.0",
+  "schema": 1,
+  "kind": "slide",
+  "origin": { "source": "local" },
+  "name": {
+    "ru": "Направляющая шариковая 45 мм",
+    "en": "Ball-bearing telescopic slide 45mm",
+    "uz": "Sharikli teleskopik yo'naltiruvchi 45 mm"
+  },
+  "fields": {
+    "clearancePerSide": {
+      "type": "number", "value": 12.5, "unit": "mm",
+      "domain": { "min": 6, "max": 20 },
+      "frame": {
+        "of": "drawer-box", "datum": "outer", "direction": "x",
+        "sign": "inward-positive", "compose": "add"
+      }
+    },
+    "allowedLengths": { "type": "text", "value": "250,300,350,400,450,500,550" },
+    "heightMm": { "type": "number", "value": 45, "unit": "mm", "domain": { "min": 17, "max": 60 } }
+  }
+}

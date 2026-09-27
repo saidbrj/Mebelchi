@@ -111,11 +111,13 @@ export function useDesignPrice(cabs: Cabinet[]): number {
   const rates = useRateTable();
   const prod = useProduction();
   const panels = useDesignPanels();
+  const showPricing = useStore((s) => s.settings.showPricing);
   const pricingItems = useStore((s) => s.settings.pricingItems);
   const pricingSqm = useStore((s) => s.settings.pricingSqm);
   const sqmRate = useStore((s) => s.settings.sqmRate);
   const lighting = useDesignLighting();
-  return pricingItems || !pricingSqm ? priceCabs(cabs, rates, prod, panels, lighting) : sqmPrice(cabs, sqmRate);
+  if (!showPricing || (!pricingItems && !pricingSqm)) return 0;
+  return pricingItems ? priceCabs(cabs, rates, prod, panels, lighting) : sqmPrice(cabs, sqmRate);
 }
 
 export function usePrice(): number {

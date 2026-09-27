@@ -1,0 +1,39 @@
+{
+  "id": "kastam.joint.confirmat-7x50",
+  "uid": "01J8K2QF7M3NRA9V0121",
+  "version": "1.0.0",
+  "schema": 1,
+  "kind": "joint",
+  "origin": { "source": "local" },
+  "name": {
+    "ru": "Конфирмат 7×50 (евровинт)",
+    "en": "Confirmat 7×50",
+    "uz": "Konfirmat 7×50"
+  },
+  "fields": {
+    "faceDiameterMm": {
+      "type": "number",
+      "value": 7,
+      "unit": "mm",
+      "domain": { "min": 4, "max": 12 }
+    },
+    "coreDiameterMm": {
+      "type": "number",
+      "value": 5,
+      "unit": "mm",
+      "domain": { "min": 3, "max": 10 }
+    },
+    "coreDepthMm": {
+      "type": "number",
+      "value": 38,
+      "unit": "mm",
+      "domain": { "min": 20, "max": 70 }
+    },
+    "minWallMm": {
+      "type": "number",
+      "value": 4,
+      "unit": "mm",
+      "domain": { "min": 2, "max": 10 }
+    }
+  }
+}

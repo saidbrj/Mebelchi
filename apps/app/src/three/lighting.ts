@@ -25,6 +25,7 @@
 import * as THREE from "three";
 import { RoomEnvironment } from "three/examples/jsm/environments/RoomEnvironment.js";
 import { polygonBoundsMm, type Opening, type Pt } from "../model/room";
+import { ledColor } from "../model/ledStrips";
 
 /** How the room is lit. A viewing preference — never a property of the project. */
 export type LightPreset = "day" | "evening" | "studio";
@@ -43,16 +44,16 @@ const SPOTS = 6;
  *  pool of light and its own soft shadow, which is how a kitchen is actually lit. */
 export const LAMP_COUNTS = [2, 4, 6] as const;
 
-/** WHAT HANGS FROM THE CEILING. A round downlight drops a pool; a linear luminaire washes a strip.
- *  Every flat's lighting is one or the other (or both), and a render that only ever draws circles
- *  cannot show the client the kitchen they are buying. */
-export type CeilingLightKind = "spot" | "linear";
-export const LAMP_KINDS: CeilingLightKind[] = ["spot", "linear"];
+/** WHAT HANGS FROM THE CEILING. A round downlight drops a pool; a linear luminaire washes a strip;
+ *  a track system runs spot heads along a modern rail. */
+export type CeilingLightKind = "spot" | "linear" | "track";
+export const LAMP_KINDS: CeilingLightKind[] = ["spot", "linear", "track"];
 /** …of which this many cast shadows, and only when the preset says so («Вечер»). Each caster is another
  *  depth pass, so the rest merely light. */
 const CASTING_SPOTS = 2;
 
 const RAD = Math.PI / 180;
+export const HALF_PI = Math.PI / 2;
 /** The sun can be dragged anywhere between these. Never let it near the horizon: a sun at 5° throws
  *  shadows the length of the room and lights nothing you are looking at. */
 export const SUN_MIN_EL = 18 * RAD;
@@ -111,44 +112,27 @@ const SPEC: Record<LightPreset, PresetSpec> = {
   // the floor and a clean dark line under every wall unit. The sun leads by a mile; everything else is
   // there to keep the shadow side readable.
   day: {
-    exposure: 0.95, env: 0.24,
-    sun: 2.7, sunColor: 0xfff3e2, elevation: 54 * RAD,
-    hemi: 0.22, hemiSky: 0xdcecff, hemiGround: 0xb8ac9a,
-    fill: 0.35, fillColor: 0xfff6ec, rim: 0,
+    exposure: 0.88, env: 0.20,
+    sun: 2.1, sunColor: 0xfff3e2, elevation: 54 * RAD,
+    hemi: 0.18, hemiSky: 0xdcecff, hemiGround: 0xb8ac9a,
+    fill: 0.26, fillColor: 0xfff6ec, rim: 0,
     spotLm: 0, spotColor: 0xffd9a8, spotCast: false,
   },
-  // EVENING — the ceiling lights ARE the light: they hang from the ceiling, they CAST, and the room
+  // EVENING / NIGHT — the ceiling lights ARE the light: they hang from the ceiling, they CAST, and the room
   // falls into warm pools with real falloff between them while the sun drops to a dim blue dusk.
-  //
-  // But a downlight points DOWN, so it rakes a cabinet's front at a grazing angle and barely touches
-  // it. In a real kitchen those fronts are rescued entirely by light bouncing off the floor and the
-  // counter — and we have no bounce. Starve the ambient here and the verticals go black while the floor
-  // glows, which is exactly what happened: a dark room with a lit puddle in it. So the warm ambient and
-  // the camera fill are deliberately NOT small: they are standing in for the bounce, and without them
-  // «Вечер» is not moody, it is just broken.
   evening: {
-    exposure: 1.0, env: 0.16,
-    sun: 0.14, sunColor: 0x7f9ad0, elevation: 22 * RAD,
-    hemi: 0.12, hemiSky: 0x6b7a94, hemiGround: 0x6a5a44,
-    fill: 0.5, fillColor: 0xffd6a8, rim: 0,
-    spotLm: 300, spotColor: 0xffd8b0, spotCast: true,
+    exposure: 0.84, env: 0.08,
+    sun: 0.04, sunColor: 0x5a7ca8, elevation: 22 * RAD,
+    hemi: 0.06, hemiSky: 0x6b7a94, hemiGround: 0x5a4a38,
+    fill: 0.16, fillColor: 0xffd6a8, rim: 0,
+    spotLm: 130, spotColor: 0xffd8b0, spotCast: true,
   },
-  // STUDIO — the CATALOGUE shot, and it has to earn its place: a first pass at this was just «День»
-  // with the numbers nudged, and it read as «День». So it is built the other way round on purpose.
-  //
-  // «День» is a sunny room: one hard light, deep shadows, drama. This is a photographer's table: the
-  // sun drops to a soft key almost straight overhead, the fill and the rim do most of the work, and the
-  // ambient comes up — so the shadows go SHALLOW and every face of every cabinet is legible. That is
-  // what a product photo is for, and it is why the exports, the thumbnails and the AI render's input
-  // frame all use it: nobody wants a sunbeam across half the cut list.
-  //
-  // No ceiling lights. A studio is three directional lights and a backdrop — a photographer does not
-  // leave the room's own downlights burning in the shot.
+  // STUDIO — the CATALOGUE shot, and it has to earn its place
   studio: {
-    exposure: 0.9, env: 0.55,
-    sun: 0.9, sunColor: 0xffffff, elevation: 72 * RAD,
-    hemi: 0.35, hemiSky: 0xffffff, hemiGround: 0xe6e6e6,
-    fill: 1.35, fillColor: 0xffffff, rim: 0.95,
+    exposure: 0.88, env: 0.45,
+    sun: 0.8, sunColor: 0xffffff, elevation: 72 * RAD,
+    hemi: 0.28, hemiSky: 0xffffff, hemiGround: 0xe6e6e6,
+    fill: 0.95, fillColor: 0xffffff, rim: 0.7,
     spotLm: 0, spotColor: 0xfff2e0, spotCast: false,
   },
 };
@@ -297,11 +281,25 @@ export interface Rig {
    *  a dimmer: more lamps mean more pools of light, brighter overall, and more soft shadows. The sun
    *  dial, correctly, does almost nothing at night, which is exactly why this control exists. */
   setLampCount: (n: number) => void;
-  /** ROUND DOWNLIGHTS or LINEAR luminaires — a different fixture, not a different setting. */
+  /** ROUND DOWNLIGHTS, LINEAR luminaires, or TRACK systems. */
   setLampKind: (k: CeilingLightKind) => void;
   /** How far across the room the fixtures spread, 0..1 of the span. Tight keeps them over the
    *  middle of the floor; wide walks them out toward the runs. */
   setLampSpread: (v: number) => void;
+  /** Color temperature in Kelvin (2700K - 5000K). */
+  setLampTemp: (k: number) => void;
+  /** Offset distance from room walls (in mm). */
+  setWallOffset: (offsetMm: number) => void;
+  /** User-dragged custom 3D lamp positions. */
+  setCustomPositions: (pos: { x: number; z: number }[] | null) => void;
+  /** Force fixtures and their illumination to remain visible permanently even when camera orbits above ceiling. */
+  setForceFixturesVisible: (force: boolean) => void;
+  /** Toggle interactive positioning guides (translucent light cones and floor discs). */
+  setShowGuides: (show: boolean) => void;
+  /** Perimeter LED cove lighting ribbon. */
+  setPerimeterLed: (on: boolean, points?: Pt[], ceilingY?: number) => void;
+  /** Access fixture 3D groups for raycasting/interaction. */
+  getFixtures: () => THREE.Group[];
   setTier: (t: QualityTier) => void;
   preset: () => LightPreset;
   /**
@@ -339,27 +337,28 @@ export function buildRig(scene: THREE.Scene, renderer: THREE.WebGLRenderer, opts
   let lampKind: CeilingLightKind = "spot";
   /** how far across the room the fixture grid reaches, as a fraction of the span (see placeLamps) */
   let lampSpread = 0.34;
+  let lampTemp = 4000;
+  let wallOffsetMm = 800;
+  let customPositions: { x: number; z: number }[] | null = null;
+  let forceFixturesVisible = false;
+  let showGuides = false;
+  let perimeterLedOn = false;
+  let perimeterGroup: THREE.Group | null = null;
+  let roomPointsRef: Pt[] = [];
   let roomBounds = { w: 4000, h: 3000 }; // mm — updated by aim()
   let ceilingY = 2.5; // m — updated by aim()
 
   // THE EXPOSURE CURVE. Without one, every light we add simply clips to white.
-  //
-  // ACES over Neutral: Neutral is the "correct" product-viewer curve — it protects the base colour and
-  // does almost nothing else — but doing almost nothing else is the problem. It has no shoulder and no
-  // toe, so a bright room comes out FLAT. ACES puts an S-curve on it: the shadows gain depth and the
-  // highlights roll off instead of piling up at white.
   renderer.toneMapping = THREE.ACESFilmicToneMapping;
 
   // THE INDIRECT TERM — one cubemap fetch per fragment standing in for light arriving from every
-  // direction. It is what a roughness map has to modulate (without it, marble and matte MDF render
-  // identically), and it is cheaper than the fill lights it replaces. No `scene.background`: the
-  // capture path renders on `alpha: true` and composites the app's own backdrop underneath.
+  // direction.
   scene.environment = environmentFor(renderer);
 
   // ── THE SUN ─────────────────────────────────────────────────────────────────────────────────────
   const sun = new THREE.DirectionalLight(0xffffff, 1);
   const sunTarget = new THREE.Object3D();
-  sunTarget.position.set(0, 1, 0); // the room's middle, at about counter height
+  sunTarget.position.set(0, 1, 0);
   sun.target = sunTarget;
   scene.add(sun, sunTarget);
   if (shadows) {
@@ -369,19 +368,15 @@ export function buildRig(scene: THREE.Scene, renderer: THREE.WebGLRenderer, opts
   }
   let sunAz = DEFAULT_SUN.azimuth;
   let sunEl = SPEC[preset].elevation;
-  let sunSet = false; // has anyone aimed it by hand? then `aim()` must not overrule them
+  let sunSet = false;
   let radius = 4;
 
   const placeSun = () => {
-    // stand it well outside the room so the shadow frustum's near plane is never inside the geometry
     const D = radius * 2 + 6;
     const c = Math.cos(sunEl);
     sun.position.set(Math.sin(sunAz) * c * D, Math.sin(sunEl) * D + 1, Math.cos(sunAz) * c * D);
     sunTarget.updateMatrixWorld();
     if (!shadows) return;
-    // The shadow camera is an ORTHOGRAPHIC box centred on the light's own axis, so it must be sized to
-    // the room — it was once hardcoded to ±4m, and a bigger room silently lost its shadows outside that
-    // box (three clamps to the edge texel out there, which paints a large fake shadow across the floor).
     const cam = sun.shadow.camera;
     cam.left = -radius;
     cam.right = radius;
@@ -394,15 +389,11 @@ export function buildRig(scene: THREE.Scene, renderer: THREE.WebGLRenderer, opts
   };
 
   // ── SUPPORT ─────────────────────────────────────────────────────────────────────────────────────
-  // The fill rides with the camera (see `follow`) because the fronts you look at are usually turned
-  // away from the sun, and without bounce light (we have none) they would go dead. It casts nothing:
-  // a shadow that swung around every time you orbited would give the trick away instantly.
   const fill = new THREE.DirectionalLight(0xffffff, 0);
   const fillTarget = new THREE.Object3D();
   fill.target = fillTarget;
   scene.add(fill, fillTarget);
 
-  // the rim comes from behind the subject and lifts it off the wall — the third point of a studio rig
   const rim = new THREE.DirectionalLight(0xffffff, 0);
   const rimTarget = new THREE.Object3D();
   rim.target = rimTarget;
@@ -411,14 +402,10 @@ export function buildRig(scene: THREE.Scene, renderer: THREE.WebGLRenderer, opts
   const hemi = new THREE.HemisphereLight(0xffffff, 0xc8c8c8, 0);
   scene.add(hemi);
 
-  // Ceiling spots. PHYSICALLY-CORRECT LIGHTS (three r155+): intensity is candela and decays with
-  // distance, so `intensity = 1` is very nearly black — these are driven by `.power`, in LUMENS, like a
-  // real bulb, which is also how a seller thinks about them. SpotLights rather than points, because a
-  // downlight has a cone: that is what produces a pool of light on the counter instead of a uniform
-  // orange wash over the whole room.
+  // Ceiling spots
   const spots: THREE.SpotLight[] = [];
   for (let i = 0; i < SPOTS; i++) {
-    const s = new THREE.SpotLight(0xffffff, 0, 0, 52 * RAD, 0.9, 2);
+    const s = new THREE.SpotLight(0xffffff, 0, 0, 54 * RAD, 0.9, 2);
     s.target.position.set(0, 0, 0);
     scene.add(s, s.target);
     if (shadows && i < CASTING_SPOTS) {
@@ -429,18 +416,14 @@ export function buildRig(scene: THREE.Scene, renderer: THREE.WebGLRenderer, opts
     spots.push(s);
   }
 
-  // THE FIXTURES YOU CAN SEE.
-  //
-  // The downlights were pure light — nothing hung from the ceiling, so a render of an evening
-  // kitchen had pools of light falling out of a blank white plane. A fixture is a trim ring and a
-  // lens, and the lens goes emissive when its lamp is lit, which is what makes the ceiling read as
-  // the source rather than as a surface someone happens to be shining at.
-  //
-  // Two shared materials and two shared geometries for all six: this is a decoration, and the perf
-  // ledger has no room for six materials' worth of it.
+  // ── FIXTURES & 3D VISIBILITY ───────────────────────────────────────────────────────────────────
   const trimMat = new THREE.MeshStandardMaterial({ color: 0xe9e9e6, roughness: 0.5, metalness: 0.15 });
+  const trackRailMat = new THREE.MeshStandardMaterial({ color: 0x1c1c1e, roughness: 0.35, metalness: 0.75 });
   const lensMat = new THREE.MeshStandardMaterial({ color: 0xfff4e2, emissive: 0xffd9a8, emissiveIntensity: 0 });
-  /** every geometry a fixture body has used, so a kind change can free the ones it replaces */
+  const haloMat = new THREE.MeshBasicMaterial({ color: 0xffd9a8, transparent: true, opacity: 0.5, side: THREE.DoubleSide });
+  const coneMat = new THREE.MeshBasicMaterial({ color: 0xffd9a8, transparent: true, opacity: 0.08, side: THREE.DoubleSide, depthWrite: false });
+  const discMat = new THREE.MeshBasicMaterial({ color: 0xffd9a8, transparent: true, opacity: 0.16, side: THREE.DoubleSide, depthWrite: false });
+
   const fixtureGeos: THREE.BufferGeometry[] = [];
   const fixtures: THREE.Group[] = [];
   for (let i = 0; i < SPOTS; i++) {
@@ -450,43 +433,158 @@ export function buildRig(scene: THREE.Scene, renderer: THREE.WebGLRenderer, opts
     fixtures.push(f);
   }
 
-  /** How long a linear luminaire is (m) — a good share of the room, capped either way. Shared with
-   *  `placeLamps`, which has to spread the lamps along exactly this length. */
   const barLen = () => Math.max(0.6, Math.min(2.4, (roomBounds.h / 1000) * 0.55));
-
-  /** How many fixture BODIES are on: one per lamp for spots, one per BAR for a linear layout. */
   let litBodies = 0;
 
-  /**
-   * Give every fixture the body of the CURRENT kind.
-   *
-   * A downlight is a ring in the ceiling; a linear luminaire is a bar of it, and a kitchen laid out
-   * with one is not the same room — the bar runs along the space and washes the whole counter
-   * instead of dropping a row of pools on it. So this is geometry, not a setting on a light: the
-   * fixture has to look like the thing the client is buying.
-   */
   const buildFixtureBodies = () => {
     for (const g of fixtureGeos) g.dispose();
     fixtureGeos.length = 0;
-    const linear = lampKind === "linear";
-    const len = linear ? barLen() : 0;
-    const trimGeo = linear
-      ? new THREE.BoxGeometry(0.07, 0.02, len)
-      : new THREE.CylinderGeometry(0.055, 0.055, 0.016, 20);
-    const lensGeo = linear
-      ? new THREE.BoxGeometry(0.05, 0.008, len - 0.04)
-      : new THREE.CylinderGeometry(0.045, 0.045, 0.006, 20);
-    fixtureGeos.push(trimGeo, lensGeo);
-    for (const f of fixtures) {
+    const isLinear = lampKind === "linear";
+    const isTrack = lampKind === "track";
+    const len = barLen();
+
+    let trimGeo: THREE.BufferGeometry;
+    let lensGeo: THREE.BufferGeometry;
+
+    if (isLinear) {
+      trimGeo = new THREE.BoxGeometry(0.068, 0.02, len);
+      lensGeo = new THREE.BoxGeometry(0.052, 0.008, len - 0.03);
+    } else if (isTrack) {
+      // Slim dark magnetic track channel
+      trimGeo = new THREE.BoxGeometry(0.034, 0.024, len);
+      lensGeo = new THREE.CylinderGeometry(0.024, 0.024, 0.048, 16);
+    } else {
+      trimGeo = new THREE.CylinderGeometry(0.055, 0.055, 0.016, 20);
+      lensGeo = new THREE.CylinderGeometry(0.045, 0.045, 0.006, 20);
+    }
+
+    const haloGeo = isLinear
+      ? new THREE.PlaneGeometry(0.08, len)
+      : isTrack
+      ? new THREE.PlaneGeometry(0.034, len)
+      : new THREE.RingGeometry(0.045, 0.075, 20);
+    const coneGeo = new THREE.CylinderGeometry(0.045, 0.42, 2.0, 16, 1, true);
+    const discGeo = new THREE.CircleGeometry(0.36, 24);
+
+    // Track-specific geometry: individual spot canisters, stems, spot cones, and floor puddle discs
+    const trackStemGeo = new THREE.BoxGeometry(0.016, 0.012, 0.022);
+    const trackHeadLensGeo = new THREE.CylinderGeometry(0.02, 0.02, 0.004, 16);
+    const trackConeGeo = new THREE.CylinderGeometry(0.02, 0.22, 2.0, 16, 1, true);
+    const trackDiscGeo = new THREE.CircleGeometry(0.24, 20);
+    const trackSpotHaloGeo = new THREE.RingGeometry(0.02, 0.045, 16);
+
+    fixtureGeos.push(
+      trimGeo,
+      lensGeo,
+      haloGeo,
+      coneGeo,
+      discGeo,
+      trackStemGeo,
+      trackHeadLensGeo,
+      trackConeGeo,
+      trackDiscGeo,
+      trackSpotHaloGeo,
+    );
+
+    for (let i = 0; i < fixtures.length; i++) {
+      const f = fixtures[i];
       for (const ch of [...f.children]) f.remove(ch);
-      f.add(new THREE.Mesh(trimGeo, trimMat));
-      const lens = new THREE.Mesh(lensGeo, lensMat);
-      lens.position.y = linear ? -0.012 : -0.006;
-      f.add(lens);
+
+      if (isTrack) {
+        // Track rail channel in matte dark metal
+        const rail = new THREE.Mesh(trimGeo, trackRailMat);
+        rail.userData.lampIndex = i;
+        f.add(rail);
+
+        // Ceiling track halo indicator
+        const halo = new THREE.Mesh(haloGeo, haloMat);
+        halo.rotation.x = -Math.PI / 2;
+        halo.position.y = 0.012;
+        halo.name = "halo";
+        halo.userData.lampIndex = i;
+        f.add(halo);
+
+        // Discrete spotlight canisters along track rail (3 distinct spot heads with independent beams)
+        const headOffsets = [-len * 0.32, 0, len * 0.32];
+        for (const zo of headOffsets) {
+          // Mounting stem / bracket from track
+          const stem = new THREE.Mesh(trackStemGeo, trackRailMat);
+          stem.position.set(0, -0.014, zo);
+          stem.userData.lampIndex = i;
+          f.add(stem);
+
+          // Cylindrical spotlight body
+          const head = new THREE.Mesh(lensGeo, trackRailMat);
+          head.position.set(0, -0.038, zo);
+          head.userData.lampIndex = i;
+          f.add(head);
+
+          // Glowing recessed lens face
+          const hl = new THREE.Mesh(trackHeadLensGeo, lensMat);
+          hl.position.set(0, -0.062, zo);
+          hl.userData.lampIndex = i;
+          f.add(hl);
+
+          // Spot halo ring on the ceiling
+          const sh = new THREE.Mesh(trackSpotHaloGeo, haloMat);
+          sh.rotation.x = -Math.PI / 2;
+          sh.position.set(0, 0.014, zo);
+          sh.userData.lampIndex = i;
+          f.add(sh);
+
+          // Individual downward spotlight cone
+          const sc = new THREE.Mesh(trackConeGeo, coneMat);
+          sc.position.set(0, -1.0, zo);
+          sc.name = "cone";
+          sc.userData.lampIndex = i;
+          f.add(sc);
+
+          // Individual floor puddle disc under each spot head
+          const sd = new THREE.Mesh(trackDiscGeo, discMat);
+          sd.rotation.x = -Math.PI / 2;
+          sd.position.set(0, -ceilingY + 0.02, zo);
+          sd.name = "disc";
+          sd.userData.lampIndex = i;
+          f.add(sd);
+        }
+      } else {
+        const trim = new THREE.Mesh(trimGeo, trimMat);
+        trim.userData.lampIndex = i;
+        f.add(trim);
+
+        const lens = new THREE.Mesh(lensGeo, lensMat);
+        lens.position.y = isLinear ? -0.012 : -0.006;
+        lens.userData.lampIndex = i;
+        f.add(lens);
+
+        // Overhead halo indicator for top-down visibility
+        const halo = new THREE.Mesh(haloGeo, haloMat);
+        halo.rotation.x = -Math.PI / 2;
+        halo.position.y = 0.012;
+        halo.name = "halo";
+        halo.userData.lampIndex = i;
+        f.add(halo);
+
+        // Downward projection light guide cone
+        const cone = new THREE.Mesh(coneGeo, coneMat);
+        cone.position.y = -1.0;
+        cone.name = "cone";
+        cone.userData.lampIndex = i;
+        f.add(cone);
+
+        // Floor puddle disc
+        const disc = new THREE.Mesh(discGeo, discMat);
+        disc.rotation.x = -Math.PI / 2;
+        disc.position.y = -ceilingY + 0.02;
+        disc.name = "disc";
+        disc.userData.lampIndex = i;
+        f.add(disc);
+      }
+
+      f.userData.lampIndex = i;
     }
   };
 
-  /** a capture temporarily overrides the tier's shadow resolution */
   let mapOverride: number | null = null;
   const shadowSize = () =>
     mapOverride ?? (tier === "high" ? baseShadowPx : tier === "med" ? Math.max(512, baseShadowPx / 2) : 0);
@@ -500,7 +598,7 @@ export function buildRig(scene: THREE.Scene, renderer: THREE.WebGLRenderer, opts
 
     sun.intensity = s.sun;
     sun.color.setHex(s.sunColor);
-    if (!sunSet) sunEl = s.elevation; // each look has its own sun height — until the user takes the dial
+    if (!sunSet) sunEl = s.elevation;
 
     hemi.intensity = s.hemi;
     hemi.color.setHex(s.hemiSky);
@@ -510,94 +608,88 @@ export function buildRig(scene: THREE.Scene, renderer: THREE.WebGLRenderer, opts
     fill.color.setHex(s.fillColor);
     rim.intensity = s.rim;
 
-    // low tier: the spots are the first thing to give up — each is per-fragment work on every pixel of
-    // every surface, and a caster is a whole extra depth pass. Dimmed to zero, never removed.
-    // each LIT lamp burns at the preset's full power (this is a fixture count, not a shared budget —
-    // six lamps is a brighter room than two, as it should be); the rest are dark but still present.
-    const lm = tier === "low" || !useSpots ? 0 : s.spotLm;
+    const spotColor = ledColor(lampTemp);
+
+    // Active lumens for ceiling fixtures:
+    // When preset is evening / night: spots shine at 130lm (warm, soft, no scorching).
+    // When preset is day: spots cast gentle 75lm daylight accent fill.
+    // When preset is studio: clean 90lm fill.
+    const baseLm = preset === "evening" ? (s.spotLm || 130) : preset === "day" ? 75 : 90;
+    const lm = tier === "low" || !useSpots ? 0 : baseLm;
+
     spots.forEach((p, i) => {
       const lit = i < lampCount;
       p.power = lit ? lm : 0;
-      p.color.setHex(s.spotColor);
-      p.castShadow = shadows && s.spotCast && lit && lm > 0 && i < CASTING_SPOTS && tier !== "low";
+      p.color.setHex(spotColor);
+      p.castShadow = shadows && (s.spotCast || preset === "evening") && lit && lm > 0 && i < CASTING_SPOTS && tier !== "low";
     });
-    // The FIXTURES hang whatever the preset — a kitchen has downlights in it at midday too, they are
-    // simply off. Their lenses glow only when the lamps are actually burning, which is what tells
-    // you at a glance whether the room's own lighting is doing the work.
-    lensMat.emissive.setHex(s.spotColor);
-    lensMat.emissiveIntensity = lm > 0 ? 1.6 : 0;
-    // whether a fixture SHOWS is a camera question, not a preset one — see `follow`
+
+    lensMat.emissive.setHex(spotColor);
+    lensMat.emissiveIntensity = lm > 0 ? 1.2 : (forceFixturesVisible ? 1.0 : 0);
+    haloMat.color.setHex(spotColor);
+    haloMat.opacity = showGuides ? 0.85 : (forceFixturesVisible ? 0.35 : 0);
+    coneMat.color.setHex(spotColor);
+    coneMat.visible = showGuides && lm > 0;
+    discMat.color.setHex(spotColor);
+    discMat.visible = showGuides && lm > 0;
 
     if (shadows) {
       const size = shadowSize();
-      sun.castShadow = size > 0 && s.sun > 0.2; // a dusk sun at 0.14 has no shadow worth a depth pass
+      sun.castShadow = size > 0 && s.sun > 0.2;
       if (size > 0 && sun.shadow.mapSize.width !== size) {
         sun.shadow.mapSize.set(size, size);
         sun.shadow.map?.dispose();
-        sun.shadow.map = null as unknown as THREE.WebGLRenderTarget; // three rebuilds it at the new size
+        sun.shadow.map = null as unknown as THREE.WebGLRenderTarget;
       }
     }
     placeSun();
   };
 
   const aim = (room: RoomLight) => {
-    // The room only tells us how much ground the shadow frustum has to cover. It does NOT get to
-    // place the sun: aiming daylight through the real window threw every wall unit's shadow forward
-    // across the floor (see DEFAULT_SUN).
     radius = keyLightFor(room.points, room.openings).radius;
-
-    // THE CEILING DOWNLIGHTS — over the FLOOR, and nowhere near the cabinets.
-    //
-    // They used to be spread at ±42% of the room's bounds, which puts them directly above the RUNS. A
-    // downlight a few centimetres above a wall unit's top, with physically-correct inverse-square
-    // falloff, delivers an irradiance in the hundreds: a blown-out white puddle sitting on the cabinet.
-    // (Which is why only the presets WITH spots showed it, and «День» — which has none — looked right.)
-    //
+    roomPointsRef = room.points;
     const b = polygonBoundsMm(room.points);
     roomBounds = { w: b.w, h: b.h };
     ceilingY = room.ceiling / 1000;
-    buildFixtureBodies(); // a linear fixture's LENGTH comes from the room, so it waits for this
+    buildFixtureBodies();
     placeLamps();
+    if (perimeterLedOn) {
+      buildPerimeterLed();
+    }
     applyPreset();
   };
 
-  /**
-   * Lay out the LIT lamps over the open floor, evenly.
-   *
-   * The cabinets hug the walls, so the middle of the room is the clear floor — put the downlights
-   * there. They used to sit at ±42% of the room's bounds, directly over the RUNS, which with
-   * inverse-square falloff dropped a blown-out white puddle on top of whatever cabinet was beneath.
-   * Arranged as `rows × cols` chosen from the count, spread comfortably inside the runs.
-   */
   const placeLamps = () => {
     const y = ceilingY - 0.12;
-    const SPREAD = lampSpread;
 
-    if (lampKind === "linear") {
-      /**
-       * A LINEAR LUMINAIRE IS A LINE OF LIGHT, NOT A POINT WITH A LONG LID.
-       *
-       * The fixture BODY was already a bar, but its light was a single spot at the bar's centre —
-       * so a 2.4m luminaire lit the room exactly like a 110mm downlight. That is the one difference
-       * a client can actually see, and it was the difference that wasn't there.
-       *
-       * The light count is fixed for the life of the scene (adding one recompiles every material),
-       * so the fix is to SAMPLE the bar with the lamps that already exist: the lit ones spread
-       * along its length and their pools overlap into a wash down the room. Which is what a linear
-       * luminaire is — a row of diodes behind a diffuser.
-       *
-       * So `lampCount` stops meaning "how many fixtures" and starts meaning "how many samples";
-       * the number of BARS is derived from it, because two bars side by side across a 3m kitchen
-       * would touch.
-       */
+    if (customPositions && customPositions.length > 0) {
+      litBodies = Math.min(lampCount, customPositions.length);
+      for (let i = 0; i < fixtures.length; i++) {
+        if (i < customPositions.length) {
+          const cp = customPositions[i];
+          spots[i].position.set(cp.x, y, cp.z);
+          spots[i].target.position.set(cp.x, 0, cp.z);
+          spots[i].target.updateMatrixWorld();
+          spots[i].distance = y * 2.6;
+          fixtures[i].position.set(cp.x, ceilingY - 0.008, cp.z);
+          fixtures[i].userData.lampIndex = i;
+          fixtures[i].visible = (cameraUnderCeiling || forceFixturesVisible) && i < litBodies;
+        } else {
+          fixtures[i].visible = false;
+        }
+      }
+      return;
+    }
+
+    if (lampKind === "linear" || lampKind === "track") {
       const bars = lampCount <= 2 ? 1 : lampCount <= 4 ? 2 : 3;
       const per = Math.max(1, Math.ceil(lampCount / bars));
       const len = barLen();
-      const barX = (b: number) =>
-        (((bars > 1 ? (b / (bars - 1)) * 2 - 1 : 0) * SPREAD * roomBounds.w) / 1000);
+      const insetX = Math.min((roomBounds.w / 1000) * 0.42, Math.max(0.3, wallOffsetMm / 1000));
+      const spanX = Math.max(0.2, (roomBounds.w / 1000) / 2 - insetX);
+      const barX = (b: number) => (bars > 1 ? (b / (bars - 1)) * 2 - 1 : 0) * spanX;
       spots.forEach((p, i) => {
         const x = barX(Math.floor(i / per));
-        // even samples INSIDE the bar — at the ends they would spill past the diffuser
         const slot = i % per;
         const z = (per > 1 ? (slot + 0.5) / per - 0.5 : 0) * len;
         p.position.set(x, y, z);
@@ -605,42 +697,89 @@ export function buildRig(scene: THREE.Scene, renderer: THREE.WebGLRenderer, opts
         p.target.updateMatrixWorld();
         p.distance = y * 2.6;
       });
-      // ONE BODY PER BAR, at its centre — not one per lamp, or the samples along a bar would each
-      // draw their own 2.4m luminaire stacked on top of the last
-      for (let b = 0; b < bars; b++) fixtures[b].position.set(barX(b), ceilingY - 0.008, 0);
+      for (let b = 0; b < fixtures.length; b++) {
+        const bx = barX(b < bars ? b : bars - 1);
+        fixtures[b].position.set(bx, ceilingY - 0.008, 0);
+        fixtures[b].userData.lampIndex = b;
+        fixtures[b].visible = (cameraUnderCeiling || forceFixturesVisible) && b < bars;
+      }
       litBodies = bars;
       return;
     }
 
+    // Spotlights grid
     const [cols, rows] = lampCount <= 2 ? [lampCount, 1] : lampCount <= 4 ? [2, 2] : [3, 2];
     litBodies = lampCount;
+    const insetX = Math.min((roomBounds.w / 1000) * 0.42, Math.max(0.25, wallOffsetMm / 1000));
+    const insetZ = Math.min((roomBounds.h / 1000) * 0.42, Math.max(0.25, wallOffsetMm / 1000));
+    const spanX = Math.max(0.2, (roomBounds.w / 1000) / 2 - insetX);
+    const spanZ = Math.max(0.2, (roomBounds.h / 1000) / 2 - insetZ);
     spots.forEach((p, i) => {
-      // even grid cell centres in −1..1, then scaled into the room
       const cx = cols > 1 ? ((i % cols) / (cols - 1)) * 2 - 1 : 0;
       const cz = rows > 1 ? (Math.floor(i / cols) / (rows - 1)) * 2 - 1 : 0;
-      const x = (cx * SPREAD * roomBounds.w) / 1000;
-      const z = (cz * SPREAD * roomBounds.h) / 1000;
+      const x = cx * spanX;
+      const z = cz * spanZ;
       p.position.set(x, y, z);
       p.target.position.set(x, 0, z);
       p.target.updateMatrixWorld();
-      p.distance = y * 2.6; // where the cone gives out — keeps its cost bounded
-      // the fixture sits FLUSH in the ceiling, a touch below its light
+      p.distance = y * 2.6;
       fixtures[i].position.set(x, ceilingY - 0.008, z);
+      fixtures[i].userData.lampIndex = i;
+      fixtures[i].visible = (cameraUnderCeiling || forceFixturesVisible) && i < litBodies;
     });
   };
 
-  // scratch — `follow` runs every frame, and allocating in a render loop is how you earn a GC stutter
+  const buildPerimeterLed = () => {
+    if (perimeterGroup) {
+      scene.remove(perimeterGroup);
+      perimeterGroup.traverse((o) => {
+        const m = o as THREE.Mesh;
+        m.geometry?.dispose?.();
+        if (Array.isArray(m.material)) m.material.forEach((mat) => mat.dispose());
+        else m.material?.dispose();
+      });
+      perimeterGroup = null;
+    }
+    if (!perimeterLedOn || roomPointsRef.length < 3) return;
+    const y = ceilingY - 0.02;
+    const gr = new THREE.Group();
+    const col = ledColor(lampTemp);
+    const mat = new THREE.MeshBasicMaterial({ color: col, toneMapped: false });
+    const b0 = polygonBoundsMm(roomPointsRef);
+    const n = roomPointsRef.length;
+    for (let i = 0; i < n; i++) {
+      const p1 = roomPointsRef[i];
+      const p2 = roomPointsRef[(i + 1) % n];
+      const x1 = (p1.x - b0.cx) / 1000;
+      const z1 = (p1.y - b0.cy) / 1000;
+      const x2 = (p2.x - b0.cx) / 1000;
+      const z2 = (p2.y - b0.cy) / 1000;
+      const dx = x2 - x1;
+      const dz = z2 - z1;
+      const len = Math.hypot(dx, dz);
+      if (len < 0.05) continue;
+      const stripGeo = new THREE.BoxGeometry(0.016, 0.016, len);
+      const m = new THREE.Mesh(stripGeo, mat);
+      m.position.set((x1 + x2) / 2, y, (z1 + z2) / 2);
+      m.rotation.y = Math.atan2(dx, dz);
+      gr.add(m);
+    }
+    scene.add(gr);
+    perimeterGroup = gr;
+  };
+
   const away = new THREE.Vector3();
   const UP = new THREE.Vector3(0, 1, 0);
+  let cameraUnderCeiling = false;
 
   const follow = (camera: THREE.Camera, target: THREE.Vector3) => {
-    // THE FIXTURES BELONG TO THE CEILING, so they cull with it. Without this they hang in mid-air
-    // over an open-topped room the moment the camera rises above the ceiling — which is the normal
-    // 3/4 view, i.e. most of the time.
-    const underCeiling = camera.position.y < ceilingY - 0.05;
-    for (let i = 0; i < fixtures.length; i++) fixtures[i].visible = underCeiling && useSpots && i < litBodies;
+    cameraUnderCeiling = camera.position.y < ceilingY - 0.05;
+    const show = (cameraUnderCeiling || forceFixturesVisible) && useSpots;
+    for (let i = 0; i < fixtures.length; i++) {
+      fixtures[i].visible = show && i < litBodies;
+    }
 
-    away.subVectors(camera.position, target); // from what you are looking at, back toward you
+    away.subVectors(camera.position, target);
     away.y = 0;
     const dist = away.length();
     if (dist < 0.01) return;
@@ -675,20 +814,51 @@ export function buildRig(scene: THREE.Scene, renderer: THREE.WebGLRenderer, opts
     },
     setLampCount: (n) => {
       lampCount = Math.max(0, Math.min(SPOTS, Math.round(n)));
-      placeLamps(); // the layout changes with the count, not just which ones are lit
+      placeLamps();
       applyPreset();
     },
     setLampKind: (k) => {
       if (k === lampKind) return;
       lampKind = k;
       buildFixtureBodies();
-      placeLamps(); // a bar lays out in a single file where a spot lays out in a grid
+      placeLamps();
       applyPreset();
     },
     setLampSpread: (v) => {
       lampSpread = Math.max(0.05, Math.min(0.48, v));
       placeLamps();
     },
+    setLampTemp: (k) => {
+      lampTemp = k;
+      applyPreset();
+      if (perimeterLedOn) buildPerimeterLed();
+    },
+    setWallOffset: (offsetMm) => {
+      wallOffsetMm = offsetMm;
+      placeLamps();
+    },
+    setCustomPositions: (pos) => {
+      customPositions = pos;
+      placeLamps();
+    },
+    setForceFixturesVisible: (force) => {
+      forceFixturesVisible = force;
+      applyPreset();
+      for (let i = 0; i < fixtures.length; i++) {
+        fixtures[i].visible = (cameraUnderCeiling || force) && i < litBodies;
+      }
+    },
+    setShowGuides: (show) => {
+      showGuides = show;
+      applyPreset();
+    },
+    setPerimeterLed: (on, points, ceilY) => {
+      perimeterLedOn = on;
+      if (points) roomPointsRef = points;
+      if (ceilY) ceilingY = ceilY;
+      buildPerimeterLed();
+    },
+    getFixtures: () => fixtures,
     setTier: (t) => {
       tier = t;
       applyPreset();
@@ -697,7 +867,6 @@ export function buildRig(scene: THREE.Scene, renderer: THREE.WebGLRenderer, opts
       const wasPreset = preset;
       const wasOverride = mapOverride;
       if (!keepPreset) preset = "studio";
-      // no size given → keep the tier's map (a 400px thumbnail does not need a crisper one)
       mapOverride = shadows && shadowPx ? shadowPx : null;
       applyPreset();
       return () => {
@@ -712,10 +881,22 @@ export function buildRig(scene: THREE.Scene, renderer: THREE.WebGLRenderer, opts
       for (const f of fixtures) scene.remove(f);
       for (const g of fixtureGeos) g.dispose();
       trimMat.dispose();
+      trackRailMat.dispose();
       lensMat.dispose();
+      haloMat.dispose();
+      coneMat.dispose();
+      discMat.dispose();
+      if (perimeterGroup) {
+        scene.remove(perimeterGroup);
+        perimeterGroup.traverse((o) => {
+          const m = o as THREE.Mesh;
+          m.geometry?.dispose?.();
+          if (Array.isArray(m.material)) m.material.forEach((mat) => mat.dispose());
+          else m.material?.dispose();
+        });
+        perimeterGroup = null;
+      }
       scene.remove(sun, sunTarget, fill, fillTarget, rim, rimTarget, hemi, ...spots);
-      // the environment texture is cached per renderer and outlives the scene on purpose — it is the
-      // same PMREM for every rebuild, and regenerating it is the expensive part
     },
   };
 }

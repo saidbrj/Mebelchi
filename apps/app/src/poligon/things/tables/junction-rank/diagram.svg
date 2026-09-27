@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 280" width="560" height="280">
+  <style>
+    .c{fill:#f2efe9;stroke:#1a1a1a;stroke-width:2}
+    .d{stroke:#00815c;stroke-width:1.2;marker-start:url(#a);marker-end:url(#a)}
+    .t{font:600 15px system-ui,sans-serif;fill:#1a1a1a}
+    .n{font:500 13px system-ui,sans-serif;fill:#00815c}
+    .m{font:500 12px ui-monospace,monospace;fill:#6b6355}
+    .x{stroke:#e53935;stroke-width:2.5}
+  </style>
+  <defs><marker id="a" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto">
+    <path d="M0,3.5 L7,0 L7,7 Z" fill="#00815c"/></marker></defs>
+  <text class="t" x="20" y="28">Разбег конфирматов на общей панели</text>
+
+  <rect class="c" x="150" y="60" width="32" height="180"/>
+  <text class="m" x="192" y="76">общая панель 16 мм</text>
+
+  <line x1="60" y1="110" x2="174" y2="110" stroke="#1a1a1a" stroke-width="4"/>
+  <text class="m" x="60" y="102">слева</text>
+  <line x1="158" y1="170" x2="272" y2="170" stroke="#1a1a1a" stroke-width="4"/>
+  <text class="m" x="212" y="192">справа</text>
+
+  <line class="d" x1="300" y1="110" x2="300" y2="170"/>
+  <text class="n" x="312" y="145">≥ 32</text>
+
+  <line class="x" x1="380" y1="120" x2="440" y2="120"/>
+  <line class="x" x1="400" y1="120" x2="460" y2="120"/>
+  <text class="m" x="378" y="108">встык — разрыв середины</text>
+  <text class="m" x="378" y="146">два винта 50 мм в 16 мм плиты</text>
+
+  <text class="m" x="60" y="268">датум: середина панели · складывается: берётся наибольший</text>
+</svg>

@@ -1,0 +1,49 @@
+fdl 1
+wall 1850x2700 left=against-wall right=against-wall
+next 10
+line v0 v @0
+line v1 v @1850
+line v7 v @50
+line v8 v @650
+line v9 v @1250
+line h2 h @0
+line h3 h @2700
+line h4 h @150
+line h5 h @2250
+line h6 h @2600
+seg h2 v7..v8 boards=1 role=plinth
+seg h2 v8..v9 boards=1 role=plinth
+seg h2 v9..v1 boards=1 role=plinth
+seg h4 v7..v8 boards=1 role=bottom
+seg h4 v8..v9 boards=1 role=bottom
+seg h4 v9..v1 boards=1 role=bottom
+seg h5 v7..v8 boards=1 role=top
+seg h5 v8..v9 boards=1 role=top
+seg h5 v9..v1 boards=1 role=top
+seg h6 v7..v8 boards=1 role=top
+seg h6 v8..v9 boards=1 role=top
+seg h6 v9..v1 boards=1 role=top
+seg v0 h4..h5 boards=1 role=filler
+seg v1 h4..h5 boards=1 role=side
+seg v1 h5..h6 boards=1 role=side
+seg v7 h4..h5 boards=1 role=side
+seg v7 h5..h6 boards=1 role=side
+seg v8 h4..h5 boards=1 role=side
+seg v8 h5..h6 boards=1 role=side
+seg v9 h4..h5 boards=1 role=side
+seg v9 h5..h6 boards=1 role=side
+block t-духовка reserved carcass v8 v9 h4 h5
+block t-духовка-антресоль block carcass v8 v9 h5 h6
+block t-духовка-запотолок void carcass v8 v9 h6 h3
+block t-духовка-цоколь void carcass v8 v9 h2 h4
+block t-кладовая block carcass v9 v1 h4 h5
+block t-кладовая-антресоль block carcass v9 v1 h5 h6
+block t-кладовая-запотолок void carcass v9 v1 h6 h3
+block t-кладовая-цоколь void carcass v9 v1 h2 h4
+block t-холодильник reserved carcass v7 v8 h4 h5
+block t-холодильник-антресоль block carcass v7 v8 h5 h6
+block t-холодильник-запотолок void carcass v7 v8 h6 h3
+block t-холодильник-цоколь void carcass v7 v8 h2 h4
+block добор reserved carcass v0 v7 h4 h5
+block добор-верх void carcass v0 v7 h5 h3
+block добор-цоколь void carcass v0 v7 h2 h4

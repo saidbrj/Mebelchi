@@ -1,0 +1,21 @@
+{
+  "id": "qorasu.spacer.hinge-rail-25",
+  "uid": "01J8K2QF7M3NRA9V0032",
+  "version": "1.0.0",
+  "schema": 1,
+  "kind": "spacer",
+  "origin": { "source": "local" },
+  "name": {
+    "ru": "Планка-проставка петлевая 25 мм",
+    "en": "Hinge-side spacer rail 25mm",
+    "uz": "Ilgak tomoni taxta 25 mm"
+  },
+  "fields": {
+    "spacerWidthMm": {
+      "type": "number", "value": 25, "unit": "mm", "domain": { "min": 16, "max": 60 },
+      "frame": { "of": "carcass-side", "datum": "inner", "direction": "x", "sign": "inward-positive", "compose": "add" }
+    },
+    "material": { "type": "ref", "value": "01J8K2QF7M3NRA9V0001" },
+    "side": { "type": "enum", "value": "hinge", "of": ["hinge", "handle", "both"] }
+  }
+}

@@ -17,6 +17,7 @@
 
 import { mk, type ApplianceKind, type Cabinet, type FrontProfile } from "./cabinet";
 import { runReach, DEFAULT_REVEAL, type RunOpening, type KitchenLayout } from "./runPlan";
+export type { KitchenLayout };
 
 export type Zone = "left" | "center" | "right";
 export type FridgeType = "integ" | "free" | "none";
@@ -265,7 +266,8 @@ function placeBank(L: number, w: number, end: "near" | "far", doors: Span[], win
   const fit = spans.filter((s) => s.b - s.a >= w - 1);
   if (!fit.length) return -1;
   if (end === "far") return Math.round(fit[fit.length - 1].b - w);
-  return Math.round(fit[0].a);
+  if (fit[0].a <= 50) return Math.round(fit[0].a);
+  return Math.round(fit[fit.length - 1].b - w);
 }
 
 interface Strategy {
@@ -426,17 +428,23 @@ function fillRun(rf: RunFill, st: Strategy, v: VariantInput): Cabinet[] {
 
   // --- base modules fill the run minus doors minus the tall bank (windows OK) ---
   // The last module in each span absorbs the packing remainder so the span is filled
-  // edge-to-edge — no sub-300mm gap, and the run-end cabinet butts a corner unit flush.
+  // edge-to-edge — no gap, and the run-end cabinet butts a corner unit flush.
   const baseSlots: BaseSlot[] = [];
   for (const sp of subtract(0, L, [...doors, ...tallBlock])) {
-    const ws = packWidths(sp.b - sp.a, st.ladder);
-    const extra = sp.b - sp.a - ws.reduce((a, w) => a + w, 0);
-    let x = sp.a;
-    ws.forEach((w, k) => {
-      const wEff = k === ws.length - 1 ? w + extra : w;
-      baseSlots.push({ x, w: wEff });
-      x += wEff;
-    });
+    const spanLen = sp.b - sp.a;
+    if (spanLen < 100) continue;
+    const ws = packWidths(spanLen, st.ladder);
+    if (ws.length === 0) {
+      baseSlots.push({ x: sp.a, w: spanLen });
+    } else {
+      const extra = spanLen - ws.reduce((a, w) => a + w, 0);
+      let x = sp.a;
+      ws.forEach((w, k) => {
+        const wEff = k === ws.length - 1 ? w + extra : w;
+        baseSlots.push({ x, w: wEff });
+        x += wEff;
+      });
+    }
   }
   baseSlots.sort((p, q) => p.x - q.x);
 
@@ -537,22 +545,10 @@ function fillRun(rf: RunFill, st: Strategy, v: VariantInput): Cabinet[] {
       else if (!onWindow) uppers.push(mk({ kind: "upper", w: s.w, h: upperH, fill: "shelves", count: 2, front: st.frontUpper, handle: st.handle, x: s.x, run: rf.run }));
       return;
     }
-    if (i === sinkIdx && coverage !== "full") return;
-    if (coverage === "partial" && s.w < 500) return;
 
-    // CLIP THE UPPER TO THE WALL THAT IS ACTUALLY THERE — don't throw the whole slot away.
-    //
-    // This used to be `if (onWindow) return`: a base slot that overlapped a window by ONE
-    // MILLIMETRE got no wall unit at all. On a 2.2m run with a 1.2m window that is every slot, so a
-    // small kitchen came out with zero wall storage — the wall beside the glass, which is perfectly
-    // good hanging space, was thrown away with the glass.
-    //
-    // Subtracting the windows leaves the hangable spans. A slot clear of glass yields itself back
-    // unchanged, so nothing about a window-free wall changes. The clipped edges land on the window
-    // reveal, which is where a cabinet should end anyway — and where the sheet puts a column line.
     for (const sp of subtract(s.x, s.x + s.w, windows)) {
       const w = sp.b - sp.a;
-      if (w < MIN_W) continue; // a sliver of wall beside a window is a filler, not a cabinet
+      if (w < 120) continue;
       uppers.push(mk({ kind: "upper", w, h: upperH, fill: "shelves", count: 2, front: st.frontUpper, handle: st.handle, x: sp.a, run: rf.run }));
     }
   });

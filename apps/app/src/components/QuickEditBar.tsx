@@ -44,6 +44,7 @@ export function QuickEditBar({
   const beginCabEdit = useStore((s) => s.beginCabEdit);
   const gridSetCabW = useStore((s) => s.gridSetCabW);
   const resizeCab = useStore((s) => s.resizeCab);
+  const enterApp2 = useStore((s) => s.enterApp2);
 
   // a module tiled into the wall sheet resizes its COLUMN; a free-standing one resizes alone
   const tiled = cab.cell != null && cab.px == null;
@@ -86,6 +87,19 @@ export function QuickEditBar({
         </div>
       )}
       <button className="qb-swatch" type="button" onClick={onStyle} aria-label={t.fe.style} style={swatch} />
+      <button
+        className="qb-smart"
+        type="button"
+        onClick={() => enterApp2(cab.id)}
+        title="Редактировать шкаф (Smart Object)"
+        aria-label="Редактор шкафа"
+      >
+        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+          <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+          <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+          <line x1="12" y1="22.08" x2="12" y2="12"/>
+        </svg>
+      </button>
       <button className="qb-more" type="button" onClick={onMore} aria-label={t.config.more}>⋯</button>
     </div>
   );

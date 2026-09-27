@@ -12,6 +12,8 @@ import { OptionCard } from "../components/OptionCard";
 import { DimSlider, GlyphW, GlyphH } from "../components/DimControls";
 import { JourneyBar } from "../components/JourneyBar";
 import { Illustration } from "../quiz/Illustration";
+import { SunDial } from "../components/SunDial";
+import { DEFAULT_SUN } from "../three/lighting";
 import { FLOOR_COVERINGS, ROOM_TYPES } from "../model/floors";
 import { fittingCatalog, fittingKind, openingCatalog, pipeDiameter, pipeLength, wallSegments, defaultFittingHeight, defaultOpeningSill, OPENING_FINISHES, type FittingCategory, type OpeningKind, type OpeningKindId, type Pt } from "../model/room";
 import { WALL_COVERINGS, WALL_FAMILIES, familyCount, coveringColor as wallColorHex, dominantColor, leafRects, defaultSurface, type SurfPath } from "../model/walls";
@@ -39,6 +41,7 @@ import {
   IconPlan,
   IconUndo,
   IconRedo,
+  IconSun,
 } from "../components/icons";
 
 type Sheet =
@@ -46,6 +49,7 @@ type Sheet =
   | "shape"
   | "shapePick"
   | "ceiling"
+  | "lighting"
   | "covering"
   | "edit"
   | "elements"
@@ -103,7 +107,7 @@ function NumRow({
   );
 }
 
-export function RoomScene() {
+export function RoomScene({ embedded, onDone }: { embedded?: boolean; onDone?: () => void } = {}) {
   const t = useT();
   const fitTitle = (c: FittingCategory) =>
     c === "electric" ? t.room.fitElectric
@@ -152,6 +156,9 @@ export function RoomScene() {
   const setCeilingValue = useStore((s) => s.setCeilingValue);
   const reveal = useStore((s) => s.reveal);
   const setReveal = useStore((s) => s.setReveal);
+  const cabs = useStore((s) => s.cabs);
+  const runStyle = useStore((s) => s.runStyle);
+  const runLayout = useStore((s) => s.runLayout);
   const setRoomName = useStore((s) => s.setRoomName);
   const setRoomType = useStore((s) => s.setRoomType);
   const setFloorCovering = useStore((s) => s.setFloorCovering);
@@ -178,6 +185,8 @@ export function RoomScene() {
   const canRedo = useStore((s) => s.future.length > 0);
   const next = useStore((s) => s.next);
   const flash = useStore((s) => s.flash);
+  const led = useStore((s) => s.led);
+  const setLed = useStore((s) => s.setLed);
 
   const [view, setView] = useState<SceneView>("3d");
   const [sheet, setSheet] = useState<Sheet>(null);
@@ -233,6 +242,7 @@ export function RoomScene() {
 
   // exit animations: keep mounted briefly, play the out-animation, then remove
   const [sheetClosing, setSheetClosing] = useState(false);
+  const [lightingTab, setLightingTab] = useState<"sun" | "fixtures">("sun");
   const closeSheet = () => {
     setSheetClosing(true);
     setReplacing(null);
@@ -542,7 +552,15 @@ export function RoomScene() {
     <div className="roomscene">
       {/* the bar shows the PROJECT name, not the room's — the room's own label is already drawn
           on the floor plan itself, so the bar is free to say whose kitchen this is */}
-      <JourneyBar right={<button className="step-next" onClick={next} type="button">{t.room.toVariants}</button>} />
+      {!embedded && (
+        <JourneyBar right={<button className="step-next" onClick={next} type="button">Дизайн →</button>} />
+      )}
+      {embedded && (
+        <div className="room-embed-bar">
+          <span className="room-embed-title">Редактор комнаты</span>
+          <button className="step-next room-embed-done" onClick={onDone} type="button">✓ Готово</button>
+        </div>
+      )}
 
       <div className="scene-area">
         {waterPick ? (
@@ -589,6 +607,9 @@ export function RoomScene() {
             onMoveOpening={moveOpening}
             onSetOpeningWidth={setOpeningWidth}
             onEditNumber={onEditNumber}
+            cabs={cabs}
+            runLayout={runLayout}
+            reveal={reveal}
           />
         ) : (
           <ThreeScene
@@ -623,6 +644,15 @@ export function RoomScene() {
             onSetOpeningWidth={setOpeningWidth}
             onSetOpeningHeight={setOpeningHeight}
             onSetOpeningSill={setOpeningSill}
+            cabs={cabs}
+            kitchenStyle={runStyle}
+            waterWall={waterWall}
+            runLayout={runLayout}
+            reveal={reveal}
+            ghostCabs={true}
+            led={led}
+            sheet={sheet}
+            onLedChange={(patch) => setLed(patch)}
           />
         )}
 
@@ -841,6 +871,12 @@ export function RoomScene() {
                     <IconCeiling />
                   </span>
                   <span className="lbl">{t.room.ceiling}</span>
+                </button>
+                <button className="tool-btn" onClick={() => setSheet("lighting")} type="button">
+                  <span className="ico">
+                    <IconSun />
+                  </span>
+                  <span className="lbl">Освещение</span>
                 </button>
               </>
             )}
@@ -1308,6 +1344,235 @@ export function RoomScene() {
                   />
                 </div>
                 <div className="sheet-note" style={{ marginTop: 8 }}>{t.room.revealHint}</div>
+              </>
+            )}
+
+            {sheet === "lighting" && (
+              <>
+                <div className="sheet-head">
+                  <div className="sheet-title">Освещение</div>
+                  <button className="sheet-x" onClick={closeSheet} type="button" aria-label={t.room.close}>✕</button>
+                </div>
+
+                <div className="pillrow" style={{ marginTop: 8, marginBottom: 12, display: "flex", gap: 6 }}>
+                  <button
+                    className={`chip${(led.lightingMode ?? lightingTab) === "sun" ? " sel" : ""}`}
+                    onClick={() => {
+                      setLightingTab("sun");
+                      setLed({ lightingMode: "sun" });
+                    }}
+                    type="button"
+                    style={{ flex: 1, justifyContent: "center" }}
+                  >
+                    ☀️ Солнце и тени
+                  </button>
+                  <button
+                    className={`chip${(led.lightingMode ?? lightingTab) === "fixtures" ? " sel" : ""}`}
+                    onClick={() => {
+                      setLightingTab("fixtures");
+                      setLed({ lightingMode: "fixtures" });
+                    }}
+                    type="button"
+                    style={{ flex: 1, justifyContent: "center" }}
+                  >
+                    💡 Светильники
+                  </button>
+                </div>
+
+                {(led.lightingMode ?? lightingTab) === "sun" ? (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 14, paddingBottom: 6 }}>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-dim)", textTransform: "uppercase", marginBottom: 6 }}>
+                        Атмосфера комнаты
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
+                        {[
+                          { id: "day", label: "День", icon: "☀️" },
+                          { id: "evening", label: "Вечер", icon: "🌙" },
+                          { id: "studio", label: "Студия", icon: "💡" },
+                        ].map((p) => (
+                          <button
+                            key={p.id}
+                            className={`style-profile${(led.preset ?? "evening") === p.id ? " on" : ""}`}
+                            onClick={() => setLed({ preset: p.id as any })}
+                            type="button"
+                            style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "8px 4px" }}
+                          >
+                            <span style={{ fontSize: 14 }}>{p.icon}</span>
+                            <span style={{ fontSize: 11 }}>{p.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-dim)", textTransform: "uppercase" }}>
+                          Направление солнца
+                        </span>
+                        {(led.sunAzimuth != null || led.sunElevation != null) && (
+                          <button
+                            type="button"
+                            className="btn-ghost"
+                            onClick={() => setLed({ sunAzimuth: DEFAULT_SUN.azimuth, sunElevation: DEFAULT_SUN.elevation })}
+                            style={{ fontSize: 11, padding: "2px 6px" }}
+                          >
+                            Сбросить
+                          </button>
+                        )}
+                      </div>
+                      <SunDial
+                        azimuth={led.sunAzimuth ?? DEFAULT_SUN.azimuth}
+                        elevation={led.sunElevation ?? DEFAULT_SUN.elevation}
+                        onChange={(azimuth, elevation) => setLed({ sunAzimuth: azimuth, sunElevation: elevation })}
+                      />
+                      <div className="rnd-hint" style={{ textAlign: "center", marginTop: 4, fontSize: 11, color: "var(--text-dim)" }}>
+                        {t.render.sunHint}
+                      </div>
+                    </div>
+                  </div>
+                ) : (
+                  <div style={{ display: "flex", flexDirection: "column", gap: 14, paddingBottom: 6 }}>
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-dim)", textTransform: "uppercase", marginBottom: 6 }}>
+                        Время суток
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 8 }}>
+                        <button
+                          className={`style-profile${(led.preset ?? "evening") === "day" ? " on" : ""}`}
+                          onClick={() => setLed({ preset: "day" })}
+                          type="button"
+                          style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "8px 12px" }}
+                        >
+                          <span style={{ fontSize: 15 }}>☀️</span>
+                          <span style={{ fontSize: 12, fontWeight: 600 }}>День</span>
+                        </button>
+                        <button
+                          className={`style-profile${(led.preset ?? "evening") === "evening" ? " on" : ""}`}
+                          onClick={() => setLed({ preset: "evening" })}
+                          type="button"
+                          style={{ display: "flex", alignItems: "center", justifyContent: "center", gap: 8, padding: "8px 12px" }}
+                        >
+                          <span style={{ fontSize: 15 }}>🌙</span>
+                          <span style={{ fontSize: 12, fontWeight: 600 }}>Ночь</span>
+                        </button>
+                      </div>
+                    </div>
+
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-dim)", textTransform: "uppercase", marginBottom: 6 }}>
+                        Тип светильников
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr 1fr", gap: 6 }}>
+                        {[
+                          { id: "spot", label: "Точечные", icon: "⬤" },
+                          { id: "linear", label: "Линейные", icon: "▬" },
+                          { id: "track", label: "Трековые", icon: "⚬-⚬" },
+                        ].map((k) => (
+                          <button
+                            key={k.id}
+                            className={`style-profile${(led.ceilingKind ?? "spot") === k.id ? " on" : ""}`}
+                            onClick={() => setLed({ ceilingKind: k.id as any, customPositions: undefined })}
+                            type="button"
+                            style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 4, padding: "8px 4px" }}
+                          >
+                            <span style={{ fontSize: 14 }}>{k.icon}</span>
+                            <span style={{ fontSize: 11 }}>{k.label}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-dim)", textTransform: "uppercase", marginBottom: 6 }}>
+                        Количество светильников
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
+                        {[
+                          { cnt: 0, label: "Выкл" },
+                          { cnt: 2, label: "2 шт" },
+                          { cnt: 4, label: "4 шт" },
+                          { cnt: 6, label: "6 шт" },
+                        ].map((item) => (
+                          <button
+                            key={item.cnt}
+                            className={`style-profile${(led.ceilingCount ?? 4) === item.cnt ? " on" : ""}`}
+                            onClick={() => setLed({ ceilingCount: item.cnt, customPositions: undefined })}
+                            type="button"
+                            style={{ padding: "8px 4px", fontSize: 12, fontWeight: 600, textAlign: "center" }}
+                          >
+                            {item.label}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+
+                    <div>
+                      <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: 6 }}>
+                        <span style={{ fontSize: 11, fontWeight: 700, color: "var(--text-dim)", textTransform: "uppercase" }}>
+                          Отступ от стен
+                        </span>
+                        <span style={{ fontSize: 12, fontWeight: 600, color: "var(--accent)" }}>
+                          {led.ceilingOffsetMm ?? 800} мм
+                        </span>
+                      </div>
+                      <input
+                        type="range"
+                        min={300}
+                        max={1800}
+                        step={50}
+                        value={led.ceilingOffsetMm ?? 800}
+                        onChange={(e) => setLed({ ceilingOffsetMm: Number(e.target.value), customPositions: undefined })}
+                        style={{ width: "100%", accentColor: "var(--accent)", cursor: "pointer" }}
+                      />
+                    </div>
+
+                    {led.customPositions && led.customPositions.length > 0 ? (
+                      <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", background: "var(--panel-bg, rgba(255,255,255,0.05))", border: "1px solid var(--border)", borderRadius: 8, padding: "8px 10px" }}>
+                        <span style={{ fontSize: 11, color: "var(--text-dim)" }}>
+                          📍 Индивидуальная расстановка в 3D
+                        </span>
+                        <button
+                          type="button"
+                          className="btn-ghost"
+                          onClick={() => setLed({ customPositions: undefined })}
+                          style={{ fontSize: 11, padding: "4px 8px" }}
+                        >
+                          Сбросить к сетке
+                        </button>
+                      </div>
+                    ) : (
+                      <div style={{ fontSize: 11, color: "var(--text-dim)", fontStyle: "italic" }}>
+                        💡 В 3D светильники можно перетаскивать пальцем или мышью по потолку
+                      </div>
+                    )}
+
+                    <div>
+                      <div style={{ fontSize: 11, fontWeight: 700, color: "var(--text-dim)", textTransform: "uppercase", marginBottom: 6 }}>
+                        Цветовая температура
+                      </div>
+                      <div style={{ display: "grid", gridTemplateColumns: "repeat(4, 1fr)", gap: 6 }}>
+                        {[
+                          { k: 2700, label: "2700K", sub: "Теплый" },
+                          { k: 3000, label: "3000K", sub: "Мягкий" },
+                          { k: 4000, label: "4000K", sub: "Нейтральный" },
+                          { k: 5000, label: "5000K", sub: "Холодный" },
+                        ].map((tItem) => (
+                          <button
+                            key={tItem.k}
+                            className={`style-profile${led.temp === tItem.k ? " on" : ""}`}
+                            onClick={() => setLed({ temp: tItem.k as any })}
+                            type="button"
+                            style={{ display: "flex", flexDirection: "column", alignItems: "center", gap: 2, padding: "6px 2px" }}
+                          >
+                            <span style={{ fontWeight: 700, fontSize: 11 }}>{tItem.label}</span>
+                            <span style={{ fontSize: 9, color: "var(--text-dim)" }}>{tItem.sub}</span>
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </div>
+                )}
               </>
             )}
 

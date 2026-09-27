@@ -125,6 +125,50 @@ export function HomeScreen() {
         </div>
       )}
 
+      <div className="home-quick-cards" style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 10, margin: "14px 0" }}>
+        <button
+          type="button"
+          className="home-quick-card"
+          onClick={() => useStore.getState().newProject()}
+          style={{
+            background: "linear-gradient(135deg, rgba(0, 172, 122, 0.12), rgba(5, 150, 105, 0.08))",
+            border: "1.5px solid rgba(16, 185, 129, 0.3)",
+            borderRadius: 14,
+            padding: "12px 14px",
+            textAlign: "left",
+            cursor: "pointer",
+            display: "flex",
+            flexDirection: "column",
+            gap: 4,
+          }}
+        >
+          <span style={{ fontSize: 20 }}>✨</span>
+          <strong style={{ fontSize: 13, color: "#0f172a" }}>Новая кухня</strong>
+          <span style={{ fontSize: 11, color: "#64748b" }}>Создать проект с нуля</span>
+        </button>
+
+        <button
+          type="button"
+          className="home-quick-card"
+          onClick={() => goTo("catalog")}
+          style={{
+            background: "#fff",
+            border: "1.5px solid #e2e8f0",
+            borderRadius: 14,
+            padding: "12px 14px",
+            textAlign: "left",
+            cursor: "pointer",
+            display: "flex",
+            flexDirection: "column",
+            gap: 4,
+          }}
+        >
+          <span style={{ fontSize: 20 }}>🗄️</span>
+          <strong style={{ fontSize: 13, color: "#0f172a" }}>Библиотека шкафов</strong>
+          <span style={{ fontSize: 11, color: "#64748b" }}>Каталог и свои модули</span>
+        </button>
+      </div>
+
       {all.length === 0 ? (
         <p className="sub home-empty">{t.home.empty}</p>
       ) : (

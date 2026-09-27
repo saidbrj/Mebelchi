@@ -1,0 +1,14 @@
+{
+  "id": "eman.edge.abs-1mm",
+  "uid": "01J8K2QF7M3NRA9V0011",
+  "version": "1.0.0",
+  "schema": 1,
+  "kind": "edge",
+  "origin": { "source": "builtin" },
+  "name": { "ru": "Кромка ABS 1 мм", "en": "ABS edge 1 mm", "uz": "ABS jiyak 1 mm" },
+  "fields": {
+    "thickness": { "type": "number", "value": 1, "unit": "mm", "domain": { "min": 0.4, "max": 3 } },
+    "radius": { "type": "number", "value": 0.5, "unit": "mm", "domain": { "min": 0, "max": 3 } },
+    "material": { "type": "ref", "value": "01J8K2QF7M3NRA9V0001" }
+  }
+}

@@ -1,0 +1,63 @@
+fdl 1
+wall 3600x2400 left=into-corner right=free
+next 11
+line v0 v @8
+line v1 v @3592
+line v4 v @800
+line v5 v @1400
+line v6 v @2000
+line v7 v @3000
+line h2 h @0
+line h3 h @2400
+line h8 h @850
+line h9 h @1450
+line ha h @2100
+seg h2 v0..v4 boards=1 role=bottom
+seg h2 v4..v5 boards=1 role=bottom
+seg h2 v5..v6 boards=1 role=bottom
+seg h2 v6..v7 boards=1 role=bottom
+seg h8 v0..v4 boards=1 role=worktop
+seg h8 v4..v5 boards=1 role=worktop
+seg h8 v5..v6 boards=1 role=worktop
+seg h8 v6..v7 boards=1 role=worktop
+seg h8 v7..v1 boards=1 role=shelf
+seg h9 v0..v4 boards=1 role=bottom
+seg h9 v4..v5 boards=1 role=bottom
+seg h9 v5..v6 boards=1 role=bottom
+seg h9 v7..v1 boards=1 role=shelf
+seg ha v0..v4 boards=1 role=top
+seg ha v4..v5 boards=1 role=top
+seg ha v5..v6 boards=1 role=top
+seg v0 h2..h8 boards=1 role=side
+seg v0 h9..ha boards=1 role=side
+seg v1 h2..h8 boards=1 role=side
+seg v1 h8..h9 boards=1 role=side
+seg v1 h9..ha boards=1 role=side
+seg v1 ha..h3 boards=1 role=side
+seg v4 h2..h8 boards=1 role=side
+seg v4 h9..ha boards=1 role=side
+seg v5 h2..h8 boards=1 role=side
+seg v5 h9..ha boards=1 role=side
+seg v6 h2..h8 boards=1 role=side
+seg v6 h9..ha boards=1 role=side
+seg v7 h2..h8 boards=1 role=side
+seg v7 h8..h9 boards=1 role=side
+seg v7 h9..ha boards=1 role=side
+seg v7 ha..h3 boards=1 role=side
+block burchak block carcass v6 v7 h2 h8
+block fartuk-1 void carcass v0 v4 h8 h9
+block fartuk-2 void carcass v4 v5 h8 h9
+block fartuk-3 void carcass v5 v6 h8 h9
+block fartuk-4 void carcass v6 v7 h8 h9
+block mojka block carcass v0 v4 h2 h8 tags=sink
+block penal block carcass v7 v1 h2 h3 tags=tall
+block plita reserved carcass v5 v6 h2 h8
+block so'rg'ich reserved carcass v5 v6 h9 ha tags=hood
+block tepa-1 void carcass v0 v4 ha h3
+block tepa-2 void carcass v4 v5 ha h3
+block tepa-3 void carcass v5 v6 ha h3
+block tepa-4 void carcass v6 v7 ha h3
+block yashiklar block carcass v4 v5 h2 h8
+block yuqori-1 block carcass v0 v4 h9 ha
+block yuqori-2 block carcass v4 v5 h9 ha
+block yuqori-3 block carcass v6 v7 h9 ha

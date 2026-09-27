@@ -1,0 +1,14 @@
+{
+  "id": "qorasu.machine.saw",
+  "uid": "01J8K2QF7M3NRA9V0012",
+  "version": "1.0.0",
+  "schema": 1,
+  "kind": "machine",
+  "origin": { "source": "local" },
+  "name": { "ru": "Пила цеха", "en": "Shop saw", "uz": "Sex arrasi" },
+  "fields": {
+    "kerfMm": { "type": "number", "value": 3.2, "unit": "mm", "domain": { "min": 1, "max": 6 } },
+    "bandingConvention": { "type": "algorithm", "value": "cut-undersize", "of": ["cut-undersize", "band-then-trim"] },
+    "partStepMm": { "type": "number", "value": 0.1, "unit": "mm", "domain": { "min": 0.1, "max": 1 } }
+  }
+}

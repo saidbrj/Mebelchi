@@ -1,0 +1,41 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 380" width="620" height="380">
+  <style>
+    .c{fill:none;stroke:#1a1a1a;stroke-width:2}
+    .p{fill:#e8e2d4;stroke:#1a1a1a;stroke-width:2}
+    .f{fill:#cfe6dc;stroke:#00815c;stroke-width:2}
+    .x{fill:#f7d4d2;stroke:#e53935;stroke-width:2}
+    .d{stroke:#00815c;stroke-width:1.2;marker-start:url(#a);marker-end:url(#a)}
+    .t{font:600 15px system-ui,sans-serif;fill:#1a1a1a}
+    .n{font:600 13px system-ui,sans-serif;fill:#00815c}
+    .m{font:500 11.5px ui-monospace,monospace;fill:#6b6355}
+    .r{font:600 12px ui-monospace,monospace;fill:#e53935}
+  </style>
+  <defs><marker id="a" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto">
+    <path d="M0,3.5 L7,0 L7,7 Z" fill="#00815c"/></marker></defs>
+
+  <text class="t" x="20" y="26">Угол · вид сверху · почему брусок 53, а не «примерно 50»</text>
+
+  <!-- стена A, горизонтальная -->
+  <rect class="c" x="60" y="60" width="300" height="90"/>
+  <text class="m" x="150" y="108">стена A · база 600</text>
+  <rect class="f" x="60" y="150" width="300" height="18"/>
+  <text class="m" x="66" y="184">фасад A</text>
+  <!-- ручка A торчит вниз, в проём стены B -->
+  <rect class="x" x="300" y="168" width="46" height="10"/>
+  <text class="r" x="352" y="178">ручка 30</text>
+
+  <!-- доборный брусок -->
+  <rect class="p" x="360" y="60" width="30" height="220"/>
+  <line class="d" x1="360" y1="300" x2="390" y2="300"/>
+  <text class="n" x="352" y="320">53</text>
+
+  <!-- стена B, вертикальная -->
+  <rect class="c" x="390" y="60" width="150" height="220"/>
+  <text class="m" x="400" y="80">стена B</text>
+  <rect class="f" x="390" y="190" width="150" height="18"/>
+  <text class="m" x="400" y="228">ящик B выезжает сюда</text>
+  <path d="M465,208 L465,266" stroke="#00815c" stroke-width="2" marker-end="url(#a)"/>
+
+  <text class="m" x="60" y="344">53 = фасад 18 + вылет ручки 30 + запас 5 · все три числа в файле</text>
+  <text class="r" x="60" y="364">уже — и ящик стены B находит ручку стены A при первом выезде</text>
+</svg>

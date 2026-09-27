@@ -1,0 +1,14 @@
+{
+  "id": "eman.edge.pvc-0.4mm",
+  "uid": "01J8K2QF7M3NRA9V0123",
+  "version": "1.0.0",
+  "schema": 1,
+  "kind": "edge",
+  "origin": { "source": "builtin" },
+  "name": { "ru": "Кромка 0,4 мм (K2, скрытые торцы)", "en": "Edge 0.4 mm (K2, hidden edges)", "uz": "Jiyak 0,4 mm (K2, yashirin)" },
+  "fields": {
+    "thickness": { "type": "number", "value": 0.4, "unit": "mm", "domain": { "min": 0.4, "max": 3 } },
+    "radius": { "type": "number", "value": 0, "unit": "mm", "domain": { "min": 0, "max": 3 }, "note": "not measured: a 0.4 edge is not radius-milled here (0 = no radius). Confirm in the workshop." },
+    "material": { "type": "ref", "value": "01J8K2QF7M3NRA9V0001" }
+  }
+}

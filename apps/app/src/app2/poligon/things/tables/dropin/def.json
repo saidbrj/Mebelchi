@@ -1,0 +1,64 @@
+{
+  "id": "qorasu.table.dropin",
+  "uid": "01J8K2QF7M3NRA9V0122",
+  "version": "1.0.0",
+  "schema": 1,
+  "kind": "table",
+  "origin": { "source": "local" },
+  "name": {
+    "ru": "Врезка: мойка и варочная панель",
+    "en": "Drop-in sink and cooktop",
+    "uz": "O'rnatma idish va plita"
+  },
+  "fields": {
+    "sinkDropMm": {
+      "type": "number",
+      "value": 200,
+      "unit": "mm",
+      "domain": { "min": 120, "max": 300 }
+    },
+    "sinkPlumbingDropMm": {
+      "type": "number",
+      "value": 350,
+      "unit": "mm",
+      "domain": { "min": 250, "max": 500 }
+    },
+    "sinkPlumbingWidthMm": {
+      "type": "number",
+      "value": 250,
+      "unit": "mm",
+      "domain": { "min": 150, "max": 400 }
+    },
+    "hobDropMm": {
+      "type": "number",
+      "value": 50,
+      "unit": "mm",
+      "domain": { "min": 30, "max": 120 }
+    },
+    "hobVentGapMm": {
+      "type": "number",
+      "value": 75,
+      "unit": "mm",
+      "domain": { "min": 50, "max": 150 }
+    },
+    "toPartitionMm": {
+      "type": "number",
+      "value": 50,
+      "unit": "mm",
+      "domain": { "min": 20, "max": 120 },
+      "frame": {
+        "of": "cutout",
+        "datum": "edge",
+        "direction": "x",
+        "sign": "outward-positive",
+        "compose": "max"
+      }
+    },
+    "railWidthMm": {
+      "type": "number",
+      "value": 80,
+      "unit": "mm",
+      "domain": { "min": 60, "max": 150 }
+    }
+  }
+}

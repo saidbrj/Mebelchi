@@ -1,0 +1,14 @@
+{
+  "id": "eman.edge.abs-2mm",
+  "uid": "01J8K2QF7M3NRA9V0002",
+  "version": "1.0.0",
+  "schema": 1,
+  "kind": "edge",
+  "origin": { "source": "builtin" },
+  "name": { "ru": "Кромка ABS 2 мм", "en": "ABS edge 2 mm", "uz": "ABS jiyak 2 mm" },
+  "fields": {
+    "thickness": { "type": "number", "value": 2, "unit": "mm", "domain": { "min": 0.4, "max": 3 } },
+    "radius": { "type": "number", "value": 1, "unit": "mm", "domain": { "min": 0, "max": 3 } },
+    "material": { "type": "ref", "value": "01J8K2QF7M3NRA9V0001" }
+  }
+}

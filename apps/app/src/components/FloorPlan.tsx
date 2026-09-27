@@ -15,6 +15,9 @@ import {
   type Fitting,
 } from "../model/room";
 import { subAreas } from "../model/subareas";
+import { cabFootprints, rectCorners } from "../model/footprint";
+import { DEFAULT_REVEAL, type KitchenLayout } from "../model/runPlan";
+import type { Cabinet } from "../model/cabinet";
 
 const T = 100; // wall thickness (mm)
 const MARGIN = 1500;
@@ -222,6 +225,9 @@ export function FloorPlan({
   onMoveOpening,
   onSetOpeningWidth,
   onEditNumber,
+  cabs,
+  runLayout,
+  reveal,
 }: {
   points: Pt[];
   openings: Opening[];
@@ -255,6 +261,9 @@ export function FloorPlan({
   onMoveOpening: (id: string, t: number) => void;
   onSetOpeningWidth: (id: string, width: number) => void;
   onEditNumber: (clientX: number, clientY: number, value: number, apply: (v: number) => void) => void;
+  cabs?: Cabinet[];
+  runLayout?: KitchenLayout;
+  reveal?: number;
 }) {
   const svgRef = useRef<SVGSVGElement>(null);
   const dragRef = useRef<Drag | null>(null);
@@ -283,6 +292,10 @@ export function FloorPlan({
   // all wall segments (room edges + drawn-wall segments) an item can attach to
   const segs = wallSegments(points, interiorWalls);
   const segEnds = (wall: number): { a: Pt; b: Pt } => segs[wall] ?? { a: points[0], b: points[0] };
+
+  const foots = cabs && cabs.length > 0
+    ? cabFootprints(cabs, points, waterWall, runLayout ?? "all", openings, reveal ?? DEFAULT_REVEAL)
+    : [];
 
   const toSvg = (clientX: number, clientY: number) => {
     const svg = svgRef.current;
@@ -698,6 +711,22 @@ export function FloorPlan({
         <path d={`${d} ${dInner}`} fillRule="evenodd" fill="#d6d6d6" />
         <path d={dInner} fill={coveringColor} />
         <path d={dInner} fill="url(#planks)" />
+        {/* Ghost furniture in 2D plan */}
+        {foots.map((f) => {
+          const corners = rectCorners(f.cx, f.cy, f.ux, f.uy, f.ix, f.iy, f.w, f.depth);
+          const ptsStr = corners.map((p) => `${p.x},${p.y}`).join(" ");
+          return (
+            <g key={`cab-foot-${f.id}`} opacity={0.42}>
+              <polygon
+                points={ptsStr}
+                fill={f.upper ? "rgba(0, 172, 122, 0.12)" : "rgba(0, 172, 122, 0.22)"}
+                stroke="#00ac7a"
+                strokeWidth={f.upper ? 3 : 4}
+                strokeDasharray={f.upper ? "8 6" : undefined}
+              />
+            </g>
+          );
+        })}
         <path d={d} fill="none" stroke="#b4b4b4" strokeWidth={6} />
         <path d={dInner} fill="none" stroke="#c7c7c7" strokeWidth={4} />
         {interiorWalls.map((poly, wi) => {

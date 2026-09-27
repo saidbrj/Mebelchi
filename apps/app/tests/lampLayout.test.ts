@@ -147,3 +147,95 @@ describe("switching between them", () => {
     expect(litLamps(scene).map((l) => l.position.z).join()).toBe(gridZ);
   });
 });
+
+describe("track lighting, visibility, color temp, and 3D placement", () => {
+  it("supports track lighting kind and lays out rail bars and spot samples", () => {
+    const scene = new THREE.Scene();
+    const rig = buildRig(scene, stubRenderer(), { preset: "evening", shadows: false });
+    rig.aim(ROOM);
+    rig.setLampKind("track");
+    rig.setLampCount(4);
+    const lamps = litLamps(scene);
+    expect(lamps).toHaveLength(4);
+    expect(spread(lamps.map((l) => l.position.z))).toBeGreaterThan(0.3);
+  });
+
+  it("forceFixturesVisible makes fixtures visible even when camera is looking down from above the ceiling", () => {
+    const scene = new THREE.Scene();
+    const rig = buildRig(scene, stubRenderer(), { preset: "evening", shadows: false });
+    rig.aim(ROOM);
+    rig.setLampCount(4);
+
+    const camera = new THREE.PerspectiveCamera();
+    camera.position.set(0, 5.0, 4); // high above ceiling (ceiling is 2.7m)
+    rig.follow(camera, new THREE.Vector3(0, 1, 0));
+
+    // By default, above ceiling hides fixtures
+    const defaultVisible = rig.getFixtures().filter((f) => f.visible);
+    expect(defaultVisible).toHaveLength(0);
+
+    // With forceFixturesVisible(true) (e.g. when lighting sheet is active), fixtures show
+    rig.setForceFixturesVisible(true);
+    rig.follow(camera, new THREE.Vector3(0, 1, 0));
+    const forcedVisible = rig.getFixtures().filter((f) => f.visible);
+    expect(forcedVisible).toHaveLength(4);
+  });
+
+  it("setLampTemp updates color temperature correctly", () => {
+    const scene = new THREE.Scene();
+    const rig = buildRig(scene, stubRenderer(), { preset: "evening", shadows: false });
+    rig.aim(ROOM);
+    rig.setLampTemp(2700);
+    const warmHex = litLamps(scene)[0].color.getHex();
+    rig.setLampTemp(5000);
+    const coolHex = litLamps(scene)[0].color.getHex();
+    expect(warmHex).not.toBe(coolHex);
+  });
+
+  it("setWallOffset adjusts distance from walls", () => {
+    const scene = new THREE.Scene();
+    const rig = buildRig(scene, stubRenderer(), { preset: "evening", shadows: false });
+    rig.aim(ROOM);
+    rig.setLampCount(4);
+
+    rig.setWallOffset(400); // close to walls -> wider spread
+    const wideX = spread(litLamps(scene).map((l) => l.position.x));
+
+    rig.setWallOffset(1200); // far from walls -> narrower spread towards room center
+    const narrowX = spread(litLamps(scene).map((l) => l.position.x));
+
+    expect(wideX).toBeGreaterThan(narrowX);
+  });
+
+  it("setCustomPositions positions fixtures and light targets at exact custom coordinates", () => {
+    const scene = new THREE.Scene();
+    const rig = buildRig(scene, stubRenderer(), { preset: "evening", shadows: false });
+    rig.aim(ROOM);
+    rig.setLampCount(2);
+
+    const custom = [
+      { x: 0.5, z: -0.2 },
+      { x: -0.8, z: 0.9 },
+    ];
+    rig.setCustomPositions(custom);
+
+    const fixtures = rig.getFixtures();
+    expect(fixtures[0].position.x).toBeCloseTo(0.5);
+    expect(fixtures[0].position.z).toBeCloseTo(-0.2);
+    expect(fixtures[1].position.x).toBeCloseTo(-0.8);
+    expect(fixtures[1].position.z).toBeCloseTo(0.9);
+  });
+
+  it("setPerimeterLed creates and disposes the perimeter LED cove mesh", () => {
+    const scene = new THREE.Scene();
+    const rig = buildRig(scene, stubRenderer(), { preset: "evening", shadows: false });
+    rig.aim(ROOM);
+
+    const countBefore = scene.children.length;
+    rig.setPerimeterLed(true, ROOM.points, 2.7);
+    expect(scene.children.length).toBeGreaterThan(countBefore);
+
+    rig.setPerimeterLed(false);
+    expect(scene.children.length).toBe(countBefore);
+  });
+});

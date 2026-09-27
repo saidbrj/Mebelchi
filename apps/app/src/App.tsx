@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { useStore } from "./store";
 import { useT } from "./i18n/useT";
 import { JourneyBar } from "./components/JourneyBar";
@@ -23,6 +24,7 @@ import { LoginNudge } from "./components/LoginNudge";
 import { SettingsModal } from "./components/SettingsModal";
 import { CatalogModal } from "./components/CatalogModal";
 import { isSupabaseConfigured } from "./lib/supabase";
+import { App2Screen } from "./app2/App2Screen";
 
 export default function App() {
   const t = useT();
@@ -33,6 +35,12 @@ export default function App() {
   const goTo = useStore((s) => s.goTo);
   const showPricing = useStore((s) => s.settings.showPricing);
 
+  useEffect(() => {
+    if (window.location.search.includes("app2") || window.location.hash.includes("app2")) {
+      goTo("app2");
+    }
+  }, [goTo]);
+
   // What the shared bar carries on the right, per document screen:
   //   Инженерия — its forward CTA, moved up out of the footer (the screen has no footer at all now)
   //   Передача  — a way HOME. It's the end of the journey, and until now finishing a kitchen left
@@ -40,9 +48,31 @@ export default function App() {
   //               export in the footer is still the primary action here.
   const barRight =
     screen === "engineering" ? (
-      <button className="step-next" onClick={next} type="button">
-        {showPricing ? t.footer.toCostShort : t.footer.toHandoffShort}
-      </button>
+      <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <button
+          className="step-next"
+          onClick={() => goTo("handoff")}
+          type="button"
+          style={{
+            background: "linear-gradient(135deg, #10b981, #059669)",
+            color: "#ffffff",
+            border: "none",
+            fontWeight: "bold",
+            display: "inline-flex",
+            alignItems: "center",
+            gap: 4,
+            boxShadow: "0 2px 8px rgba(16, 185, 129, 0.3)",
+            cursor: "pointer",
+          }}
+          title="Заказ на распил: Eman XLSX и Карта раскроя PDF"
+        >
+          <span>⚡</span>
+          <span>Распил</span>
+        </button>
+        <button className="step-next" onClick={next} type="button">
+          {showPricing ? t.footer.toCostShort : t.footer.toHandoffShort}
+        </button>
+      </div>
     ) : screen === "handoff" ? (
       <button className="step-next step-home" onClick={() => goTo("home")} type="button">
         {t.menu.home}
@@ -71,6 +101,19 @@ export default function App() {
         </div>
       );
     }
+  }
+
+  if (screen === "app2") {
+    return (
+      <App2Screen
+        onBack={() => {
+          useStore.getState().exitApp2(false);
+          if (window.location.search.includes("app2") || window.location.hash.includes("app2")) {
+            window.history.replaceState(null, "", window.location.pathname);
+          }
+        }}
+      />
+    );
   }
 
   // login / registration — reachable from the menu (or the soft nudge), not forced

@@ -1,0 +1,155 @@
+{
+  "id": "qorasu.table.island",
+  "uid": "01J8K2QF7M3NRA9V0090",
+  "version": "1.0.0",
+  "schema": 1,
+  "kind": "table",
+  "origin": {
+    "source": "local"
+  },
+  "name": {
+    "ru": "Остров: опрокидывание, свес, облицовка",
+    "en": "Island: tipping, overhang, cladding",
+    "uz": "Orol"
+  },
+  "fields": {
+    "overhangLimits": {
+      "type": "text",
+      "value": "ldsp-38:200,stone-20:150,stone-30:250,compact-12:150,wood-40:300"
+    },
+    "overhangEndPostMm": {
+      "type": "number",
+      "value": 350,
+      "unit": "mm",
+      "domain": {
+        "min": 200,
+        "max": 600
+      },
+      "frame": {
+        "of": "worktop",
+        "datum": "front",
+        "direction": "y",
+        "sign": "outward-positive",
+        "compose": "max"
+      }
+    },
+    "bracketPitchMm": {
+      "type": "number",
+      "value": 600,
+      "unit": "mm",
+      "domain": {
+        "min": 300,
+        "max": 1000
+      }
+    },
+    "tipSafetyFactor": {
+      "type": "number",
+      "value": 1.5,
+      "unit": "ratio",
+      "domain": {
+        "min": 1.1,
+        "max": 3
+      }
+    },
+    "childLoadKg": {
+      "type": "number",
+      "value": 30,
+      "unit": "kg",
+      "domain": {
+        "min": 15,
+        "max": 60
+      }
+    },
+    "claddingMinMm": {
+      "type": "number",
+      "value": 18,
+      "unit": "mm",
+      "domain": {
+        "min": 16,
+        "max": 40
+      },
+      "frame": {
+        "of": "island-back",
+        "datum": "outer",
+        "direction": "y",
+        "sign": "inward-positive",
+        "compose": "replace"
+      }
+    },
+    "shadowGapMm": {
+      "type": "number",
+      "value": 12,
+      "unit": "mm",
+      "domain": {
+        "min": 0,
+        "max": 30
+      },
+      "frame": {
+        "of": "island-back",
+        "datum": "bottom",
+        "direction": "z",
+        "sign": "inward-positive",
+        "compose": "replace"
+      }
+    },
+    "chaseMinMm": {
+      "type": "number",
+      "value": 50,
+      "unit": "mm",
+      "domain": {
+        "min": 30,
+        "max": 150
+      },
+      "frame": {
+        "of": "island-spine",
+        "datum": "centre",
+        "direction": "y",
+        "sign": "outward-positive",
+        "compose": "max"
+      }
+    },
+    "spineThicknessMm": {
+      "type": "number",
+      "value": 16,
+      "unit": "mm",
+      "domain": {
+        "min": 16,
+        "max": 22
+      },
+      "frame": {
+        "of": "island-spine",
+        "datum": "centre",
+        "direction": "y",
+        "sign": "inward-positive",
+        "compose": "replace"
+      }
+    },
+    "diningDepthMm": {
+      "type": "number",
+      "value": 350,
+      "unit": "mm",
+      "domain": {
+        "min": 250,
+        "max": 450
+      }
+    },
+    "jumboLengthMm": {
+      "type": "number",
+      "value": 3200,
+      "unit": "mm",
+      "domain": {
+        "min": 2400,
+        "max": 4200
+      }
+    },
+    "jumboWidthMm": {
+      "type": "number",
+      "value": 1600,
+      "unit": "mm",
+      "domain": {
+        "min": 900,
+        "max": 2000
+      }
+    }
+  }
+}

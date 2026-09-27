@@ -1,0 +1,7 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 110" role="img" aria-label="Saw kerf: material the blade removes between two parts">
+  <rect x="20" y="30" width="110" height="40" fill="#efe8da" stroke="#1a1a1a"/>
+  <rect x="133" y="30" width="110" height="40" fill="#efe8da" stroke="#1a1a1a"/>
+  <rect x="130" y="30" width="3" height="40" fill="#e53935"/>
+  <text x="150" y="24" font-family="sans-serif" font-size="10" fill="#e53935">kerf 3.2 mm — removed, not part of either piece</text>
+  <text x="20" y="92" font-family="sans-serif" font-size="10">datum: between two parts on the sheet · consumes yield, never part size</text>
+</svg>

@@ -1,0 +1,227 @@
+{
+  "id": "qorasu.profile.shop",
+  "uid": "01J8K2QF7M3NRA9V0010",
+  "version": "1.0.0",
+  "schema": 1,
+  "kind": "profile",
+  "origin": {
+    "source": "local"
+  },
+  "name": {
+    "ru": "Профиль цеха (Карасу)",
+    "en": "Shop profile (Qorasu)",
+    "uz": "Sex profili (Qorasu)"
+  },
+  "fields": {
+    "carcassMaterial": {
+      "type": "ref",
+      "value": "01J8K2QF7M3NRA9V0001"
+    },
+    "carcassThicknessMm": {
+      "type": "number",
+      "value": 16,
+      "unit": "mm",
+      "domain": {
+        "min": 8,
+        "max": 25
+      }
+    },
+    "bandDepths": {
+      "type": "text",
+      "value": "base:560,upper:300,antresol:300,bulkhead:300"
+    },
+    "heightBands": {
+      "type": "text",
+      "value": "plinth:@plinthHeightMm:above,base:870:below,worktop_gap:1320:above,upper:2150:below,antresol:2450:ceiling,bulkhead::ceiling"
+    },
+    "plinthHeightMm": {
+      "type": "number",
+      "value": 120,
+      "unit": "mm",
+      "domain": {
+        "min": 100,
+        "max": 150
+      },
+      "note": "founder 2026-09-17: plinth is a profile variable, 100–150, default 120. heightBands refers to it as @plinthHeightMm"
+    },
+    "tieShelfAboveMm": {
+      "type": "number",
+      "value": 2100,
+      "unit": "mm",
+      "domain": {
+        "min": 1200,
+        "max": 3000
+      }
+    },
+    "tieShelfAtMm": {
+      "type": "number",
+      "value": 870,
+      "unit": "mm",
+      "domain": {
+        "min": 300,
+        "max": 2000
+      }
+    },
+    "worktopDepthMm": {
+      "type": "number",
+      "value": 600,
+      "unit": "mm",
+      "domain": {
+        "min": 300,
+        "max": 1200
+      }
+    },
+    "shelfSetbackMm": {
+      "type": "number",
+      "value": 20,
+      "unit": "mm",
+      "domain": {
+        "min": 0,
+        "max": 100
+      }
+    },
+    "backThicknessMm": {
+      "type": "number",
+      "value": 3,
+      "unit": "mm",
+      "domain": {
+        "min": 3,
+        "max": 4
+      }
+    },
+    "backMode": {
+      "type": "enum",
+      "value": "overlay",
+      "of": [
+        "overlay",
+        "groove",
+        "none"
+      ],
+      "note": "founder 2026-09-17: our masters fix a plain back onto the rear edges (no groove). Source of the options: UI Exploration/v21-details.html"
+    },
+    "backOverlayShelfGapMm": {
+      "type": "number",
+      "value": 2,
+      "unit": "mm",
+      "domain": {
+        "min": 0,
+        "max": 10
+      },
+      "note": "overlay back: the shelf stops this far from the rear edge (v21: 'внахлёст → только зазор 2')"
+    },
+    "backGrooveOffsetMm": {
+      "type": "number",
+      "value": 12,
+      "unit": "mm",
+      "domain": {
+        "min": 6,
+        "max": 40
+      },
+      "note": "groove back: groove distance from the rear edge (v21, DB/27 4×8@12)"
+    },
+    "backGrooveWidthMm": {
+      "type": "number",
+      "value": 4,
+      "unit": "mm",
+      "domain": {
+        "min": 4,
+        "max": 10
+      },
+      "note": "groove back: groove width (v21)"
+    },
+    "backGrooveDepthMm": {
+      "type": "number",
+      "value": 8,
+      "unit": "mm",
+      "domain": {
+        "min": 4,
+        "max": 12
+      },
+      "note": "groove back: groove depth (v21)"
+    },
+    "backGrooveShelfGapMm": {
+      "type": "number",
+      "value": 1,
+      "unit": "mm",
+      "domain": {
+        "min": 0,
+        "max": 5
+      },
+      "note": "groove back: shelf stops this far in front of the groove (v21: 'отступ 12 + паз 4 + зазор 1')"
+    },
+    "defaultKromka": {
+      "type": "ref",
+      "value": "01J8K2QF7M3NRA9V0011"
+    },
+    "defaultHinge": {
+      "type": "ref",
+      "value": "01J8K2QF7M3NRA9V0031"
+    },
+    "innerDrawerInsetMm": {
+      "type": "number",
+      "value": 25,
+      "unit": "mm",
+      "domain": {
+        "min": 15,
+        "max": 40
+      }
+    },
+    "minCarcassMm": {
+      "type": "number",
+      "value": 150,
+      "unit": "mm",
+      "domain": {
+        "min": 50,
+        "max": 400
+      }
+    },
+    "minFillerMm": {
+      "type": "number",
+      "value": 3,
+      "unit": "mm",
+      "domain": {
+        "min": 1,
+        "max": 60
+      }
+    },
+    "minReservedMm": {
+      "type": "number",
+      "value": 3,
+      "unit": "mm",
+      "domain": {
+        "min": 1,
+        "max": 60
+      }
+    },
+    "epsilonMm": {
+      "type": "number",
+      "value": 1,
+      "unit": "mm",
+      "domain": {
+        "min": 1,
+        "max": 5
+      }
+    },
+    "residualPolicy": {
+      "type": "algorithm",
+      "value": "leftmost-absorbs",
+      "of": [
+        "leftmost-absorbs",
+        "last-absorbs"
+      ]
+    },
+    "transportMaxMm": {
+      "type": "number",
+      "value": 2400,
+      "unit": "mm",
+      "domain": {
+        "min": 600,
+        "max": 4000
+      }
+    },
+    "thicknessClasses": {
+      "type": "text",
+      "value": "16,18"
+    }
+  }
+}

@@ -54,6 +54,16 @@ export interface LedSpec {
   cornice: boolean;
   interior: boolean;
   temp: LedTemp;
+  ceilingKind?: "spot" | "linear" | "track";
+  ceilingCount?: number;
+  ceilingPerimeter?: boolean;
+  ceilingOffsetMm?: number;
+  ceilingSpread?: number;
+  preset?: "day" | "evening" | "studio";
+  sunAzimuth?: number;
+  sunElevation?: number;
+  lightingMode?: "sun" | "fixtures";
+  customPositions?: { x: number; z: number }[];
   /**
    * A door sensor / IR switch per lit run, rather than one switch on the wall. A convenience the
    * client either pays for or does not, so it is a toggle, not an assumption.
@@ -75,6 +85,12 @@ export const DEFAULT_LED: LedSpec = {
   interior: false,
   temp: 4000,
   sensor: false,
+  ceilingKind: "spot",
+  ceilingCount: 4,
+  ceilingPerimeter: false,
+  ceilingOffsetMm: 800,
+  preset: "evening",
+  lightingMode: "sun",
 };
 
 /** One continuous length of strip — what gets cut off the reel and screwed down. */

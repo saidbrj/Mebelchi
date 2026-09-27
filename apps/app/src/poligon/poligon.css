@@ -1,0 +1,357 @@
+/* ПОЛИГОН — internal lab chrome.
+ *
+ * One deliberate look, not a theme: a dark bench around a bright drawing. The elevation is a
+ * technical sheet and must stay light (ElevationGrid paints its own paper); everything around
+ * it goes dark so the drawing is the only thing that glows. Scoped entirely under `.pg` so it
+ * cannot leak into the real app, which shares this bundle's stylesheet.
+ *
+ * Colours: the bench is a desaturated slate with a faint green cast, borrowed from the app's own
+ * selection green (#00ac7a) so the two surfaces feel related without the lab pretending to be
+ * the product. */
+
+.pg {
+  --bench: #14181b;
+  --bench-2: #1b2024;
+  --bench-3: #232a2f;
+  --line: #2d353b;
+  --ink: #e8edf0;
+  --ink-2: #93a1a9;
+  --ink-3: #66757e;
+  --accent: #00ac7a;
+  --paper: #f7f8fa;
+  --warn: #d8a12a;
+
+  position: fixed;
+  inset: 0;
+  display: grid;
+  grid-template-rows: 52px 1fr;
+  background: var(--bench);
+  color: var(--ink);
+  font: 14px/1.45 -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+  -webkit-font-smoothing: antialiased;
+}
+
+/* ── top bar ─────────────────────────────────────────────────────────────── */
+.pg-bar {
+  display: flex;
+  align-items: center;
+  flex-wrap: nowrap;
+  gap: 24px;
+  padding: 0 16px;
+  background: var(--bench-2);
+  border-bottom: 1px solid var(--line);
+  white-space: nowrap;
+}
+
+.pg-brand {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+  font-weight: 650;
+  letter-spacing: 0.08em;
+  font-size: 13px;
+}
+
+.pg-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--accent);
+  box-shadow: 0 0 0 3px rgb(0 172 122 / 0.18);
+}
+
+.pg-sub {
+  margin-left: 4px;
+  padding: 2px 7px;
+  border: 1px solid var(--line);
+  border-radius: 4px;
+  color: var(--ink-3);
+  font-size: 10.5px;
+  font-weight: 500;
+  letter-spacing: 0.04em;
+  text-transform: uppercase;
+}
+
+.pg-readout {
+  color: var(--ink-2);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+}
+
+.pg-sep { margin: 0 8px; color: var(--ink-3); }
+
+.pg-modes {
+  margin-left: auto;
+  display: flex;
+  gap: 2px;
+  padding: 2px;
+  background: var(--bench);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.pg-modes button {
+  padding: 5px 13px;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: var(--ink-2);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+
+.pg-modes button:hover { color: var(--ink); }
+.pg-modes button.on { background: var(--bench-3); color: var(--ink); }
+
+.pg-update {
+  padding: 7px 14px;
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  background: var(--bench-3);
+  color: var(--ink);
+  font: inherit;
+  font-size: 12.5px;
+  cursor: pointer;
+}
+.pg-update:hover:not(:disabled) { border-color: var(--accent); }
+.pg-update:disabled { color: var(--ink-3); cursor: not-allowed; }
+
+/* ── body: stage + pane ──────────────────────────────────────────────────── */
+.pg-body {
+  display: grid;
+  grid-template-columns: 1fr 372px;
+  min-height: 0;
+}
+
+.pg-stage {
+  position: relative;
+  background: var(--paper);
+  overflow: hidden;
+}
+
+.pg-canvas { width: 100%; height: 100%; display: block; }
+
+.pg-pane {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
+  padding: 20px;
+  overflow-y: auto;
+  background: var(--bench-2);
+  border-left: 1px solid var(--line);
+}
+
+/* ── empty state ─────────────────────────────────────────────────────────── */
+.pg-empty { margin: auto 0; text-align: left; }
+
+.pg-empty-mark {
+  width: 26px;
+  height: 26px;
+  margin-bottom: 14px;
+  border: 1.5px dashed var(--ink-3);
+  border-radius: 5px;
+}
+
+.pg-empty h2 { margin: 0 0 8px; font-size: 15px; font-weight: 600; }
+.pg-empty p { margin: 0 0 10px; color: var(--ink-2); font-size: 13px; max-width: 34ch; }
+.pg-empty-note { color: var(--ink-3) !important; font-size: 12px !important; }
+
+/* ── selection ───────────────────────────────────────────────────────────── */
+.pg-pane-head { flex: none; display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.pg-rules { flex: none; }
+.pg-pane-head h2 { margin: 0; font-size: 15px; font-weight: 620; }
+
+.pg-id {
+  color: var(--ink-3);
+  font: 11px/1 ui-monospace, "SF Mono", Menlo, monospace;
+}
+
+.pg-facts {
+  /* the pane is a column flexbox; without this the grid gets crushed to a single clipped row
+     as soon as the rules list below it grows */
+  flex: none;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 1px;
+  background: var(--line);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.pg-facts > div {
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  padding: 9px 11px;
+  background: var(--bench);
+}
+
+.pg-facts span { color: var(--ink-3); font-size: 10.5px; letter-spacing: 0.05em; text-transform: uppercase; }
+.pg-facts b { font-weight: 560; font-size: 13.5px; font-variant-numeric: tabular-nums; }
+
+/* ── traced rules ────────────────────────────────────────────────────────── */
+.pg-rules h3 {
+  margin: 0 0 10px;
+  color: var(--ink-3);
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.07em;
+  text-transform: uppercase;
+}
+
+.pg-trace {
+  padding: 9px 0;
+  border-bottom: 1px solid var(--line);
+}
+
+.pg-trace:last-child { border-bottom: 0; }
+
+.pg-trace-head { display: flex; align-items: baseline; justify-content: space-between; gap: 12px; }
+.pg-trace-label { color: var(--ink-2); font-size: 12.5px; }
+.pg-trace-value { font-size: 13px; font-weight: 560; font-variant-numeric: tabular-nums; }
+
+.pg-trace-src {
+  display: block;
+  margin-top: 3px;
+  color: var(--accent);
+  font: 10.5px/1.4 ui-monospace, "SF Mono", Menlo, monospace;
+  opacity: 0.85;
+}
+
+/* ── derived boards ──────────────────────────────────────────────────────── */
+.pg-board {
+  padding: 10px 11px;
+  margin-bottom: 8px;
+  background: var(--bench);
+  border: 1px solid var(--line);
+  border-radius: 8px;
+}
+
+.pg-board-head { display: flex; align-items: baseline; justify-content: space-between; gap: 10px; }
+.pg-board-role { font-size: 13.5px; font-weight: 600; }
+.pg-board-size { font-size: 12px; color: var(--ink-2); font-variant-numeric: tabular-nums; }
+.pg-board-meta { margin: 2px 0 8px; font-size: 11px; color: var(--ink-3); }
+
+.pg-decided {
+  display: grid;
+  grid-template-columns: 54px 1fr;
+  gap: 2px 8px;
+  padding: 5px 0 0;
+}
+
+.pg-decided-label { color: var(--ink-3); font-size: 11px; }
+.pg-decided-value { font-size: 12.5px; font-weight: 560; }
+.pg-decided-value.bad { color: var(--warn); }
+.pg-decided-via {
+  grid-column: 2;
+  color: var(--accent);
+  font: 10px/1.4 ui-monospace, "SF Mono", Menlo, monospace;
+  opacity: 0.8;
+  word-break: break-word;
+}
+
+.pg-tally {
+  margin-top: 18px;
+  padding-top: 12px;
+  border-top: 1px solid var(--line);
+  color: var(--ink-3);
+  font-size: 12px;
+}
+.pg-tally b { color: var(--ink); font-variant-numeric: tabular-nums; }
+
+/* ── honest footer ───────────────────────────────────────────────────────── */
+.pg-todo {
+  flex: none;
+  padding: 12px 13px;
+  border-left: 2px solid var(--warn);
+  border-radius: 0 7px 7px 0;
+  background: var(--bench-3);
+  color: var(--ink-2);
+  font-size: 11.5px;
+  line-height: 1.55;
+}
+
+.pg-todo b {
+  display: block;
+  margin-bottom: 4px;
+  color: var(--warn);
+  font-size: 10.5px;
+  font-weight: 650;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+/* ── narrow window ───────────────────────────────────────────────────────────
+ * Полигон is a desktop bench and assumes a wide window. It still has to stay usable in a
+ * split/preview pane, so below 1000px the readout drops out of the bar and the inspector goes
+ * under the drawing instead of beside it — the drawing keeps the space, since that is the
+ * thing being read. */
+@media (max-width: 1000px) {
+  .pg-readout { display: none; }
+  .pg-body { grid-template-columns: 1fr; grid-template-rows: minmax(0, 1fr) minmax(0, 45%); }
+  .pg-pane { border-left: 0; border-top: 1px solid var(--line); }
+  .pg-todo { margin-top: 16px; }
+}
+
+/* ── the wall, drawn from the engine ─────────────────────────────────────── */
+.pg-canvas { width: 100%; height: 100%; display: block; touch-action: none; }
+
+.pg-board-hit { cursor: pointer; }
+.pg-board-hit:hover { stroke: var(--accent); stroke-width: 2.5; }
+.pg-board-sel { cursor: pointer; }
+.pg-junction { cursor: pointer; }
+.pg-handle { cursor: ew-resize; }
+.pg-handle:hover rect:last-child { fill: var(--accent); }
+
+.pg-svg-block { font: 500 62px var(--font-ui); fill: #a49c8d; letter-spacing: .04em; }
+.pg-svg-dim { font: 700 86px var(--font-mono); fill: #00815c; }
+.pg-svg-stop { font: 600 64px var(--font-mono); fill: #00ac7a; }
+
+/* ── cut list ────────────────────────────────────────────────────────────── */
+.pg-cut { width: 100%; border-collapse: collapse; font-size: 12.5px; flex: none; }
+.pg-cut th {
+  text-align: left; padding: 6px 8px; color: var(--ink-3);
+  font-size: 10.5px; font-weight: 650; letter-spacing: .06em; text-transform: uppercase;
+  border-bottom: 1px solid var(--line);
+}
+.pg-cut td { padding: 7px 8px; border-bottom: 1px solid var(--line); }
+.pg-cut td.num { text-align: right; font-variant-numeric: tabular-nums; font-family: var(--font-mono); font-size: 12px; }
+.pg-cut tbody tr:last-child td { border-bottom: 0; }
+
+.pg-metric {
+  margin-top: auto; padding: 10px 12px; border-radius: 8px;
+  background: var(--bench); color: var(--ink-2); font-size: 11.5px; line-height: 1.5;
+}
+.pg-metric b { color: var(--ink); font-variant-numeric: tabular-nums; }
+.pg-metric span { display: block; margin-top: 3px; color: var(--ink-3); }
+
+/* junction options stack rather than sit in a row — three long Russian labels */
+.pg-modes-block { flex-direction: column; gap: 3px; margin: 8px 0 0; }
+.pg-modes-block button { text-align: left; padding: 8px 11px; }
+.pg-modes-block button:disabled { opacity: .32; cursor: not-allowed; }
+
+/* ── the three planes ─────────────────────────────────────────────────────
+   All three sizes are always on screen; the toggle says which one you are
+   working in. `53` §1 — the app never picks a plane silently, because the
+   same file is cut differently in two workshops. */
+.pg-planes { margin: 0 0 10px; flex-wrap: wrap; }
+.pg-planes button { flex: 1 1 auto; font-size: 11px; padding: 7px 8px; }
+
+.pg-cut th.on { color: var(--ink); }
+.pg-cut td.on { color: var(--ink); font-weight: 650; }
+.pg-cut td:not(.on).num { color: var(--ink-3); }
+
+/* the band column is a glance, not a table: four thin chips on one line, hover for which edge */
+.pg-band { display: flex; gap: 2px; flex-wrap: nowrap; }
+.pg-band span {
+  padding: 1px 3px; border-radius: 3px; background: var(--bench);
+  font: 600 10px var(--font-mono); color: var(--ink-2); cursor: help;
+}
+
+.pg-cut-wrap { overflow-x: auto; margin: 0 -12px; padding: 0 12px; }
+.pg-cut th, .pg-cut td { padding: 6px 5px; white-space: nowrap; }
+.pg-cut td.num, .pg-cut th:nth-child(n+3) { font-size: 11.5px; }
+
+.pg-kerf { margin-top: 12px; }

@@ -5,6 +5,9 @@
   "description": "Mebelchi headless engine core — UI-free, single entry point (solvePreview/solveFull).",
   "type": "module",
   "scripts": {
+    "dev": "npm --prefix apps/app run dev",
+    "app:build": "npm --prefix apps/app run build",
+    "app:typecheck": "npm --prefix apps/app run typecheck",
     "test": "vitest run",
     "test:watch": "vitest",
     "typecheck": "tsc --noEmit",

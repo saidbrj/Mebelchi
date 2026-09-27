@@ -7,10 +7,11 @@ import { create } from "zustand";
 import { MATERIALS, mk, dedupeIds, styleOf, frontOf, type Cabinet, type FinishKey, type FrontProfile } from "./model/cabinet";
 import { fillGapSpan, firstFitX, parkX } from "./model/fill";
 import { dockAll, cabFootprints, footsClash } from "./model/footprint";
-import { generateVariants as solveVariants, type GenVariant, type KitchenStyle, type Zone, type FridgeType, type OvenType, type HoodType, type WallBand } from "./model/layout";
+import { generateVariants as solveVariants, wallBandsFor, type GenVariant, type KitchenStyle, type Zone, type FridgeType, type OvenType, type HoodType, type WallBand } from "./model/layout";
 import { isTiled, runFloor, resolveLayout, wallRows } from "./model/resolve";
 import { maxCabH, cabDepth, isOuterCorner, bandsOverlap, cabBand, FOOT_DEPTH_MM, MIN_H, D_MIN, D_MAX } from "./model/bands";
 import { resizeCabs, setBasesH, editRows, seatCorner, seatOuterCorner, healRunStarts, healCornerUnits, type ResizeBounds, type RowEdit } from "./model/rowOps";
+import { adaptCabinetsToRoom } from "./model/roomAdapt";
 import { mergeRow, unmergeRow, healCarcassGroups, joinSeam, splitSeam, boxMates, hangersOn } from "./model/carcassGroups";
 import {
   editSheet,
@@ -139,7 +140,8 @@ export type Screen =
   | "preview"
   | "engineering"
   | "cost"
-  | "handoff";
+  | "handoff"
+  | "app2";
 
 // ROOM FIRST. The quiz used to sit here as a hard gate — four questions, one of them ("what shape
 // is your kitchen?") asked BEFORE the user had drawn a single wall, when the room itself answers
@@ -150,15 +152,8 @@ export type Screen =
 // a «Параметры» sheet, where each choice is made while looking at the kitchen it changes. Unanswered
 // ones fall back to sensible defaults, which `generateVariants` has always had.
 export const FLOW: Screen[] = [
-  // "space" (the standalone shape picker) was retired: a new project opens straight on the room
-  // editor, which carries the same shape choice inline. The Screen type keeps "space" for legacy
-  // saved projects — openProject coerces any that resume onto it (it's no longer in FLOW).
   "details",
-  "variants",
   "configure",
-  "preview", // «Рендер» — the payoff step. Always in the flow now; only the AI inside it is held.
-  "engineering",
-  "cost",
   "handoff",
 ];
 
@@ -204,6 +199,16 @@ export const HW_GRADE_LABEL: Record<HwGrade, string> = {
   std: "Стандарт",
   premium: "Премиум",
 };
+
+export interface TemplateLayoutOptions {
+  fridge?: FridgeType;
+  oven?: OvenType;
+  hood?: HoodType;
+  dishwasher?: boolean;
+  water?: "left" | "center" | "right";
+  wallBand?: WallBand;
+  stylePreset?: KitchenStyle;
+}
 
 export interface AppState {
   // journey
@@ -330,6 +335,12 @@ export interface AppState {
   adviceApplied: boolean;
   exported: boolean;
 
+  // App 2 — cabinet editor ("smart object" pattern)
+  /** Which cabinet is currently open in the App 2 editor. null = not editing. */
+  app2CabId: string | null;
+  /** Screen to return to when the App 2 editor is closed. */
+  app2ReturnScreen: Screen;
+
   // actions — quiz
   pickQuiz: (id: string, v: string) => void;
   // actions — nav
@@ -432,6 +443,13 @@ export interface AppState {
   // phase B — variant generation
   generateVariants: () => void;
   selectVariant: (i: number) => void;
+  applyLayoutTemplate: (
+    layoutKind: KitchenLayout,
+    targetWall?: number,
+    wallBand?: WallBand,
+    stylePreset?: KitchenStyle,
+    opts?: TemplateLayoutOptions
+  ) => void;
   /** START FROM SCRATCH — skip the generated options and open the constructor on a BARE room: no
    *  cabinets, just the empty grid on every wall, ready to fill. For the seller who is going to
    *  rebuild the auto-layout anyway (which is most of them). The room still decides the run shape;
@@ -447,6 +465,11 @@ export interface AppState {
   clearSel: () => void;
   /** add/remove a module id from the selection (a tap in the 3D). Keeps `selIdx` on the primary. */
   toggleSelId: (id: string) => void;
+  /** ENTER the App 2 cabinet editor for a specific module (the "smart object" double-click). */
+  enterApp2: (cabId: string) => void;
+  /** EXIT the App 2 editor. `apply` = write changes back to the Cabinet; `session` is the
+   *  kernel Session returned by the editor (opaque here — the bridge reads it). */
+  exitApp2: (apply: boolean, session?: unknown) => void;
   /** push a style patch (front / handle / door …) onto EVERY selected module at once. */
   applyToSelected: (patch: Partial<Cabinet>) => void;
   /** push a finish (part → colour) onto every selected module at once. */
@@ -489,6 +512,13 @@ export interface AppState {
   resetHangers: (id: string) => void;
   /** merge a finish (part → colour) into every module — the editor's "apply to all" */
   applyFinishToAll: (finish: Partial<Record<FinishKey, number>>) => void;
+  /** apply complete style package (fronts, handles, materials, glass doors) across the kitchen */
+  applyStylePackage: (pkg: {
+    frontUpper?: FrontProfile;
+    frontBase?: FrontProfile;
+    handle?: number;
+    finish?: Partial<Record<FinishKey, number>>;
+  }) => void;
   /** apply a patch (e.g. handle type, fill) to every module — "apply to all" scope */
   patchAllCabs: (patch: Partial<Cabinet>) => void;
   /** add a NEW module from the catalog (model/addCatalog) — auto-fits into the first
@@ -668,7 +698,7 @@ export interface AppState {
 // (everything `newProject` should reset; transient UI + project id live outside).
 function freshDesign() {
   return {
-    screen: "details" as Screen, // a new project opens on the ROOM EDITOR, not a shape picker
+    screen: "details" as Screen, // Room Editor: Step 1 walls & lighting
     qi: 0,
     quiz: {} as Record<string, string[]>,
     editing: false,
@@ -717,6 +747,9 @@ function freshDesign() {
     recFixed: false,
     adviceApplied: false,
     exported: false,
+    // App 2 — cabinet editor
+    app2CabId: null as string | null,
+    app2ReturnScreen: "configure" as Screen,
   };
 }
 
@@ -801,39 +834,18 @@ export const useStore = create<AppState>((set, get) => ({
     const s = get();
     switch (s.screen) {
       case "details":
-        set({ screen: "variants" });
-        break;
-      case "variants": {
-        const chosen = s.genVariants[s.variant];
-        if (!chosen) return; // nothing generated yet — CTA is disabled anyway
-        // commit the chosen layout + finish to the editable run on the way into the
-        // constructor; re-commit only when the selection changed so edits survive
-        if (s.cabsFrom !== s.variant) {
-          // Commit the variant EXACTLY as solved — same layout, same run indices, so nothing re-anchors
-          // or shifts on the way in. (An earlier remap to an "all-walls" shape is what moved cabinets.)
-          set({ cabs: chosen.cabs.map((c) => ({ ...c })), cabsFrom: s.variant, selIdx: 0, runLayout: chosen.layout, runStyle: chosen.style, cabsPast: [], cabsFuture: [] });
-        }
         set({ screen: "configure" });
         break;
-      }
+      case "variants":
       case "configure":
-        set({ screen: "preview" }); // → «Рендер»
+        set({ screen: "handoff" });
         break;
       case "preview":
-        set({ screen: "engineering" });
-        break;
       case "engineering":
-        // skip the Смета step entirely when the seller has pricing turned off
-        set({ screen: s.settings.showPricing ? "cost" : "handoff" });
-        break;
       case "cost":
         set({ screen: "handoff" });
         break;
       case "handoff":
-        // actually run the export/share (send SWJ008 + DXF + CSV to production) — not just
-        // flip a flag. Re-runnable, so a second tap shares again instead of doing nothing.
-        // only stamp the deal "exported" when files actually went out — the handoff screen refuses
-        // when a module is drawn too small for its own hardware (model/minSize.ts)
         if (runExport() && !s.exported) set({ exported: true });
         break;
     }
@@ -841,14 +853,13 @@ export const useStore = create<AppState>((set, get) => ({
 
   back: () => {
     const s = get();
-    // the Смета step drops out of the journey when pricing is off — so "back" from Передача
-    // returns to Инженерия, not an unreachable price screen
-    const flow = FLOW.filter((sc) => sc !== "cost" || s.settings.showPricing);
-    const i = flow.indexOf(s.screen);
-    if (i > 0) set({ screen: flow[i - 1] });
-    // the room editor is the FIRST journey step now (the shape picker is gone) — so its ← has no
-    // previous step; leave to the home hub instead of being a dead button. goTo saves on the way out.
-    else if (i === 0) get().goTo("home");
+    if (s.screen === "handoff" || s.screen === "engineering" || s.screen === "cost" || s.screen === "preview") {
+      set({ screen: "configure" });
+    } else if (s.screen === "configure" || s.screen === "variants") {
+      set({ screen: "details" });
+    } else {
+      get().goTo("home");
+    }
   },
 
   goTo: (screen) => {
@@ -871,17 +882,23 @@ export const useStore = create<AppState>((set, get) => ({
   clearPendingWater: () => set({ pendingWater: false }),
 
   setShape: (shape) =>
-    set((s) => ({
-      past: [...s.past.slice(-49), snapshot(s)],
-      future: [],
-      shape,
-      roomPoints: roomOutlineMm(shape),
-      openings: defaultOpenings(roomOutlineMm(shape)),
-      interiorWalls: [],
-      fittings: [],
-      wallSurfaces: {},
-      waterWall: null,
-    })),
+    set((s) => {
+      const np = roomOutlineMm(shape);
+      const adapted = adaptCabinetsToRoom(s.cabs, s.roomPoints, np, s.waterWall, shape, s.openings, s.reveal);
+      return {
+        past: [...s.past.slice(-49), snapshot(s)],
+        future: [],
+        shape,
+        roomPoints: np,
+        openings: defaultOpenings(np),
+        interiorWalls: [],
+        fittings: [],
+        wallSurfaces: {},
+        waterWall: null,
+        cabs: adapted.cabs,
+        grids: adapted.grids,
+      };
+    }),
   setWater: (water) => set({ water }),
   toggleConstraint: (c) =>
     set((s) => ({
@@ -961,7 +978,8 @@ export const useStore = create<AppState>((set, get) => ({
     set((s) => {
       const p = s.roomPoints.slice();
       p[i] = { x: snap100(x), y: snap100(y) };
-      return { roomPoints: p };
+      const adapted = adaptCabinetsToRoom(s.cabs, s.roomPoints, p, s.waterWall, s.runLayout, s.openings, s.reveal);
+      return { roomPoints: p, cabs: adapted.cabs, grids: adapted.grids };
     }),
 
   // move a whole wall (both endpoints) — used for edge dragging
@@ -971,7 +989,8 @@ export const useStore = create<AppState>((set, get) => ({
       const p = s.roomPoints.slice();
       p[i] = { x: snap100(a.x), y: snap100(a.y) };
       p[(i + 1) % n] = { x: snap100(b.x), y: snap100(b.y) };
-      return { roomPoints: p };
+      const adapted = adaptCabinetsToRoom(s.cabs, s.roomPoints, p, s.waterWall, s.runLayout, s.openings, s.reveal);
+      return { roomPoints: p, cabs: adapted.cabs, grids: adapted.grids };
     }),
 
   // resize wall `i` (points[i]→points[i+1]) to `length`, moving endpoint a or b
@@ -991,7 +1010,8 @@ export const useStore = create<AppState>((set, get) => ({
       } else {
         p[i] = { x: snap100(b.x - ux * length), y: snap100(b.y - uy * length) };
       }
-      return { roomPoints: p }; // history handled by the caller (beginEdit)
+      const adapted = adaptCabinetsToRoom(s.cabs, s.roomPoints, p, s.waterWall, s.runLayout, s.openings, s.reveal);
+      return { roomPoints: p, cabs: adapted.cabs, grids: adapted.grids };
     }),
 
   // WIDTH = the length of edge 0 (p0→p1); DEPTH = the length of edge 1 (p1→p2). Both slide the FAR edge
@@ -1007,7 +1027,8 @@ export const useStore = create<AppState>((set, get) => ({
       const np = p.slice();
       np[1] = { x: Math.round(p[0].x + ux * w), y: Math.round(p[0].y + uy * w) };
       np[2] = { x: Math.round(p[3].x + ux * w), y: Math.round(p[3].y + uy * w) };
-      return { roomPoints: np };
+      const adapted = adaptCabinetsToRoom(s.cabs, s.roomPoints, np, s.waterWall, s.runLayout, s.openings, s.reveal);
+      return { roomPoints: np, cabs: adapted.cabs, grids: adapted.grids };
     }),
   setRoomDepth: (mm) =>
     set((s) => {
@@ -1019,7 +1040,8 @@ export const useStore = create<AppState>((set, get) => ({
       const np = p.slice();
       np[3] = { x: Math.round(p[0].x + vx * d), y: Math.round(p[0].y + vy * d) };
       np[2] = { x: Math.round(p[1].x + vx * d), y: Math.round(p[1].y + vy * d) };
-      return { roomPoints: np };
+      const adapted = adaptCabinetsToRoom(s.cabs, s.roomPoints, np, s.waterWall, s.runLayout, s.openings, s.reveal);
+      return { roomPoints: np, cabs: adapted.cabs, grids: adapted.grids };
     }),
 
   // slide an opening along its wall segment (clamped so it stays on the wall)
@@ -1495,6 +1517,81 @@ export const useStore = create<AppState>((set, get) => ({
       return { genVariants: withWalls, variant: 0, cabsFrom: -1 };
     }),
   selectVariant: (i) => set({ variant: i }),
+  applyLayoutTemplate: (layoutKind: KitchenLayout, targetWall?: number, wallBand?: WallBand, stylePreset?: KitchenStyle, opts?: TemplateLayoutOptions) => {
+    const s = get();
+    const effectiveWaterWall = targetWall != null ? targetWall : s.waterWall;
+    const { runs, waterRun } = planRuns(s.roomPoints, effectiveWaterWall, layoutKind, s.openings, undefined, s.reveal);
+    const variants = solveVariants({
+      layouts: [{ layout: layoutKind, runs: runs.map((r) => ({ kind: r.kind, len: r.len, cornerStart: r.cornerStart, cornerEnd: r.cornerEnd, openings: r.openings })), waterRun }],
+      ceiling: s.ceiling,
+      reveal: s.reveal,
+      water: opts?.water ?? (s.water === "none" ? "center" : s.water),
+      hasGas: s.constraints.includes("Газовая труба"),
+      fridge: opts?.fridge ? [opts.fridge] : ["integ"],
+      oven: opts?.oven ? [opts.oven] : ["tall"],
+      hood: opts?.hood ? [opts.hood] : ["integ"],
+      wall: (opts?.wallBand ?? wallBand) ? [(opts?.wallBand ?? wallBand)!] : [],
+      front: [],
+    });
+    const chosen = variants[0];
+    if (chosen) {
+      // For L and U shapes, generate the corner modules so the corner is fully fitted
+      let layoutCabs = chosen.cabs;
+      if (layoutKind === "l" || layoutKind === "u") {
+        const seatsFor = (side: number) => cornerUnits(s.roomPoints, effectiveWaterWall, layoutKind, s.openings, side);
+        const baseSide = cornerSideFor(FOOT_DEPTH_MM.base);
+        const baseCorner = seatsFor(baseSide);
+        if (baseCorner.length) {
+          const corners: Cabinet[] = baseCorner.map((cs) =>
+            mk({ kind: "base", corner: true, px: cs.px, pz: cs.pz, rot: cs.rot, w: cs.w, depth: cs.depth, armDepth: FOOT_DEPTH_MM.base, h: 720, fill: "shelves", count: 1, door: 0, handle: 0, run: 0 })
+          );
+          const effectiveBands = chosen.bands ?? wallBandsFor((opts?.wallBand ?? wallBand) ?? "single", s.ceiling, s.reveal);
+          for (let bi = 0; bi < effectiveBands.length; bi++) {
+            const b = effectiveBands[bi];
+            for (const cs of seatsFor(cornerSideFor(b.depth))) {
+              corners.push(
+                mk({
+                  kind: "upper",
+                  corner: true,
+                  px: cs.px,
+                  pz: cs.pz,
+                  rot: cs.rot,
+                  w: cs.w,
+                  depth: cs.depth,
+                  armDepth: b.depth,
+                  h: b.h,
+                  mountY: bi === 0 ? undefined : b.mountY,
+                  fill: "shelves",
+                  count: 1,
+                  door: 0,
+                  handle: 0,
+                  run: 0,
+                })
+              );
+            }
+          }
+          layoutCabs = [...layoutCabs, ...corners];
+        }
+      }
+
+      // Preserve first cabinet finish if exists
+      const firstFin = s.cabs.find((c) => c.finish)?.finish;
+      const cabs = firstFin
+        ? layoutCabs.map((c) => ({ ...c, finish: { ...c.finish, ...firstFin } }))
+        : layoutCabs;
+      set({
+        ...cabHist(s),
+        cabs: cabs.map((c) => ({ ...c })),
+        runLayout: chosen.layout,
+        runStyle: { ...chosen.style, ...(opts?.stylePreset ?? stylePreset ?? {}), ...s.runStyle },
+        waterWall: effectiveWaterWall,
+        grids: {},
+        selIdx: 0,
+        cabsPast: [],
+        cabsFuture: [],
+      });
+    }
+  },
   startBlank: () =>
     set((s) => {
       // «С нуля» = build on any wall, in any shape, without being pre-committed to one. So it opens in
@@ -1531,6 +1628,30 @@ export const useStore = create<AppState>((set, get) => ({
       const primary = selIds[selIds.length - 1]; // the last-tapped member drives single-value readouts
       return { selIds, selIdx: primary ? s.cabs.findIndex((c) => c.id === primary) : -1 };
     }),
+
+  // ---- App 2: cabinet editor ("smart object" double-click) ----
+  enterApp2: (cabId) => {
+    const s = get();
+    set({ app2CabId: cabId, app2ReturnScreen: s.screen, screen: "app2" as Screen });
+  },
+  exitApp2: (apply, session) => {
+    const s = get();
+    if (apply && session && s.app2CabId) {
+      // Lazy-import the bridge to avoid coupling the store to the kernel at module level
+      import("./app2/bridge").then(({ sessionToCabinetPatch }) => {
+        const original = s.cabs.find((c) => c.id === s.app2CabId);
+        if (original) {
+          const patch = sessionToCabinetPatch(session as any, original);
+          const cabs = s.cabs.map((c) => (c.id === s.app2CabId ? { ...c, ...patch } : c));
+          set({ ...cabHist(s), cabs, screen: s.app2ReturnScreen, app2CabId: null });
+        } else {
+          set({ screen: s.app2ReturnScreen, app2CabId: null });
+        }
+      });
+    } else {
+      set({ screen: s.app2ReturnScreen, app2CabId: null });
+    }
+  },
   applyToSelected: (patch) =>
     set((s) => {
       const ids = new Set(s.selIds);
@@ -1790,7 +1911,46 @@ export const useStore = create<AppState>((set, get) => ({
       return live ? { cabs: withCounter } : { ...cabHist(s), cabs: withCounter };
     }),
   applyFinishToAll: (finish) =>
-    set((s) => ({ ...cabHist(s), cabs: s.cabs.map((c) => ({ ...c, finish: { ...c.finish, ...finish } })) })),
+    set((s) => ({
+      ...cabHist(s),
+      runStyle: {
+        ...s.runStyle,
+        ...(finish.facade != null ? { facade: finish.facade } : {}),
+        ...(finish.carcass != null ? { carcass: finish.carcass } : {}),
+        ...(finish.worktop != null ? { worktop: finish.worktop } : {}),
+        ...(finish.handle != null ? { handle: finish.handle } : {}),
+      },
+      cabs: s.cabs.map((c) => ({ ...c, finish: { ...c.finish, ...finish } })),
+    })),
+  applyStylePackage: (pkg) =>
+    set((s) => {
+      const newCabs = s.cabs.map((c) => {
+        const isUpper = c.kind === "upper";
+        const front = isUpper ? (pkg.frontUpper ?? c.front) : (pkg.frontBase ?? c.front);
+        const handle = pkg.handle !== undefined ? pkg.handle : c.handle;
+        const curFin = c.finish ?? {};
+        const newFin = pkg.finish ? { ...curFin, ...pkg.finish } : curFin;
+        return {
+          ...c,
+          ...(front !== undefined ? { front } : {}),
+          ...(handle !== undefined ? { handle } : {}),
+          ...(pkg.finish ? { finish: newFin } : {}),
+        };
+      });
+      const runStyle = {
+        ...s.runStyle,
+        ...(pkg.finish?.facade ? { facade: pkg.finish.facade } : {}),
+        ...(pkg.finish?.carcass ? { carcass: pkg.finish.carcass } : {}),
+        ...(pkg.finish?.worktop ? { worktop: pkg.finish.worktop } : {}),
+        ...(pkg.finish?.handle ? { handle: pkg.finish.handle } : {}),
+        ...(pkg.frontUpper === "glass" || pkg.frontUpper === "grid" ? { glassUppers: true } : { glassUppers: false }),
+      };
+      return {
+        ...cabHist(s),
+        cabs: newCabs,
+        runStyle,
+      };
+    }),
   patchAllCabs: (patch) =>
     set((s) => ({ ...cabHist(s), cabs: s.cabs.map((c) => ({ ...c, ...patch })) })),
   addCab: (tpl, preferredRun, topBand) => {

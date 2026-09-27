@@ -1,0 +1,29 @@
+{
+  "id": "qorasu.table.part-types",
+  "uid": "01J8K2QF7M3NRA9V0124",
+  "version": "1.0.0",
+  "schema": 1,
+  "kind": "table",
+  "origin": {
+    "source": "local"
+  },
+  "name": {
+    "ru": "Типы деталей: имена и отступы",
+    "en": "Part types: names and insets",
+    "uz": "Detal turlari: nomlar va chekinishlar"
+  },
+  "fields": {
+    "names": {
+      "type": "text",
+      "value": "side:боковина,bottom:дно,top:крышка,shelf:полка,divider:перегородка,rail:царга,spacer:проставка,front:фасад,back:задняя стенка"
+    },
+    "insets": {
+      "type": "text",
+      "value": "shelf:front=shelfSetbackMm|back=backOverlayShelfGapMm,divider:front=shelfSetbackMm|back=backOverlayShelfGapMm"
+    },
+    "joints": {
+      "type": "text",
+      "value": "*=confirmat-7x50,shelf×side=confirmat-7x50,divider×top=confirmat-7x50,divider×bottom=confirmat-7x50"
+    }
+  }
+}

@@ -1,0 +1,30 @@
+fdl 1
+wall 2453x2400 left=against-wall right=against-wall
+next 8
+line v0 v @0
+line v1 v @2453
+line v6 v @653
+line v7 v @1553
+line h2 h @0
+line h3 h @2400
+line h4 h @150
+line h5 h @870
+seg h2 v6..v7 boards=1 role=plinth
+seg h2 v7..v1 boards=1 role=plinth
+seg h4 v6..v7 boards=1 role=bottom
+seg h4 v7..v1 boards=1 role=bottom
+seg h5 v0..v6 boards=1 role=worktop
+seg h5 v6..v7 boards=1 role=worktop
+seg h5 v7..v1 boards=1 role=worktop
+seg v1 h4..h5 boards=1 role=side
+seg v6 h4..h5 boards=1 role=side
+seg v7 h4..h5 boards=1 role=side
+block r-варочная block carcass v6 v7 h4 h5
+block r-варочная-верх void carcass v6 v7 h5 h3
+block r-варочная-цоколь void carcass v6 v7 h2 h4
+block r-шкаф block carcass v7 v1 h4 h5
+block r-шкаф-верх void carcass v7 v1 h5 h3
+block r-шкаф-цоколь void carcass v7 v1 h2 h4
+block угол-верх void carcass v0 v6 h5 h3
+block угол-занят reserved carcass v0 v6 h4 h5
+block угол-цоколь void carcass v0 v6 h2 h4

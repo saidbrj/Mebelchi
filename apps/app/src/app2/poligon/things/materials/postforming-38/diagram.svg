@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 300" width="560" height="300">
+  <style>
+    .c{fill:#f2efe9;stroke:#1a1a1a;stroke-width:2}
+    .d{stroke:#00815c;stroke-width:1.2;marker-start:url(#a);marker-end:url(#a)}
+    .t{font:600 15px system-ui,sans-serif;fill:#1a1a1a}
+    .n{font:500 13px system-ui,sans-serif;fill:#00815c}
+    .m{font:500 12px ui-monospace,monospace;fill:#6b6355}
+  </style>
+  <defs><marker id="a" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto">
+    <path d="M0,3.5 L7,0 L7,7 Z" fill="#00815c"/></marker></defs>
+
+  <text class="t" x="20" y="28">Столешница постформинг · заготовка, не лист ЛДСП</text>
+
+  <!-- plan -->
+  <rect class="c" x="60" y="55" width="440" height="82"/>
+  <path d="M60,55 q-10,41 0,82" fill="none" stroke="#1a1a1a" stroke-width="2"/>
+  <text class="m" x="20" y="100">закруг-</text><text class="m" x="20" y="114">лённый</text>
+  <line class="d" x1="60" y1="160" x2="500" y2="160"/>
+  <text class="n" x="230" y="180">3050 / 4100</text>
+  <line class="d" x1="524" y1="55" x2="524" y2="137"/>
+  <text class="n" x="506" y="105" transform="rotate(-90 506 105)">600</text>
+
+  <!-- section -->
+  <rect class="c" x="60" y="212" width="440" height="30"/>
+  <line class="d" x1="524" y1="212" x2="524" y2="242"/>
+  <text class="n" x="534" y="232">38</text>
+  <text class="m" x="66" y="232">разрез — цельная плита, из листа 2800 не выпиливается</text>
+
+  <text class="m" x="60" y="278">запас склада: 3050 и 4100 мм · деталь длиннее — только со стыком на опоре</text>
+</svg>

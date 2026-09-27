@@ -1,0 +1,115 @@
+{
+  "id": "qorasu.table.fill",
+  "uid": "01J8K2QF7M3NRA9V0050",
+  "version": "1.0.0",
+  "schema": 1,
+  "kind": "table",
+  "origin": {
+    "source": "local"
+  },
+  "name": {
+    "ru": "Наполнение: фасады, ящики, задние стенки",
+    "en": "Fill: fronts, drawers, backs",
+    "uz": "To'ldirish"
+  },
+  "fields": {
+    "frontGapMm": {
+      "type": "number",
+      "value": 3,
+      "unit": "mm",
+      "domain": {
+        "min": 2,
+        "max": 6
+      },
+      "frame": {
+        "of": "fasad",
+        "datum": "outer",
+        "direction": "x",
+        "sign": "inward-positive",
+        "compose": "replace"
+      }
+    },
+    "frontEdgeMarginMm": {
+      "type": "number",
+      "value": 1.5,
+      "unit": "mm",
+      "domain": {
+        "min": 0,
+        "max": 6
+      },
+      "note": "founder ruling Q20 (2026-09-17): gap at every OUTER edge of a front group; between fronts it is frontGapMm. Two neighbouring cabinets give 1.5 + 1.5 = one gap."
+    },
+    "roleEdges": {
+      "type": "text",
+      "value": "front:1111,shelf:0010,back:----,drawer-side:0010,drawer-back:0010,drawer-bottom:----"
+    },
+    "drawerGrooveMm": {
+      "type": "number",
+      "value": 8,
+      "unit": "mm",
+      "domain": {
+        "min": 5,
+        "max": 12
+      },
+      "frame": {
+        "of": "drawer-box",
+        "datum": "inner",
+        "direction": "x",
+        "sign": "inward-positive",
+        "compose": "add"
+      }
+    },
+    "drawerSideHeightMm": {
+      "type": "number",
+      "value": 100,
+      "unit": "mm",
+      "domain": {
+        "min": 60,
+        "max": 250
+      },
+      "frame": {
+        "of": "drawer-box",
+        "datum": "bottom",
+        "direction": "z",
+        "sign": "inward-positive",
+        "compose": "replace"
+      }
+    },
+    "slideBackGapMm": {
+      "type": "number",
+      "value": 60,
+      "unit": "mm",
+      "domain": {
+        "min": 20,
+        "max": 120
+      },
+      "frame": {
+        "of": "carcass",
+        "datum": "back",
+        "direction": "y",
+        "sign": "inward-positive",
+        "compose": "add"
+      }
+    },
+    "hingeSteps": {
+      "type": "text",
+      "value": "900:2,1600:3,99999:4"
+    },
+    "crankSharedMm": {
+      "type": "number",
+      "value": 9,
+      "unit": "mm",
+      "domain": {
+        "min": 0,
+        "max": 22
+      },
+      "frame": {
+        "of": "carcass-side",
+        "datum": "outer",
+        "direction": "x",
+        "sign": "inward-positive",
+        "compose": "replace"
+      }
+    }
+  }
+}

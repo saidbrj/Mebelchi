@@ -1,0 +1,57 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 620 360" width="620" height="360">
+  <style>
+    .c{fill:none;stroke:#1a1a1a;stroke-width:2}
+    .p{fill:#e8e2d4;stroke:#1a1a1a;stroke-width:2}
+    .f{fill:#cfe6dc;stroke:#00815c;stroke-width:2}
+    .b{fill:#fff;stroke:#1a1a1a;stroke-width:1.5}
+    .d{stroke:#00815c;stroke-width:1.2;marker-start:url(#a);marker-end:url(#a)}
+    .t{font:600 15px system-ui,sans-serif;fill:#1a1a1a}
+    .n{font:600 13px system-ui,sans-serif;fill:#00815c}
+    .m{font:500 11.5px ui-monospace,monospace;fill:#6b6355}
+  </style>
+  <defs><marker id="a" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto">
+    <path d="M0,3.5 L7,0 L7,7 Z" fill="#00815c"/></marker></defs>
+
+  <text class="t" x="20" y="26">Четыре ширины · вид сверху · их путают чаще всего</text>
+
+  <!-- две общие стойки -->
+  <rect class="p" x="100" y="70" width="16" height="150"/>
+  <rect class="p" x="420" y="70" width="16" height="150"/>
+  <text class="m" x="76" y="240">стойка общая</text>
+  <text class="m" x="398" y="240">стойка общая</text>
+
+  <!-- соседи по бокам, серым -->
+  <rect class="c" x="40" y="70" width="60" height="150" stroke-dasharray="4 4"/>
+  <rect class="c" x="436" y="70" width="60" height="150" stroke-dasharray="4 4"/>
+  <text class="m" x="46" y="92">сосед</text>
+  <text class="m" x="442" y="92">сосед</text>
+
+  <!-- короб ящика -->
+  <rect class="b" x="129" y="100" width="278" height="90"/>
+  <text class="m" x="236" y="150">короб ящика</text>
+  <rect fill="#00815c" opacity=".3" x="116" y="100" width="13" height="90"/>
+  <rect fill="#00815c" opacity=".3" x="407" y="100" width="13" height="90"/>
+
+  <!-- фасад, поверх, наезжает на стойки -->
+  <rect class="f" x="108" y="46" width="320" height="16"/>
+  <text class="m" x="242" y="40">фасад</text>
+
+  <!-- размеры -->
+  <line class="d" x1="108" y1="274" x2="428" y2="274"/>
+  <text class="n" x="216" y="292">фасад 797</text>
+  <line class="d" x1="108" y1="300" x2="100" y2="300"/>
+  <line class="d" x1="428" y1="300" x2="436" y2="300"/>
+  <text class="m" x="300" y="316">зазор 3 с каждой стороны, одинаковый по всей стене</text>
+
+  <line class="d" x1="116" y1="252" x2="420" y2="252"/>
+  <text class="n" x="232" y="248">проём 784</text>
+
+  <line class="d" x1="100" y1="60" x2="436" y2="60"/>
+  <text class="n" x="228" y="76">колонка 800 — по осевым</text>
+
+  <line class="d" x1="129" y1="214" x2="407" y2="214"/>
+  <text class="n" x="228" y="210">короб 759</text>
+
+  <text class="m" x="20" y="340">проём = колонка − ПОЛОВИНА каждой стойки · вторая половина принадлежит соседу</text>
+  <text class="m" x="20" y="356">фасад ШИРЕ проёма — он закрывает стойку · короб УЖЕ — направляющие 12.5 на сторону</text>
+</svg>

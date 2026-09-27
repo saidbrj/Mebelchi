@@ -29,6 +29,8 @@ export function JourneyBar({
   const t = useT();
   const back = useStore((s) => s.back);
   const openMenu = useStore((s) => s.openMenu);
+  const screen = useStore((s) => s.screen);
+  const goTo = useStore((s) => s.goTo);
 
   return (
     <div className={`stepbar cfg-bar${className ? " " + className : ""}`}>
@@ -37,9 +39,8 @@ export function JourneyBar({
           <span /><span />
         </button>
         <button className="cfg-back" onClick={back} type="button" aria-label={t.config.back}>←</button>
+        <ProjectTitle sub={sub} />
       </div>
-
-      <ProjectTitle sub={sub} />
 
       <div className="cfg-bar-r">{right}</div>
     </div>

@@ -142,6 +142,7 @@ export function ConstructorPlan({
   onBeginEdit,
   onEditDim,
   onDragDim,
+  interactiveTemplate,
 }: {
   points: Pt[];
   openings: Opening[];
@@ -168,6 +169,10 @@ export function ConstructorPlan({
   /** DRAG a dimension arrow (width re-tiles the row; depth honours the row-scope mode).
    *  Tapping the number still opens the type-in editor — this is the pull. */
   onDragDim?: (id: string, kind: "w" | "depth", value: number) => void;
+  interactiveTemplate?: {
+    active: boolean;
+    onSnapWall: (wallIndex: number) => void;
+  };
 }) {
   const [rotUI, setRotUI] = useState<{ cx: number; cy: number; r: number; a0: number; a1: number } | null>(null);
   const [moveGuide, setMoveGuide] = useState<{ vx?: number; vy?: number } | null>(null);
@@ -367,6 +372,30 @@ export function ConstructorPlan({
     if (!m) return { x: 0, y: 0 };
     const r = pt.matrixTransform(m.inverse());
     return { x: r.x, y: r.y };
+  };
+
+  const snapToClosestWall = (mm: { x: number; y: number }) => {
+    if (!interactiveTemplate?.onSnapWall || points.length < 3) return;
+    let minD = Infinity;
+    let bestIdx = 0;
+    for (let i = 0; i < points.length; i++) {
+      const a = points[i];
+      const b = points[(i + 1) % points.length];
+      const dx = b.x - a.x;
+      const dy = b.y - a.y;
+      const l2 = dx * dx + dy * dy;
+      if (l2 === 0) continue;
+      let t = ((mm.x - a.x) * dx + (mm.y - a.y) * dy) / l2;
+      t = Math.max(0, Math.min(1, t));
+      const px = a.x + t * dx;
+      const py = a.y + t * dy;
+      const d = Math.hypot(mm.x - px, mm.y - py);
+      if (d < minD) {
+        minD = d;
+        bestIdx = i;
+      }
+    }
+    interactiveTemplate.onSnapWall(bestIdx);
   };
   const onMoveDown = (f: Foot) => (e: React.PointerEvent) => {
     e.stopPropagation();
@@ -581,6 +610,42 @@ export function ConstructorPlan({
           return <OpeningGlyph key={o.id} o={o} a={seg.a} b={seg.b} nx={nn.nx} ny={nn.ny} coveringColor={coveringColor} />;
         })}
       </g>
+
+      {/* interactive template drag & wall snapping overlay */}
+      {interactiveTemplate?.active && (
+        <g
+          style={{ cursor: "grab", touchAction: "none" }}
+          onPointerDown={(e) => {
+            e.stopPropagation();
+            try { (e.target as Element).setPointerCapture(e.pointerId); } catch { /* ignore */ }
+            const mm = clientToMm(e);
+            snapToClosestWall(mm);
+          }}
+          onPointerMove={(e) => {
+            if (e.buttons > 0) {
+              const mm = clientToMm(e);
+              snapToClosestWall(mm);
+            }
+          }}
+        >
+          <path d={dInner} fill="rgba(16, 185, 129, 0.06)" stroke="#10b981" strokeWidth={10} strokeDasharray="60 30" />
+          {segs.map((s, idx) => (
+            <line
+              key={`tmpl-wall-hit-${idx}`}
+              x1={s.a.x}
+              y1={s.a.y}
+              x2={s.b.x}
+              y2={s.b.y}
+              stroke="transparent"
+              strokeWidth={350}
+              onPointerDown={(e) => {
+                e.stopPropagation();
+                interactiveTemplate.onSnapWall(idx);
+              }}
+            />
+          ))}
+        </g>
+      )}
 
       {/* filler «доборы» — the scribe strip in the reserved gap at each wall-butting run end */}
       {fillerQuads.map((q, i) => {

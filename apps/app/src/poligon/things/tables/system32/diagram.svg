@@ -1,0 +1,54 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 400" width="560" height="400">
+  <style>
+    .c{fill:none;stroke:#1a1a1a;stroke-width:2}
+    .p{fill:#e8e2d4;stroke:#1a1a1a;stroke-width:2}
+    .h{fill:#fff;stroke:#1a1a1a;stroke-width:1.4}
+    .hit{fill:#00815c}
+    .miss{fill:#c2410c}
+    .d{stroke:#00815c;stroke-width:1.2;marker-start:url(#a);marker-end:url(#a)}
+    .t{font:600 15px system-ui,sans-serif;fill:#1a1a1a}
+    .n{font:600 13px system-ui,sans-serif;fill:#00815c}
+    .w{font:600 13px system-ui,sans-serif;fill:#c2410c}
+    .m{font:500 11.5px ui-monospace,monospace;fill:#6b6355}
+  </style>
+  <defs><marker id="a" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto">
+    <path d="M0,3.5 L7,0 L7,7 Z" fill="#00815c"/></marker></defs>
+
+  <text class="t" x="20" y="26">Система 32 · растр присадки (DIN 68858)</text>
+  <text class="m" x="20" y="46">боковина, вид изнутри · база Y=0 — ВЕРХНЯЯ плоскость дна</text>
+
+  <rect class="p" x="60" y="70" width="150" height="290"/>
+  <line class="c" x1="60" y1="345" x2="210" y2="345"/>
+  <text class="m" x="66" y="358">дно</text>
+  <text class="m" x="215" y="349">Y = 0</text>
+
+  <g class="h">
+    <circle cx="95" cy="313" r="5"/><circle cx="95" cy="281" r="5"/>
+    <circle cx="95" cy="249" r="5"/><circle cx="95" cy="217" r="5"/>
+    <circle cx="95" cy="185" r="5"/><circle cx="95" cy="153" r="5"/>
+    <circle cx="95" cy="121" r="5"/>
+    <circle cx="175" cy="313" r="5"/><circle cx="175" cy="281" r="5"/>
+    <circle cx="175" cy="249" r="5"/><circle cx="175" cy="217" r="5"/>
+    <circle cx="175" cy="185" r="5"/><circle cx="175" cy="153" r="5"/>
+    <circle cx="175" cy="121" r="5"/>
+  </g>
+
+  <line class="d" x1="60" y1="88" x2="95" y2="88"/>
+  <text class="n" x="62" y="82">37</text>
+  <line class="d" x1="175" y1="88" x2="210" y2="88"/>
+  <text class="n" x="176" y="82">37</text>
+
+  <line class="d" x1="240" y1="313" x2="240" y2="281"/>
+  <text class="n" x="248" y="301">32</text>
+  <text class="m" x="248" y="317">шаг · один плунж многошпиндельной головы</text>
+
+  <circle class="hit" cx="175" cy="249" r="7"/>
+  <text class="n" x="248" y="253">направляющая: Y = k·32 + 9</text>
+
+  <circle class="miss" cx="300" cy="185" r="7"/>
+  <text class="w" x="315" y="189">Y = 173 — мимо растра</text>
+  <text class="m" x="315" y="205">движок двигает к 169 или 201, но не дальше 16</text>
+  <text class="m" x="315" y="221">дальше 16 — это уже другой проект, а не привязка</text>
+
+  <text class="m" x="20" y="388">pitchMm 32 · firstHoleMm 37 · slideAxisOffsetMm 9 · maxSnapMm 16</text>
+</svg>

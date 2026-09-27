@@ -1,0 +1,14 @@
+{
+  "id": "std.table.vocabulary",
+  "uid": "01J8K2QF7M3NRA9V0013",
+  "version": "1.0.0",
+  "schema": 1,
+  "kind": "table",
+  "origin": { "source": "builtin" },
+  "name": { "ru": "Рост словаря", "en": "Vocabulary growth", "uz": "Lug'at o'sishi" },
+  "fields": {
+    "promoteAfterUses": { "type": "number", "value": 3, "unit": "count", "domain": { "min": 2, "max": 10 } },
+    "vocabularyPolicy": { "type": "algorithm", "value": "private-until-promoted", "of": ["founder-only", "private-until-promoted", "open-reviewed", "hard-cap"] },
+    "maxTypes": { "type": "number", "value": 400, "unit": "count", "domain": { "min": 30, "max": 5000 } }
+  }
+}

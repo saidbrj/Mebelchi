@@ -9,6 +9,11 @@ import { polygonBoundsMm, offsetPolygon, defaultOpeningSill, defaultOpeningHeigh
 import { leafRects, coveringColor, defaultSurface, WALL_PAINT_OFFSET_M, type Surface } from "../model/walls";
 import { PBR, applyPbrFloor, onTexturesReady, texturedMaterial } from "./pbr";
 import { buildRig } from "./lighting";
+import { buildKitchen } from "./kitchen3d";
+import { planRuns, DEFAULT_REVEAL, type KitchenLayout } from "../model/runPlan";
+import type { Cabinet } from "../model/cabinet";
+import type { KitchenStyle } from "../model/layout";
+import type { LedSpec } from "../model/ledStrips";
 
 export type SceneView = "3d" | "plan" | "front";
 
@@ -656,6 +661,7 @@ interface Api {
    *  gizmo so a drag reads the opening's own wall, not the glass/door-leaf/far wall a mesh ray would
    *  pass through. Returns room-mm floor x/y + world-height (mm). */
   wallPlaneHit: (clientX: number, clientY: number, ax: number, ay: number, bx: number, by: number) => { x: number; y: number; height: number } | null;
+  setLed: (led: LedSpec, sheet: string | null) => void;
   dispose: () => void;
 }
 
@@ -751,6 +757,15 @@ export function ThreeScene({
   onPipePoint,
   onPipeBend,
   onPipeUnbend,
+  cabs,
+  kitchenStyle,
+  waterWall,
+  runLayout,
+  reveal,
+  ghostCabs,
+  led,
+  sheet,
+  onLedChange,
 }: {
   points: Pt[];
   ceiling: number;
@@ -792,13 +807,40 @@ export function ThreeScene({
   onSetOpeningWidth?: (id: string, width: number) => void;
   onSetOpeningHeight?: (id: string, height: number) => void;
   onSetOpeningSill?: (id: string, sill: number) => void;
+  cabs?: Cabinet[];
+  kitchenStyle?: KitchenStyle;
+  waterWall?: number | null;
+  runLayout?: KitchenLayout;
+  reveal?: number;
+  ghostCabs?: boolean;
+  led?: LedSpec;
+  sheet?: string | null;
+  onLedChange?: (patch: Partial<LedSpec>) => void;
 }) {
   const mountRef = useRef<HTMLDivElement>(null);
   const apiRef = useRef<Api | null>(null);
   const cameraRef = useRef<THREE.PerspectiveCamera | null>(null);
   const controlsRef = useRef<OrbitControls | null>(null);
-  const cbRef = useRef({ onWallClick, onFittingClick, onFittingDrag, onOpeningClick, onFloorClick, onSetWallLength, onSetCeilingValue, onMoveCorner, onMoveWall, onBeginEdit, onOpeningDrag, onSetOpeningWidth, onSetOpeningHeight, onSetOpeningSill, onPipePoint, onPipeBend, onPipeUnbend });
-  cbRef.current = { onWallClick, onFittingClick, onFittingDrag, onOpeningClick, onFloorClick, onSetWallLength, onSetCeilingValue, onMoveCorner, onMoveWall, onBeginEdit, onOpeningDrag, onSetOpeningWidth, onSetOpeningHeight, onSetOpeningSill, onPipePoint, onPipeBend, onPipeUnbend };
+  const cbRef = useRef({ onWallClick, onFittingClick, onFittingDrag, onOpeningClick, onFloorClick, onSetWallLength, onSetCeilingValue, onMoveCorner, onMoveWall, onBeginEdit, onOpeningDrag, onSetOpeningWidth, onSetOpeningHeight, onSetOpeningSill, onPipePoint, onPipeBend, onPipeUnbend, onLedChange });
+  cbRef.current = { onWallClick, onFittingClick, onFittingDrag, onOpeningClick, onFloorClick, onSetWallLength, onSetCeilingValue, onMoveCorner, onMoveWall, onBeginEdit, onOpeningDrag, onSetOpeningWidth, onSetOpeningHeight, onSetOpeningSill, onPipePoint, onPipeBend, onPipeUnbend, onLedChange };
+
+  const ledRef = useRef(led);
+  ledRef.current = led;
+  const sheetRef = useRef(sheet);
+  sheetRef.current = sheet;
+
+  const cabsRef = useRef(cabs);
+  cabsRef.current = cabs;
+  const kitchenStyleRef = useRef(kitchenStyle);
+  kitchenStyleRef.current = kitchenStyle;
+  const waterWallRef = useRef(waterWall);
+  waterWallRef.current = waterWall;
+  const runLayoutRef = useRef(runLayout);
+  runLayoutRef.current = runLayout;
+  const revealRef = useRef(reveal);
+  revealRef.current = reveal;
+  const ghostCabsRef = useRef(ghostCabs);
+  ghostCabsRef.current = ghostCabs;
 
   // latest inputs, read by the (stable) projection so it never draws the overlay off STALE points, and
   // the room CENTRE it is projected against — the same one `rebuild` last used (frozen during a drag).
@@ -1055,6 +1097,8 @@ export function ThreeScene({
 
     const renderer = new THREE.WebGLRenderer({ antialias: true, alpha: true });
     renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    renderer.shadowMap.enabled = true;
+    renderer.shadowMap.type = THREE.PCFSoftShadowMap;
     const w0 = mount.clientWidth || 320;
     const h0 = mount.clientHeight || 480;
     renderer.setSize(w0, h0);
@@ -1074,14 +1118,45 @@ export function ThreeScene({
     const center = new THREE.Vector3(0, 0, 0);
     controls.target.copy(center);
 
-    const rig = buildRig(scene, renderer, { shadows: false, preset: "day" });
-
-    let wood: THREE.Texture | null = null;
+    const rig = buildRig(scene, renderer, {
+      shadows: true,
+      preset: ledRef.current?.preset ?? "evening",
+    });
 
     let needs = true;
     const invalidate = () => {
       needs = true;
     };
+
+    const applyRigLed = (currentLed?: LedSpec, currentSheet?: string | null) => {
+      const l = currentLed ?? ledRef.current;
+      if (!l) return;
+      rig.setPreset(l.preset ?? "evening");
+      if (l.sunAzimuth != null && l.sunElevation != null) {
+        rig.setSun(l.sunAzimuth, l.sunElevation);
+      }
+      const isFixtures = l.lightingMode === "fixtures";
+      if (isFixtures) {
+        rig.setLampKind(l.ceilingKind ?? "spot");
+        rig.setLampCount(l.ceilingCount ?? 4);
+        rig.setLampTemp(l.temp ?? 4000);
+        rig.setWallOffset(l.ceilingOffsetMm ?? 800);
+        rig.setCustomPositions(l.customPositions ?? null);
+        rig.setForceFixturesVisible(currentSheet === "lighting");
+        rig.setShowGuides(currentSheet === "lighting");
+        rig.setPerimeterLed(l.ceilingPerimeter ?? false, pointsRef.current, ceilingRef.current / 1000);
+      } else {
+        // Regular sun direction based lighting: ceiling lamps and perimeter LED are OFF
+        rig.setLampCount(0);
+        rig.setForceFixturesVisible(false);
+        rig.setShowGuides(false);
+        rig.setPerimeterLed(false);
+      }
+      invalidate();
+    };
+    applyRigLed(ledRef.current, sheetRef.current);
+
+    let wood: THREE.Texture | null = null;
     // Re-projecting the overlay on EVERY damped orbit event floods React with setState and janks the
     // whole scene. Coalesce to one recompute per animation frame instead.
     let dimsRaf = 0;
@@ -1097,6 +1172,7 @@ export function ThreeScene({
     const offTextures = PBR ? onTexturesReady(invalidate) : null;
 
     let room: THREE.Group | null = null;
+    let kitchenGroup: THREE.Group | null = null;
     let walls: WallInfo[] = [];
     /** the room's ceiling surface + the height it hangs at — culled by height, the way a wall is
      *  culled by facing (see updateCull) */
@@ -1121,6 +1197,11 @@ export function ThreeScene({
         scene.remove(room);
         disposeGroup(room);
       }
+      if (kitchenGroup) {
+        scene.remove(kitchenGroup);
+        disposeGroup(kitchenGroup);
+        kitchenGroup = null;
+      }
       if (!wood || woodColor !== color) {
         wood?.dispose();
         wood = makeWoodTexture(color);
@@ -1134,6 +1215,7 @@ export function ThreeScene({
       const innerMm = offsetPolygon(pts, 100);
       const toM = (p: Pt) => ({ x: (p.x - bounds.cx) / 1000, z: (p.y - bounds.cy) / 1000 });
       rig.aim({ points: pts, openings: ops, ceiling: ceilMm });
+      applyRigLed(ledRef.current, sheetRef.current);
       const built = makeRoom(
         pts.map(toM),
         innerMm.map(toM),
@@ -1157,6 +1239,36 @@ export function ThreeScene({
       });
       applyPbrFloor(room, color, floor);
       scene.add(room);
+
+      // Ghost furniture: render cabinets with reduced transparency when present
+      const currentCabs = cabsRef.current;
+      if (currentCabs && currentCabs.length > 0) {
+        try {
+          const rL = runLayoutRef.current ?? "all";
+          const wW = waterWallRef.current ?? null;
+          const rev = revealRef.current ?? DEFAULT_REVEAL;
+          const style = kitchenStyleRef.current ?? { carcass: 0xefe8da, facade: 0xe7ddc9, worktop: 0x7c756b, handle: 0x6f6a62, glassUppers: false };
+          const { runs } = planRuns(pts, wW, rL, ops, currentCabs, rev);
+          kitchenGroup = buildKitchen(currentCabs, runs, style, { cx: bounds.cx, cy: bounds.cy }, ceilMm);
+          kitchenGroup.traverse((o) => {
+            const mesh = o as THREE.Mesh;
+            if (!mesh.isMesh || mesh.userData.decal) return;
+            const mats = Array.isArray(mesh.material) ? mesh.material : [mesh.material];
+            for (const mm of mats) {
+              const m = mm as THREE.MeshStandardMaterial;
+              if (!m) continue;
+              m.transparent = true;
+              m.opacity = 0.4;
+              m.depthWrite = false;
+              m.needsUpdate = true;
+            }
+          });
+          scene.add(kitchenGroup);
+        } catch (err) {
+          console.warn("Could not build ghost kitchen in ThreeScene:", err);
+        }
+      }
+
       invalidate();
     };
 
@@ -1289,9 +1401,25 @@ export function ThreeScene({
       if (!raycaster.ray.intersectPlane(plane, planePt)) return null;
       return { x: planePt.x * 1000 + c.cx, y: planePt.z * 1000 + c.cy, height: planePt.y * 1000 };
     };
+    let dragLampIndex: number | null = null;
     const onDown = (e: PointerEvent) => {
       downXY.x = e.clientX;
       downXY.y = e.clientY;
+      if (sheetRef.current === "lighting") {
+        raycaster.setFromCamera(ndcOf(e), camera);
+        const fixHits = raycaster.intersectObjects(rig.getFixtures(), true);
+        if (fixHits.length > 0) {
+          let root: THREE.Object3D | null = fixHits[0].object;
+          while (root && root.userData.lampIndex === undefined && root.parent) {
+            root = root.parent;
+          }
+          if (root && typeof root.userData.lampIndex === "number") {
+            dragLampIndex = root.userData.lampIndex;
+            controls.enabled = false;
+            return;
+          }
+        }
+      }
       const t = nearestTarget(e);
       // Fittings drag by their body. A door/window is moved from its GIZMO's centre handle instead
       // (like a cabinet in the Construction step) — tapping its body just selects it — so grabbing the
@@ -1302,6 +1430,31 @@ export function ThreeScene({
       }
     };
     const onMove = (e: PointerEvent) => {
+      if (dragLampIndex !== null) {
+        const ceilM = ceilingRef.current / 1000 - 0.008;
+        const plane = new THREE.Plane(new THREE.Vector3(0, 1, 0), -ceilM);
+        raycaster.setFromCamera(ndcOf(e), camera);
+        const hitPt = new THREE.Vector3();
+        if (raycaster.ray.intersectPlane(plane, hitPt)) {
+          const b = polygonBoundsMm(pointsRef.current);
+          const maxHalfW = Math.max(0.3, (b.w / 1000) * 0.45);
+          const maxHalfH = Math.max(0.3, (b.h / 1000) * 0.45);
+          const nx = Math.max(-maxHalfW, Math.min(maxHalfW, hitPt.x));
+          const nz = Math.max(-maxHalfH, Math.min(maxHalfH, hitPt.z));
+
+          const curPos = (ledRef.current?.customPositions ? [...ledRef.current.customPositions] : []).slice(0, 6);
+          const fixtures = rig.getFixtures();
+          while (curPos.length < fixtures.length) {
+            const f = fixtures[curPos.length];
+            curPos.push({ x: f.position.x, z: f.position.z });
+          }
+          curPos[dragLampIndex] = { x: nx, z: nz };
+          rig.setCustomPositions(curPos);
+          invalidate();
+          cbRef.current.onLedChange?.({ customPositions: curPos });
+        }
+        return;
+      }
       if (!dragItem || !room) return;
       raycaster.setFromCamera(ndcOf(e), camera);
       const hit = raycaster.intersectObjects(room.children, true).filter((h) => h.object.visible && targetOf(h.object)?.kind === "wall")[0];
@@ -1310,6 +1463,11 @@ export function ThreeScene({
       cbRef.current.onFittingDrag(dragItem.id, hit.point.x * 1000 + b.cx, hit.point.z * 1000 + b.cy, hit.point.y * 1000);
     };
     const onPick = (e: PointerEvent) => {
+      if (dragLampIndex !== null) {
+        dragLampIndex = null;
+        controls.enabled = true;
+        return;
+      }
       const moved = Math.hypot(e.clientX - downXY.x, e.clientY - downXY.y);
       if (dragItem) {
         const it = dragItem;
@@ -1335,6 +1493,9 @@ export function ThreeScene({
     apiRef.current = {
       setView,
       rebuild,
+      setLed: (newLed: LedSpec, newSheet: string | null) => {
+        applyRigLed(newLed, newSheet);
+      },
       floorMm,
       lockCenter,
       zoomBy,
@@ -1351,6 +1512,7 @@ export function ThreeScene({
         offTextures?.();
         controls.dispose();
         if (room) disposeGroup(room);
+        if (kitchenGroup) disposeGroup(kitchenGroup);
         rig.dispose();
         renderer.dispose();
         if (renderer.domElement.parentNode === mount) mount.removeChild(renderer.domElement);
@@ -1367,12 +1529,18 @@ export function ThreeScene({
   useEffect(() => {
     apiRef.current?.rebuild(points, ceiling, openings, coveringColor, floorId, interiorWalls, fittings, wallSurfaces, selectedWall3D, selectedFit3D, selectedOpen3D, floorSel3D);
     updateDims();
-  }, [points, ceiling, openings, coveringColor, floorId, interiorWalls, fittings, wallSurfaces, selectedWall3D, selectedFit3D, selectedOpen3D, floorSel3D, updateDims]);
+  }, [points, ceiling, openings, coveringColor, floorId, interiorWalls, fittings, wallSurfaces, selectedWall3D, selectedFit3D, selectedOpen3D, floorSel3D, cabs, kitchenStyle, waterWall, runLayout, reveal, ghostCabs, updateDims]);
 
   useEffect(() => {
     apiRef.current?.setView(view);
     updateDims();
   }, [view, updateDims]);
+
+  useEffect(() => {
+    if (led) {
+      apiRef.current?.setLed(led, sheet ?? null);
+    }
+  }, [led, sheet]);
 
   // What the grab does: move ONE corner (1:1 on the floor), slide a whole WALL perpendicular, or pull
   // the ceiling HEIGHT (vertical — no floor point, so it keeps a screen-space delta).

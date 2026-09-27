@@ -1,0 +1,182 @@
+{
+  "id": "blum.hinge.clip-top-110-full",
+  "uid": "01J8K2QF7M3NRA9V0003",
+  "version": "1.1.0",
+  "schema": 1,
+  "kind": "hinge",
+  "origin": {
+    "source": "marketplace",
+    "publisher": "blum",
+    "signed": true
+  },
+  "name": {
+    "ru": "CLIP top 110° накладная",
+    "en": "CLIP top 110 full overlay",
+    "uz": "CLIP top 110 ustma-ust"
+  },
+  "fields": {
+    "overlay": {
+      "type": "number",
+      "value": 16,
+      "unit": "mm",
+      "domain": {
+        "min": 0,
+        "max": 22
+      },
+      "frame": {
+        "of": "carcass-side",
+        "datum": "outer",
+        "direction": "x",
+        "sign": "inward-positive",
+        "compose": "replace"
+      }
+    },
+    "gap": {
+      "type": "number",
+      "value": 3,
+      "unit": "mm",
+      "domain": {
+        "min": 1,
+        "max": 6
+      },
+      "frame": {
+        "of": "fasad",
+        "datum": "front",
+        "direction": "x",
+        "sign": "outward-positive",
+        "compose": "add"
+      }
+    },
+    "reveal": {
+      "type": "number",
+      "value": 3,
+      "unit": "mm",
+      "domain": {
+        "min": 2,
+        "max": 6
+      },
+      "frame": {
+        "of": "fasad",
+        "datum": "outer",
+        "direction": "x",
+        "sign": "inward-positive",
+        "compose": "add"
+      }
+    },
+    "openingAngle": {
+      "type": "number",
+      "value": 110,
+      "unit": "deg",
+      "domain": {
+        "min": 90,
+        "max": 180
+      }
+    },
+    "protrusionMm": {
+      "type": "number",
+      "value": 19,
+      "unit": "mm",
+      "domain": {
+        "min": 0,
+        "max": 40
+      },
+      "frame": {
+        "of": "carcass-opening",
+        "datum": "inner",
+        "direction": "x",
+        "sign": "inward-positive",
+        "compose": "max"
+      }
+    },
+    "cupDiameter": {
+      "type": "number",
+      "value": 35,
+      "unit": "mm",
+      "domain": {
+        "min": 26,
+        "max": 40
+      },
+      "frame": {
+        "of": "fasad",
+        "datum": "back",
+        "direction": "z",
+        "sign": "inward-positive",
+        "compose": "replace"
+      }
+    },
+    "cupDepth": {
+      "type": "number",
+      "value": 13,
+      "unit": "mm",
+      "domain": {
+        "min": 10,
+        "max": 15
+      },
+      "frame": {
+        "of": "fasad",
+        "datum": "back",
+        "direction": "z",
+        "sign": "inward-positive",
+        "compose": "replace"
+      }
+    },
+    "minCarcassHeight": {
+      "type": "number",
+      "value": 200,
+      "unit": "mm",
+      "domain": {
+        "min": 100,
+        "max": 600
+      }
+    },
+    "hingeClass": {
+      "type": "enum",
+      "value": "full-overlay",
+      "of": [
+        "full-overlay",
+        "half-overlay",
+        "inset"
+      ]
+    },
+    "armConstantMm": {
+      "type": "number",
+      "value": 11,
+      "unit": "mm",
+      "domain": {
+        "min": 5,
+        "max": 20
+      }
+    },
+    "plateHeightsMm": {
+      "type": "text",
+      "value": "0,3,6,9"
+    },
+    "cupDistanceMinMm": {
+      "type": "number",
+      "value": 3,
+      "unit": "mm",
+      "domain": {
+        "min": 0,
+        "max": 10
+      }
+    },
+    "cupDistanceMaxMm": {
+      "type": "number",
+      "value": 7,
+      "unit": "mm",
+      "domain": {
+        "min": 0,
+        "max": 12
+      }
+    },
+    "adjustRangeMm": {
+      "type": "number",
+      "value": 2,
+      "unit": "mm",
+      "domain": {
+        "min": 0,
+        "max": 5
+      }
+    }
+  }
+}

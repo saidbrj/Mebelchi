@@ -1,0 +1,541 @@
+[
+  {
+    "no": 1,
+    "role": "bottom",
+    "cut": 2389,
+    "width": 560,
+    "thick": 16
+  },
+  {
+    "no": 2,
+    "role": "bottom",
+    "cut": 2089,
+    "width": 560,
+    "thick": 16
+  },
+  {
+    "no": 3,
+    "role": "bottom",
+    "cut": 2381,
+    "width": 300,
+    "thick": 16
+  },
+  {
+    "no": 4,
+    "role": "plinth",
+    "cut": 2396,
+    "width": 560,
+    "thick": 16
+  },
+  {
+    "no": 5,
+    "role": "plinth",
+    "cut": 2096,
+    "width": 560,
+    "thick": 16
+  },
+  {
+    "no": 6,
+    "role": "side",
+    "cut": 717,
+    "width": 560,
+    "thick": 16
+  },
+  {
+    "no": 7,
+    "role": "side",
+    "cut": 663,
+    "width": 300,
+    "thick": 16
+  },
+  {
+    "no": 8,
+    "role": "side",
+    "cut": 717,
+    "width": 560,
+    "thick": 16
+  },
+  {
+    "no": 9,
+    "role": "side",
+    "cut": 702,
+    "width": 560,
+    "thick": 16
+  },
+  {
+    "no": 10,
+    "role": "side",
+    "cut": 632,
+    "width": 300,
+    "thick": 16
+  },
+  {
+    "no": 11,
+    "role": "side",
+    "cut": 702,
+    "width": 560,
+    "thick": 16
+  },
+  {
+    "no": 12,
+    "role": "side",
+    "cut": 632,
+    "width": 300,
+    "thick": 16
+  },
+  {
+    "no": 13,
+    "role": "side",
+    "cut": 702,
+    "width": 560,
+    "thick": 16
+  },
+  {
+    "no": 14,
+    "role": "side",
+    "cut": 632,
+    "width": 300,
+    "thick": 16
+  },
+  {
+    "no": 15,
+    "role": "side",
+    "cut": 702,
+    "width": 560,
+    "thick": 16
+  },
+  {
+    "no": 16,
+    "role": "side",
+    "cut": 663,
+    "width": 300,
+    "thick": 16
+  },
+  {
+    "no": 17,
+    "role": "side",
+    "cut": 702,
+    "width": 560,
+    "thick": 16
+  },
+  {
+    "no": 18,
+    "role": "side",
+    "cut": 702,
+    "width": 560,
+    "thick": 16
+  },
+  {
+    "no": 19,
+    "role": "top",
+    "cut": 2381,
+    "width": 300,
+    "thick": 16
+  },
+  {
+    "no": 20,
+    "role": "worktop",
+    "cut": 1805,
+    "width": 600,
+    "thick": 16
+  },
+  {
+    "no": 21,
+    "role": "worktop",
+    "cut": 1797,
+    "width": 600,
+    "thick": 16
+  },
+  {
+    "no": 22,
+    "role": "worktop",
+    "cut": 905,
+    "width": 600,
+    "thick": 16
+  },
+  {
+    "no": 23,
+    "role": "front",
+    "cut": 717,
+    "width": 397,
+    "thick": 16
+  },
+  {
+    "no": 24,
+    "role": "back",
+    "cut": 720,
+    "width": 400,
+    "thick": 3
+  },
+  {
+    "no": 25,
+    "role": "front",
+    "cut": 237,
+    "width": 797,
+    "thick": 16
+  },
+  {
+    "no": 26,
+    "role": "drawer-side",
+    "cut": 500,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 27,
+    "role": "drawer-side",
+    "cut": 500,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 28,
+    "role": "drawer-back",
+    "cut": 759,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 29,
+    "role": "drawer-bottom",
+    "cut": 500,
+    "width": 743,
+    "thick": 3
+  },
+  {
+    "no": 30,
+    "role": "front",
+    "cut": 237,
+    "width": 797,
+    "thick": 16
+  },
+  {
+    "no": 31,
+    "role": "drawer-side",
+    "cut": 500,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 32,
+    "role": "drawer-side",
+    "cut": 500,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 33,
+    "role": "drawer-back",
+    "cut": 759,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 34,
+    "role": "drawer-bottom",
+    "cut": 500,
+    "width": 743,
+    "thick": 3
+  },
+  {
+    "no": 35,
+    "role": "front",
+    "cut": 237,
+    "width": 797,
+    "thick": 16
+  },
+  {
+    "no": 36,
+    "role": "drawer-side",
+    "cut": 500,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 37,
+    "role": "drawer-side",
+    "cut": 500,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 38,
+    "role": "drawer-back",
+    "cut": 759,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 39,
+    "role": "drawer-bottom",
+    "cut": 500,
+    "width": 743,
+    "thick": 3
+  },
+  {
+    "no": 40,
+    "role": "back",
+    "cut": 720,
+    "width": 800,
+    "thick": 3
+  },
+  {
+    "no": 41,
+    "role": "front",
+    "cut": 137,
+    "width": 597,
+    "thick": 16
+  },
+  {
+    "no": 42,
+    "role": "front",
+    "cut": 577,
+    "width": 297,
+    "thick": 16
+  },
+  {
+    "no": 43,
+    "role": "front",
+    "cut": 577,
+    "width": 297,
+    "thick": 16
+  },
+  {
+    "no": 44,
+    "role": "back",
+    "cut": 720,
+    "width": 600,
+    "thick": 3
+  },
+  {
+    "no": 45,
+    "role": "front",
+    "cut": 357,
+    "width": 597,
+    "thick": 16
+  },
+  {
+    "no": 46,
+    "role": "drawer-side",
+    "cut": 500,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 47,
+    "role": "drawer-side",
+    "cut": 500,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 48,
+    "role": "drawer-back",
+    "cut": 559,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 49,
+    "role": "drawer-bottom",
+    "cut": 500,
+    "width": 543,
+    "thick": 3
+  },
+  {
+    "no": 50,
+    "role": "front",
+    "cut": 357,
+    "width": 597,
+    "thick": 16
+  },
+  {
+    "no": 51,
+    "role": "drawer-side",
+    "cut": 500,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 52,
+    "role": "drawer-side",
+    "cut": 500,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 53,
+    "role": "drawer-back",
+    "cut": 559,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 54,
+    "role": "drawer-bottom",
+    "cut": 500,
+    "width": 543,
+    "thick": 3
+  },
+  {
+    "no": 55,
+    "role": "back",
+    "cut": 720,
+    "width": 600,
+    "thick": 3
+  },
+  {
+    "no": 56,
+    "role": "front",
+    "cut": 357,
+    "width": 897,
+    "thick": 16
+  },
+  {
+    "no": 57,
+    "role": "drawer-side",
+    "cut": 500,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 58,
+    "role": "drawer-side",
+    "cut": 500,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 59,
+    "role": "drawer-back",
+    "cut": 859,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 60,
+    "role": "drawer-bottom",
+    "cut": 500,
+    "width": 843,
+    "thick": 3
+  },
+  {
+    "no": 61,
+    "role": "front",
+    "cut": 357,
+    "width": 897,
+    "thick": 16
+  },
+  {
+    "no": 62,
+    "role": "drawer-side",
+    "cut": 500,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 63,
+    "role": "drawer-side",
+    "cut": 500,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 64,
+    "role": "drawer-back",
+    "cut": 859,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 65,
+    "role": "drawer-bottom",
+    "cut": 500,
+    "width": 843,
+    "thick": 3
+  },
+  {
+    "no": 66,
+    "role": "back",
+    "cut": 720,
+    "width": 900,
+    "thick": 3
+  },
+  {
+    "no": 67,
+    "role": "front",
+    "cut": 647,
+    "width": 397,
+    "thick": 16
+  },
+  {
+    "no": 68,
+    "role": "shelf",
+    "cut": 384,
+    "width": 278,
+    "thick": 16
+  },
+  {
+    "no": 69,
+    "role": "back",
+    "cut": 650,
+    "width": 400,
+    "thick": 3
+  },
+  {
+    "no": 70,
+    "role": "front",
+    "cut": 647,
+    "width": 397,
+    "thick": 16
+  },
+  {
+    "no": 71,
+    "role": "front",
+    "cut": 647,
+    "width": 397,
+    "thick": 16
+  },
+  {
+    "no": 72,
+    "role": "shelf",
+    "cut": 784,
+    "width": 278,
+    "thick": 16
+  },
+  {
+    "no": 73,
+    "role": "shelf",
+    "cut": 784,
+    "width": 278,
+    "thick": 16
+  },
+  {
+    "no": 74,
+    "role": "back",
+    "cut": 650,
+    "width": 800,
+    "thick": 3
+  },
+  {
+    "no": 75,
+    "role": "front",
+    "cut": 647,
+    "width": 597,
+    "thick": 16
+  },
+  {
+    "no": 76,
+    "role": "shelf",
+    "cut": 584,
+    "width": 278,
+    "thick": 16
+  },
+  {
+    "no": 77,
+    "role": "back",
+    "cut": 650,
+    "width": 600,
+    "thick": 3
+  }
+]

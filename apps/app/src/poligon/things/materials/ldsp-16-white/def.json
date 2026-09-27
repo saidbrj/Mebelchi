@@ -1,0 +1,17 @@
+{
+  "id": "eman.material.ldsp-16-white",
+  "uid": "01J8K2QF7M3NRA9V0001",
+  "version": "1.0.0",
+  "schema": 1,
+  "kind": "material",
+  "origin": { "source": "builtin" },
+  "name": { "ru": "ЛДСП 16 белый", "en": "LDSP 16 white", "uz": "LDSP 16 oq" },
+  "fields": {
+    "thickness": { "type": "number", "value": 16, "unit": "mm", "domain": { "min": 3, "max": 40 } },
+    "thicknessClass": { "type": "enum", "value": "16", "of": ["8", "10", "16", "18", "25"] },
+    "decor": { "type": "text", "value": "W980 ST2" },
+    "grain": { "type": "enum", "value": "none", "of": ["none", "length", "width"] },
+    "sheetLength": { "type": "number", "value": 2800, "unit": "mm", "domain": { "min": 1000, "max": 5600 } },
+    "sheetWidth": { "type": "number", "value": 2070, "unit": "mm", "domain": { "min": 1000, "max": 2500 } }
+  }
+}

@@ -1,0 +1,621 @@
+[
+  {
+    "no": 1,
+    "role": "bottom",
+    "cut": 1781,
+    "width": 560,
+    "thick": 16
+  },
+  {
+    "no": 2,
+    "role": "filler",
+    "cut": 2097,
+    "width": 560,
+    "thick": 16
+  },
+  {
+    "no": 3,
+    "role": "plinth",
+    "cut": 1796,
+    "width": 560,
+    "thick": 16
+  },
+  {
+    "no": 4,
+    "role": "side",
+    "cut": 2105,
+    "width": 300,
+    "thick": 16
+  },
+  {
+    "no": 5,
+    "role": "side",
+    "cut": 355,
+    "width": 300,
+    "thick": 16
+  },
+  {
+    "no": 6,
+    "role": "side",
+    "cut": 2106,
+    "width": 560,
+    "thick": 16
+  },
+  {
+    "no": 7,
+    "role": "side",
+    "cut": 356,
+    "width": 560,
+    "thick": 16
+  },
+  {
+    "no": 8,
+    "role": "side",
+    "cut": 2090,
+    "width": 300,
+    "thick": 16
+  },
+  {
+    "no": 9,
+    "role": "side",
+    "cut": 340,
+    "width": 300,
+    "thick": 16
+  },
+  {
+    "no": 10,
+    "role": "side",
+    "cut": 2090,
+    "width": 300,
+    "thick": 16
+  },
+  {
+    "no": 11,
+    "role": "side",
+    "cut": 340,
+    "width": 300,
+    "thick": 16
+  },
+  {
+    "no": 12,
+    "role": "top",
+    "cut": 582,
+    "width": 560,
+    "thick": 16
+  },
+  {
+    "no": 13,
+    "role": "top",
+    "cut": 582,
+    "width": 560,
+    "thick": 16
+  },
+  {
+    "no": 14,
+    "role": "top",
+    "cut": 582,
+    "width": 560,
+    "thick": 16
+  },
+  {
+    "no": 15,
+    "role": "top",
+    "cut": 1781,
+    "width": 300,
+    "thick": 16
+  },
+  {
+    "no": 16,
+    "role": "front",
+    "cut": 447,
+    "width": 597,
+    "thick": 16
+  },
+  {
+    "no": 17,
+    "role": "drawer-side",
+    "cut": 500,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 18,
+    "role": "drawer-side",
+    "cut": 500,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 19,
+    "role": "drawer-back",
+    "cut": 559,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 20,
+    "role": "drawer-bottom",
+    "cut": 500,
+    "width": 543,
+    "thick": 3
+  },
+  {
+    "no": 21,
+    "role": "front",
+    "cut": 447,
+    "width": 597,
+    "thick": 16
+  },
+  {
+    "no": 22,
+    "role": "drawer-side",
+    "cut": 500,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 23,
+    "role": "drawer-side",
+    "cut": 500,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 24,
+    "role": "drawer-back",
+    "cut": 559,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 25,
+    "role": "drawer-bottom",
+    "cut": 500,
+    "width": 543,
+    "thick": 3
+  },
+  {
+    "no": 26,
+    "role": "front",
+    "cut": 1297,
+    "width": 597,
+    "thick": 16
+  },
+  {
+    "no": 27,
+    "role": "shelf",
+    "cut": 584,
+    "width": 538,
+    "thick": 16
+  },
+  {
+    "no": 28,
+    "role": "shelf",
+    "cut": 584,
+    "width": 538,
+    "thick": 16
+  },
+  {
+    "no": 29,
+    "role": "shelf",
+    "cut": 584,
+    "width": 538,
+    "thick": 16
+  },
+  {
+    "no": 30,
+    "role": "back",
+    "cut": 2100,
+    "width": 600,
+    "thick": 3
+  },
+  {
+    "no": 31,
+    "role": "front",
+    "cut": 347,
+    "width": 597,
+    "thick": 16
+  },
+  {
+    "no": 32,
+    "role": "back",
+    "cut": 350,
+    "width": 600,
+    "thick": 3
+  },
+  {
+    "no": 33,
+    "role": "front",
+    "cut": 347,
+    "width": 597,
+    "thick": 16
+  },
+  {
+    "no": 34,
+    "role": "back",
+    "cut": 350,
+    "width": 600,
+    "thick": 3
+  },
+  {
+    "no": 35,
+    "role": "front",
+    "cut": 347,
+    "width": 597,
+    "thick": 16
+  },
+  {
+    "no": 36,
+    "role": "back",
+    "cut": 350,
+    "width": 600,
+    "thick": 3
+  },
+  {
+    "no": 1,
+    "role": "bottom",
+    "cut": 2381,
+    "width": 560,
+    "thick": 16
+  },
+  {
+    "no": 2,
+    "role": "plinth",
+    "cut": 2396,
+    "width": 560,
+    "thick": 16
+  },
+  {
+    "no": 3,
+    "role": "side",
+    "cut": 717,
+    "width": 560,
+    "thick": 16
+  },
+  {
+    "no": 4,
+    "role": "side",
+    "cut": 717,
+    "width": 560,
+    "thick": 16
+  },
+  {
+    "no": 5,
+    "role": "side",
+    "cut": 702,
+    "width": 560,
+    "thick": 16
+  },
+  {
+    "no": 6,
+    "role": "side",
+    "cut": 702,
+    "width": 560,
+    "thick": 16
+  },
+  {
+    "no": 7,
+    "role": "worktop",
+    "cut": 1505,
+    "width": 600,
+    "thick": 16
+  },
+  {
+    "no": 8,
+    "role": "worktop",
+    "cut": 905,
+    "width": 600,
+    "thick": 16
+  },
+  {
+    "no": 9,
+    "role": "front",
+    "cut": 137,
+    "width": 897,
+    "thick": 16
+  },
+  {
+    "no": 10,
+    "role": "front",
+    "cut": 287,
+    "width": 897,
+    "thick": 16
+  },
+  {
+    "no": 11,
+    "role": "drawer-side",
+    "cut": 500,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 12,
+    "role": "drawer-side",
+    "cut": 500,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 13,
+    "role": "drawer-back",
+    "cut": 859,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 14,
+    "role": "drawer-bottom",
+    "cut": 500,
+    "width": 843,
+    "thick": 3
+  },
+  {
+    "no": 15,
+    "role": "front",
+    "cut": 287,
+    "width": 897,
+    "thick": 16
+  },
+  {
+    "no": 16,
+    "role": "drawer-side",
+    "cut": 500,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 17,
+    "role": "drawer-side",
+    "cut": 500,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 18,
+    "role": "drawer-back",
+    "cut": 859,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 19,
+    "role": "drawer-bottom",
+    "cut": 500,
+    "width": 843,
+    "thick": 3
+  },
+  {
+    "no": 20,
+    "role": "front",
+    "cut": 137,
+    "width": 597,
+    "thick": 16
+  },
+  {
+    "no": 21,
+    "role": "front",
+    "cut": 577,
+    "width": 297,
+    "thick": 16
+  },
+  {
+    "no": 22,
+    "role": "front",
+    "cut": 577,
+    "width": 297,
+    "thick": 16
+  },
+  {
+    "no": 23,
+    "role": "front",
+    "cut": 237,
+    "width": 897,
+    "thick": 16
+  },
+  {
+    "no": 24,
+    "role": "drawer-side",
+    "cut": 500,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 25,
+    "role": "drawer-side",
+    "cut": 500,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 26,
+    "role": "drawer-back",
+    "cut": 859,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 27,
+    "role": "drawer-bottom",
+    "cut": 500,
+    "width": 843,
+    "thick": 3
+  },
+  {
+    "no": 28,
+    "role": "front",
+    "cut": 237,
+    "width": 897,
+    "thick": 16
+  },
+  {
+    "no": 29,
+    "role": "drawer-side",
+    "cut": 500,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 30,
+    "role": "drawer-side",
+    "cut": 500,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 31,
+    "role": "drawer-back",
+    "cut": 859,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 32,
+    "role": "drawer-bottom",
+    "cut": 500,
+    "width": 843,
+    "thick": 3
+  },
+  {
+    "no": 33,
+    "role": "front",
+    "cut": 237,
+    "width": 897,
+    "thick": 16
+  },
+  {
+    "no": 34,
+    "role": "drawer-side",
+    "cut": 500,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 35,
+    "role": "drawer-side",
+    "cut": 500,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 36,
+    "role": "drawer-back",
+    "cut": 859,
+    "width": 100,
+    "thick": 16
+  },
+  {
+    "no": 37,
+    "role": "drawer-bottom",
+    "cut": 500,
+    "width": 843,
+    "thick": 3
+  },
+  {
+    "no": 1,
+    "role": "bottom",
+    "cut": 2381,
+    "width": 560,
+    "thick": 16
+  },
+  {
+    "no": 2,
+    "role": "plinth",
+    "cut": 2396,
+    "width": 560,
+    "thick": 16
+  },
+  {
+    "no": 3,
+    "role": "side",
+    "cut": 717,
+    "width": 560,
+    "thick": 16
+  },
+  {
+    "no": 4,
+    "role": "side",
+    "cut": 717,
+    "width": 560,
+    "thick": 16
+  },
+  {
+    "no": 5,
+    "role": "side",
+    "cut": 702,
+    "width": 560,
+    "thick": 16
+  },
+  {
+    "no": 6,
+    "role": "side",
+    "cut": 702,
+    "width": 560,
+    "thick": 16
+  },
+  {
+    "no": 7,
+    "role": "worktop",
+    "cut": 1505,
+    "width": 600,
+    "thick": 16
+  },
+  {
+    "no": 8,
+    "role": "worktop",
+    "cut": 905,
+    "width": 600,
+    "thick": 16
+  },
+  {
+    "no": 9,
+    "role": "shelf",
+    "cut": 884,
+    "width": 328,
+    "thick": 16
+  },
+  {
+    "no": 10,
+    "role": "shelf",
+    "cut": 884,
+    "width": 328,
+    "thick": 16
+  },
+  {
+    "no": 11,
+    "role": "shelf",
+    "cut": 884,
+    "width": 328,
+    "thick": 16
+  },
+  {
+    "no": 12,
+    "role": "shelf",
+    "cut": 884,
+    "width": 328,
+    "thick": 16
+  },
+  {
+    "no": 86,
+    "role": "side",
+    "cut": 2400,
+    "width": 720,
+    "thick": 16,
+    "note": "хребет: продольная перегородка, связывает два ряда в коробчатую балку"
+  },
+  {
+    "no": 87,
+    "role": "side",
+    "cut": 720,
+    "width": 1000,
+    "thick": 16,
+    "note": "боковина острова слева, во всю глубину — на оба ряда сразу"
+  },
+  {
+    "no": 88,
+    "role": "side",
+    "cut": 720,
+    "width": 1000,
+    "thick": 16,
+    "note": "боковина острова справа, во всю глубину — на оба ряда сразу"
+  }
+]

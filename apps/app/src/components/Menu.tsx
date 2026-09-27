@@ -6,17 +6,11 @@ import { useT } from "../i18n/useT";
 import { Logo } from "./logo";
 import { IconTabHome, IconTabCatalog, IconTabSettings, IconTabUser } from "./icons";
 
-// phase → its label key in t.menu.phases; label resolved at render (language-aware)
-const PHASES: { key: keyof ReturnType<typeof useT>["menu"]["phases"]; target: Screen; members: Screen[] }[] = [
-  // the «Комната» step IS the room editor now (the standalone quiz + shape picker are retired);
-  // "space" stays in `members` only so a legacy project resuming on it still lights this step.
-  { key: "space", target: "details", members: ["space", "details"] },
-  { key: "variants", target: "variants", members: ["variants"] },
-  { key: "configure", target: "configure", members: ["configure"] },
-  { key: "preview", target: "preview", members: ["preview"] }, // «Рендер»
-  { key: "engineering", target: "engineering", members: ["engineering"] },
-  { key: "cost", target: "cost", members: ["cost"] },
-  { key: "handoff", target: "handoff", members: ["handoff"] },
+// 3 Master Stages in the Side Drawer
+const PHASES: { label: string; target: Screen; members: Screen[] }[] = [
+  { label: "1. Стены & Освещение", target: "details", members: ["space", "details"] },
+  { label: "2. Дизайн & Мебель", target: "configure", members: ["variants", "configure", "preview"] },
+  { label: "3. Раскрой & Смета", target: "handoff", members: ["engineering", "cost", "handoff"] },
 ];
 
 export function Menu() {
@@ -27,16 +21,12 @@ export function Menu() {
   const goTo = useStore((s) => s.goTo);
   const openSettings = useStore((s) => s.openSettings);
   const openCatalog = useStore((s) => s.openCatalog);
-  const showPricing = useStore((s) => s.settings.showPricing);
 
   if (!open) return null;
 
-  // the Смета step is part of the journey only when the seller shows pricing
-  const phases = showPricing ? PHASES : PHASES.filter((p) => p.key !== "cost");
-  const cur = Math.max(0, phases.findIndex((p) => p.members.includes(screen)));
+  const cur = Math.max(0, PHASES.findIndex((p) => p.members.includes(screen)));
   const jump = (i: number) => {
-    if (i > cur) return; // can't jump ahead of where you are
-    goTo(phases[i].target);
+    goTo(PHASES[i].target);
     closeMenu();
   };
   const nav = (to: () => void) => {
@@ -52,6 +42,11 @@ export function Menu() {
     // the hub's <TabBar> so the two navigations agree.
     { label: t.menu.catalog, icon: <IconTabCatalog />, onClick: openCatalog },
     { label: t.menu.settings, icon: <IconTabSettings />, onClick: openSettings },
+    {
+      label: "⚡ App 2 CAD (Sandbox)",
+      icon: <span style={{ fontSize: 16 }}>📐</span>,
+      onClick: () => nav(() => goTo("app2")),
+    },
   ];
 
   return (
@@ -68,14 +63,14 @@ export function Menu() {
           </button>
         </div>
 
-        <div className="menu-sec-title">{t.menu.progress}</div>
+        <div className="menu-sec-title">ЭТАПЫ ПРОЕКТА</div>
         <div className="menu-steps">
-          {phases.map((p, i) => {
-            const state = i < cur ? "done" : i === cur ? "current" : "locked";
+          {PHASES.map((p, i) => {
+            const state = i === cur ? "current" : "done";
             return (
-              <button key={p.target} className={`menu-step ${state}`} disabled={i > cur} onClick={() => jump(i)} type="button">
-                <span className="menu-step-dot">{i < cur ? "✓" : i + 1}</span>
-                <span className="menu-step-lbl">{t.menu.phases[p.key]}</span>
+              <button key={p.target} className={`menu-step ${state}`} onClick={() => jump(i)} type="button">
+                <span className="menu-step-dot">{i === cur ? "●" : "✓"}</span>
+                <span className="menu-step-lbl">{p.label}</span>
               </button>
             );
           })}

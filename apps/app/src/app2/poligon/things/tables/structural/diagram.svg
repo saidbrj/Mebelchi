@@ -1,0 +1,36 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 560 320" width="560" height="320">
+  <style>
+    .c{fill:#f2efe9;stroke:#1a1a1a;stroke-width:2}
+    .p{fill:#e8e2d4;stroke:#1a1a1a;stroke-width:2}
+    .d{stroke:#00815c;stroke-width:1.2;marker-start:url(#a);marker-end:url(#a)}
+    .x{stroke:#e53935;stroke-width:2.5;stroke-dasharray:5 4}
+    .t{font:600 15px system-ui,sans-serif;fill:#1a1a1a}
+    .n{font:500 13px system-ui,sans-serif;fill:#00815c}
+    .m{font:500 12px ui-monospace,monospace;fill:#6b6355}
+    .r{font:500 12px ui-monospace,monospace;fill:#e53935}
+  </style>
+  <defs><marker id="a" markerWidth="7" markerHeight="7" refX="3.5" refY="3.5" orient="auto">
+    <path d="M0,3.5 L7,0 L7,7 Z" fill="#00815c"/></marker></defs>
+  <text class="t" x="20" y="28">Стык столешницы · где можно и где нельзя</text>
+
+  <rect class="c" x="40" y="60" width="480" height="34"/>
+  <rect class="p" x="110" y="94" width="16" height="90"/>
+  <rect class="p" x="290" y="94" width="16" height="90"/>
+  <rect class="p" x="430" y="94" width="16" height="90"/>
+  <text class="m" x="46" y="204">перегородки — единственная опора стыка</text>
+
+  <line x1="298" y1="52" x2="298" y2="102" stroke="#00815c" stroke-width="3"/>
+  <text class="n" x="264" y="46">стык</text>
+
+  <ellipse cx="190" cy="77" rx="46" ry="14" fill="none" stroke="#1a1a1a" stroke-width="2"/>
+  <text class="m" x="168" y="82">мойка</text>
+  <line class="d" x1="236" y1="128" x2="290" y2="128"/>
+  <text class="n" x="242" y="148">≥ 150</text>
+
+  <line class="x" x1="196" y1="52" x2="196" y2="102"/>
+  <text class="r" x="150" y="234">стык в вырезе — разбухнет и лопнет</text>
+
+  <line class="d" x1="126" y1="264" x2="290" y2="264"/>
+  <text class="n" x="180" y="284">≤ 900 без опоры</text>
+  <text class="m" x="40" y="308">полка ЛДСП 16: ≤ 800 · дальше провис 3 мм за полгода, необратимо</text>
+</svg>

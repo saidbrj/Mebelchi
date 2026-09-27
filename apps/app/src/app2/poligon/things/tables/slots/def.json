@@ -1,0 +1,23 @@
+{
+  "id": "qorasu.table.slots",
+  "uid": "01J8K2QF7M3NRA9V0125",
+  "version": "1.0.0",
+  "schema": 1,
+  "kind": "table",
+  "origin": { "source": "local" },
+  "name": {
+    "ru": "Слоты материалов проекта",
+    "en": "Project material slots",
+    "uz": "Loyiha material slotlari"
+  },
+  "fields": {
+    "defaults": {
+      "type": "text",
+      "value": "КОРПУС-A=ldsp-16-white,КОРПУС-B=ldsp-16-white,ФАСАД-A=ldsp-16-white,ФАСАД-B=ldsp-16-white"
+    },
+    "byType": {
+      "type": "text",
+      "value": "side=КОРПУС-A,bottom=КОРПУС-A,top=КОРПУС-A,shelf=КОРПУС-A,divider=КОРПУС-A,rail=КОРПУС-A,spacer=КОРПУС-A,front=ФАСАД-A,back=КОРПУС-B"
+    }
+  }
+}

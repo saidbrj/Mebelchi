@@ -13,6 +13,7 @@ import { LED_TEMPS, ledColor } from "../model/ledStrips";
 import { sinkOf, sinkHole, type SinkSpec } from "../model/sink";
 import { VariantScene } from "../three/VariantScene";
 import { DEFAULT_SUN } from "../three/lighting";
+import { RoomScene } from "./RoomScene";
 import { ConstructorPlan, type PlanEdit } from "../components/ConstructorPlan";
 import { ElevationGrid, type EditDim } from "../components/ElevationGrid";
 import { locate, type CellRef, type RowKind } from "../model/grid";
@@ -27,7 +28,7 @@ import { openCells } from "../model/sheet";
 import { resolveLayout } from "../model/resolve";
 import { cabBand, cabDepth, cornerShapeOf, cornerArm, maxCabH, MIN_H, D_MIN, D_MAX } from "../model/bands";
 import type { PanelDecor } from "../model/wallPanels";
-import { GEOM, effectiveStyle } from "../model/layout";
+import { GEOM, effectiveStyle, type KitchenLayout, type WallBand, type Zone, type FridgeType, type OvenType, type HoodType } from "../model/layout";
 import { dockAll, cabFootprints, objectOverlapIds } from "../model/footprint";
 import { FRONT_PROFILES, HANDLES, frontOf, defaultHandlePos, mk, type Cabinet, type FrontProfile, type FinishKey, type DoorOpening, type HandlePos, type BackPanelMethod } from "../model/cabinet";
 import { constructionOf, shopConstruction, overridesOf, resetToShop, backMountPatch, backSetbackOf } from "../model/construction";
@@ -38,6 +39,7 @@ import { CABINET_GROUPS, APPLIANCE_GROUPS, FURNITURE_GROUPS, EXTRA_GROUPS, type 
 import { listSavedCabs } from "../model/savedCabs";
 import { templateThumbnail } from "../lib/cabThumb";
 import { FLOOR_COVERINGS } from "../model/floors";
+import { wallSegments, type Pt } from "../model/room";
 import {
   IconCabinets,
   IconAppliance,
@@ -55,6 +57,7 @@ import {
   Icon3D,
   IconFront,
   IconPlan,
+  IconCamera,
 } from "../components/icons";
 
 /** A real built-in appliance (excludes plain modules and render-only fillers). */
@@ -141,13 +144,10 @@ const GlyphEdit = () => (
 );
 
 // style-panel part-tab glyphs (Фасад / Ручка / Столешница / Корпус)
-/** ОТДЕЛКА — a wall in section: the counter line, the panel on it, the row above. */
+/** ОТДЕЛКА — палитра отделки и материалов */
 const GlyphFinish = () => (
-  <svg width="22" height="22" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" aria-hidden>
-    <path d="M3 4h18v4H3z" />
-    <path d="M3 15h18" />
-    <path d="M4.5 9.5v4.5M9 9.5v4.5M13.5 9.5v4.5M18 9.5v4.5" strokeWidth="1.1" />
-    <path d="M3 18h18v2H3z" />
+  <svg width="22" height="22" viewBox="0 0 32 32" fill="currentColor" aria-hidden>
+    <path d="M15.5942 2.96923C15.063 2.98486 14.5161 3.04345 13.9692 3.12548H13.938C8.61376 3.99657 4.30126 8.19189 3.21923 13.5005C2.89501 15.0122 2.91455 16.4224 3.12548 17.813C3.1333 17.8169 3.12548 17.8364 3.12548 17.8442C3.45361 20.1919 6.50048 21.2192 8.21923 19.5005C9.4497 18.27 11.27 18.27 12.5005 19.5005C13.731 20.7309 13.731 22.5513 12.5005 23.7817C10.7817 25.5005 11.8091 28.5474 14.1567 28.8755C14.1645 28.8755 14.1841 28.8677 14.188 28.8755C15.5669 29.0864 16.9692 29.0981 18.4692 28.7817C18.481 28.7817 18.4888 28.7817 18.5005 28.7817C23.8247 27.7895 28.0083 23.3755 28.8755 18.063V18.0317C30.0083 10.3911 24.4224 3.71923 17.1567 3.03173C16.6372 2.98095 16.1255 2.95361 15.5942 2.96923ZM15.6255 4.96923C16.0786 4.95361 16.5278 4.96142 16.9692 5.00048C23.1645 5.56689 27.8755 11.2153 26.9067 17.7505C26.1763 22.227 22.5864 25.9927 18.1255 26.813H18.0942C16.8169 27.0864 15.6372 27.0903 14.438 26.9067C13.6177 26.8052 13.2388 25.8872 13.9067 25.2192C15.8755 23.2505 15.8755 20.063 13.9067 18.0942C11.938 16.1255 8.75048 16.1255 6.78173 18.0942C6.11376 18.7622 5.1958 18.3833 5.09423 17.563C4.91064 16.3638 4.91455 15.1841 5.18798 13.9067C6.10595 9.41845 9.77392 5.8247 14.2505 5.09423C14.7192 5.02392 15.1724 4.98486 15.6255 4.96923ZM14.0005 7.00048C12.895 7.00048 12.0005 7.89501 12.0005 9.00048C12.0005 10.1059 12.895 11.0005 14.0005 11.0005C15.106 11.0005 16.0005 10.1059 16.0005 9.00048C16.0005 7.89501 15.106 7.00048 14.0005 7.00048ZM21.0005 9.00048C19.895 9.00048 19.0005 9.89501 19.0005 11.0005C19.0005 12.1059 19.895 13.0005 21.0005 13.0005C22.106 13.0005 23.0005 12.1059 23.0005 11.0005C23.0005 9.89501 22.106 9.00048 21.0005 9.00048ZM9.00048 11.0005C7.89501 11.0005 7.00048 11.895 7.00048 13.0005C7.00048 14.1059 7.89501 15.0005 9.00048 15.0005C10.106 15.0005 11.0005 14.1059 11.0005 13.0005C11.0005 11.895 10.106 11.0005 9.00048 11.0005ZM23.0005 16.0005C21.895 16.0005 21.0005 16.895 21.0005 18.0005C21.0005 19.1059 21.895 20.0005 23.0005 20.0005C24.106 20.0005 25.0005 19.1059 25.0005 18.0005C25.0005 16.895 24.106 16.0005 23.0005 16.0005ZM19.0005 21.0005C17.895 21.0005 17.0005 21.895 17.0005 23.0005C17.0005 24.1059 17.895 25.0005 19.0005 25.0005C20.106 25.0005 21.0005 24.1059 21.0005 23.0005C21.0005 21.895 20.106 21.0005 19.0005 21.0005Z" />
   </svg>
 );
 
@@ -193,14 +193,394 @@ const FREE_GROUPS = [
   ...EXTRA_GROUPS,
 ];
 
+// Ergonomic kitchen layout compositions (Appliance placement & Triangle rules)
+export interface KitchenCompositionPreset {
+  id: string;
+  name: string;
+  subtitle: string;
+  fridge: FridgeType;
+  oven: OvenType;
+  hood: HoodType;
+  dishwasher: boolean;
+  water?: Zone;
+  wallBand: "single" | "antresol";
+}
+
+export const KITCHEN_COMPOSITIONS: KitchenCompositionPreset[] = [
+  {
+    id: "classic-triangle",
+    name: "Классический",
+    subtitle: "Пенал + встр. холод + ПММ",
+    fridge: "integ",
+    oven: "tall",
+    hood: "integ",
+    dishwasher: true,
+    wallBand: "antresol",
+  },
+  {
+    id: "compact-under",
+    name: "Максимум зоны",
+    subtitle: "Духовка под плитой + ПММ",
+    fridge: "integ",
+    oven: "under",
+    hood: "integ",
+    dishwasher: true,
+    wallBand: "single",
+  },
+  {
+    id: "tall-tower",
+    name: "Антресоли",
+    subtitle: "Пенал духовки + до потолка",
+    fridge: "integ",
+    oven: "tall",
+    hood: "integ",
+    dishwasher: true,
+    wallBand: "antresol",
+  },
+  {
+    id: "dome-hood-accent",
+    name: "Купольная вытяжка",
+    subtitle: "Открытая вытяжка + духовка",
+    fridge: "integ",
+    oven: "under",
+    hood: "dome",
+    dishwasher: true,
+    wallBand: "single",
+  },
+  {
+    id: "freestanding-fridge",
+    name: "Соло-холодильник",
+    subtitle: "Отдельный холод. + пенал",
+    fridge: "free",
+    oven: "tall",
+    hood: "integ",
+    dishwasher: true,
+    wallBand: "single",
+  },
+  {
+    id: "minimal-compact",
+    name: "Без пеналов",
+    subtitle: "Компактная прямая кухня",
+    fridge: "none",
+    oven: "under",
+    hood: "integ",
+    dishwasher: true,
+    wallBand: "single",
+  },
+];
+
+export interface FinishPaletteOption {
+  id: string;
+  name: string;
+  color1: string;
+  color2: string;
+  facade: number;
+  carcass: number;
+  worktop: number;
+  isCustom?: boolean;
+}
+
+export const FINISH_PALETTES: FinishPaletteOption[] = [
+  {
+    id: "white-wood",
+    name: "Белый & Дуб",
+    color1: "#fdfdfc",
+    color2: "#d4b896",
+    facade: 0xf5f5f0,
+    carcass: 0xf0ede6,
+    worktop: 0xd4b896,
+  },
+  {
+    id: "graphite-walnut",
+    name: "Графит & Орех",
+    color1: "#373a3c",
+    color2: "#6a4a35",
+    facade: 0x3a3d40,
+    carcass: 0x2b2d30,
+    worktop: 0x5c4033,
+  },
+  {
+    id: "cashmere-stone",
+    name: "Кашемир & Камень",
+    color1: "#ded6cc",
+    color2: "#baa998",
+    facade: 0xded6cc,
+    carcass: 0xede8e1,
+    worktop: 0xefedea,
+  },
+  {
+    id: "emerald-gold",
+    name: "Изумруд & Мрамор",
+    color1: "#1b4d3e",
+    color2: "#f3f4f6",
+    facade: 0x1b4d3e,
+    carcass: 0x223830,
+    worktop: 0xf3f4f6,
+  },
+  {
+    id: "loft-concrete",
+    name: "Лофт & Бетон",
+    color1: "#6e7072",
+    color2: "#282828",
+    facade: 0x6e7072,
+    carcass: 0x4a4c4e,
+    worktop: 0x282828,
+  },
+  {
+    id: "black-wood",
+    name: "Черный & Дуб",
+    color1: "#1e2022",
+    color2: "#bfa37c",
+    facade: 0x202224,
+    carcass: 0x18191a,
+    worktop: 0xbfa37c,
+  },
+];
+
+const CUSTOM_PALS_KEY = "mebelchi.custom_palettes.v1";
+const memCustomPals = new Map<string, string>();
+
+export const loadCustomPalettes = (): FinishPaletteOption[] => {
+  try {
+    const raw = typeof localStorage !== "undefined" ? localStorage.getItem(CUSTOM_PALS_KEY) : null;
+    const data = raw || memCustomPals.get(CUSTOM_PALS_KEY);
+    return data ? JSON.parse(data) : [];
+  } catch {
+    const mem = memCustomPals.get(CUSTOM_PALS_KEY);
+    return mem ? JSON.parse(mem) : [];
+  }
+};
+
+export const saveCustomPalettes = (pals: FinishPaletteOption[]) => {
+  try {
+    const json = JSON.stringify(pals);
+    memCustomPals.set(CUSTOM_PALS_KEY, json);
+    if (typeof localStorage !== "undefined") {
+      localStorage.setItem(CUSTOM_PALS_KEY, json);
+    }
+  } catch {
+    /* ignore */
+  }
+};
+
+// 3D Isometric Kitchen Layout Illustrations (Rich 3D aesthetics)
+const LayoutThumbI = () => (
+  <svg width="96" height="70" viewBox="0 0 120 90" fill="none" className="tpl-illus-svg">
+    <defs>
+      <linearGradient id="i-wt" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#E2C9A6" />
+        <stop offset="100%" stopColor="#C49A6C" />
+      </linearGradient>
+      <linearGradient id="i-cab" x1="0%" y1="0%" x2="100%" y2="0%">
+        <stop offset="0%" stopColor="#F8FAFC" />
+        <stop offset="100%" stopColor="#E2E8F0" />
+      </linearGradient>
+      <linearGradient id="i-glass" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stopColor="#E0F2FE" stopOpacity="0.85" />
+        <stop offset="100%" stopColor="#BAE6FD" stopOpacity="0.55" />
+      </linearGradient>
+    </defs>
+    {/* Floor shadow */}
+    <ellipse cx="60" cy="74" rx="46" ry="9" fill="#0F172A" fillOpacity="0.08" />
+
+    {/* Back wall tile accent */}
+    <path d="M16 45 L78 24 L86 28 L24 49 Z" fill="#F1F5F9" stroke="#E2E8F0" strokeWidth="0.8" />
+
+    {/* Base cabinet plinth */}
+    <path d="M22 62 L74 44 L80 47 L28 65 Z" fill="#334155" />
+
+    {/* Base cabinet body */}
+    <path d="M18 47 L76 27 L88 34 L30 54 Z" fill="url(#i-cab)" stroke="#CBD5E1" strokeWidth="0.8" />
+    <path d="M18 47 L30 54 L30 68 L18 61 Z" fill="#94A3B8" />
+    <path d="M30 54 L88 34 L88 48 L30 68 Z" fill="#CBD5E1" stroke="#94A3B8" strokeWidth="0.8" />
+
+    {/* Base cabinet door lines */}
+    <line x1="50" y1="47" x2="50" y2="61" stroke="#64748B" strokeWidth="1" />
+    <line x1="70" y1="40" x2="70" y2="54" stroke="#64748B" strokeWidth="1" />
+
+    {/* Countertop with 3D edge */}
+    <path d="M16 45 L77 25 L90 33 L29 53 Z" fill="url(#i-wt)" stroke="#B88A58" strokeWidth="1.2" />
+    <path d="M16 45 L29 53 L29 55 L16 47 Z" fill="#9C6F3E" />
+    <path d="M29 53 L90 33 L90 35 L29 55 Z" fill="#B88A58" />
+
+    {/* Stainless Sink with mixer faucet */}
+    <path d="M36 43 L48 39 L54 42 L42 46 Z" fill="#94A3B8" stroke="#475569" strokeWidth="0.8" />
+    <path d="M38 43 L46 40 L50 42 L42 45 Z" fill="#64748B" />
+    <path d="M47 38 L47 35 Q47 33 49 33 L51 34" stroke="#CBD5E1" strokeWidth="1.2" fill="none" strokeLinecap="round" />
+
+    {/* Black Ceramic Hob */}
+    <path d="M60 35 L74 30 L80 34 L66 38 Z" fill="#1E293B" stroke="#0F172A" strokeWidth="0.8" />
+    <circle cx="68" cy="34" r="2.5" fill="#334155" />
+    <circle cx="73" cy="32" r="2" fill="#334155" />
+
+    {/* Upper Wall Cabinets */}
+    <path d="M28 22 L78 5 L86 10 L36 27 Z" fill="#F8FAFC" stroke="#E2E8F0" strokeWidth="0.8" />
+    <path d="M28 22 L36 27 L36 41 L28 36 Z" fill="#94A3B8" />
+    <path d="M36 27 L86 10 L86 24 L36 41 Z" fill="url(#i-glass)" stroke="#94A3B8" strokeWidth="0.8" />
+    <line x1="53" y1="21" x2="53" y2="35" stroke="#60A5FA" strokeWidth="0.8" />
+    <line x1="70" y1="15" x2="70" y2="29" stroke="#60A5FA" strokeWidth="0.8" />
+
+    {/* Warm LED Under-cabinet glow line */}
+    <line x1="36" y1="41.5" x2="86" y2="24.5" stroke="#F59E0B" strokeWidth="1.8" strokeLinecap="round" opacity="0.85" />
+  </svg>
+);
+
+const LayoutThumbL = () => (
+  <svg width="96" height="70" viewBox="0 0 120 90" fill="none" className="tpl-illus-svg">
+    <defs>
+      <linearGradient id="l-wt" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#E2C9A6" />
+        <stop offset="100%" stopColor="#C49A6C" />
+      </linearGradient>
+      <linearGradient id="l-glass" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stopColor="#E0F2FE" stopOpacity="0.85" />
+        <stop offset="100%" stopColor="#BAE6FD" stopOpacity="0.55" />
+      </linearGradient>
+    </defs>
+    {/* Floor shadow */}
+    <ellipse cx="60" cy="75" rx="48" ry="10" fill="#0F172A" fillOpacity="0.08" />
+
+    {/* Left base run */}
+    <path d="M12 44 L60 27 L70 33 L22 50 Z" fill="#F8FAFC" stroke="#CBD5E1" strokeWidth="0.8" />
+    {/* Right base return run */}
+    <path d="M52 30 L94 47 L82 54 L42 37 Z" fill="#F8FAFC" stroke="#CBD5E1" strokeWidth="0.8" />
+
+    {/* Sides and fronts */}
+    <path d="M12 44 L22 50 L22 64 L12 58 Z" fill="#94A3B8" />
+    <path d="M22 50 L46 41 L46 55 L22 64 Z" fill="#CBD5E1" stroke="#94A3B8" strokeWidth="0.8" />
+    <path d="M46 41 L82 55 L82 69 L46 55 Z" fill="#94A3B8" stroke="#64748B" strokeWidth="0.8" />
+    <path d="M82 55 L94 47 L94 61 L82 69 Z" fill="#CBD5E1" stroke="#94A3B8" strokeWidth="0.8" />
+
+    {/* L-shaped continuous Countertop */}
+    <path d="M10 42 L60 25 L96 45 L83 53 L46 35 L22 49 Z" fill="url(#l-wt)" stroke="#B88A58" strokeWidth="1.2" />
+    <path d="M10 42 L22 49 L22 51 L10 44 Z" fill="#9C6F3E" />
+    <path d="M22 49 L46 35 L46 37 L22 51 Z" fill="#B88A58" />
+    <path d="M46 35 L83 53 L83 55 L46 37 Z" fill="#9C6F3E" />
+    <path d="M83 53 L96 45 L96 47 L83 55 Z" fill="#B88A58" />
+
+    {/* Sink on left wing */}
+    <path d="M25 43 L35 39 L40 42 L30 46 Z" fill="#64748B" stroke="#475569" strokeWidth="0.6" />
+    <path d="M36 39 L36 36 Q36 34 38 34 L39 35" stroke="#CBD5E1" strokeWidth="1" fill="none" strokeLinecap="round" />
+
+    {/* Cooktop on right wing */}
+    <path d="M58 39 L70 45 L65 48 L53 42 Z" fill="#1E293B" stroke="#0F172A" strokeWidth="0.6" />
+    <circle cx="61" cy="43" r="2" fill="#334155" />
+
+    {/* L-shaped Upper Cabinets */}
+    <path d="M22 19 L62 5 L70 10 L30 24 Z" fill="#F8FAFC" stroke="#CBD5E1" strokeWidth="0.8" />
+    <path d="M22 19 L30 24 L30 37 L22 32 Z" fill="#94A3B8" />
+    <path d="M30 24 L70 10 L70 23 L30 37 Z" fill="url(#l-glass)" stroke="#94A3B8" strokeWidth="0.8" />
+    {/* Return upper */}
+    <path d="M62 8 L84 18 L76 23 L54 13 Z" fill="#F8FAFC" stroke="#CBD5E1" strokeWidth="0.8" />
+    <path d="M54 13 L76 23 L76 36 L54 26 Z" fill="url(#l-glass)" stroke="#94A3B8" strokeWidth="0.8" />
+
+    {/* LED Under-cabinet glow */}
+    <line x1="30" y1="37.5" x2="70" y2="23.5" stroke="#F59E0B" strokeWidth="1.6" strokeLinecap="round" opacity="0.85" />
+    <line x1="54" y1="26.5" x2="76" y2="36.5" stroke="#F59E0B" strokeWidth="1.6" strokeLinecap="round" opacity="0.85" />
+  </svg>
+);
+
+const LayoutThumbU = () => (
+  <svg width="96" height="70" viewBox="0 0 120 90" fill="none" className="tpl-illus-svg">
+    <defs>
+      <linearGradient id="u-wt" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#E2C9A6" />
+        <stop offset="100%" stopColor="#C49A6C" />
+      </linearGradient>
+    </defs>
+    {/* Floor shadow */}
+    <ellipse cx="60" cy="74" rx="48" ry="10" fill="#0F172A" fillOpacity="0.08" />
+
+    {/* Left arm base */}
+    <path d="M12 36 L32 46 L24 51 L6 40 Z" fill="#CBD5E1" stroke="#94A3B8" strokeWidth="0.8" />
+    <path d="M6 40 L24 51 L24 63 L6 52 Z" fill="#94A3B8" />
+    <path d="M32 46 L24 51 L24 63 L32 58 Z" fill="#CBD5E1" />
+
+    {/* Back main run base */}
+    <path d="M12 36 L72 17 L82 23 L24 42 Z" fill="#F8FAFC" stroke="#CBD5E1" strokeWidth="0.8" />
+
+    {/* Right arm base */}
+    <path d="M72 17 L96 30 L86 36 L62 23 Z" fill="#CBD5E1" stroke="#94A3B8" strokeWidth="0.8" />
+    <path d="M62 23 L86 36 L86 48 L62 35 Z" fill="#94A3B8" />
+    <path d="M86 36 L96 30 L96 42 L86 48 Z" fill="#CBD5E1" />
+
+    {/* Full U-shaped Countertop */}
+    <path d="M5 38 L16 33 L72 15 L98 29 L86 36 L64 24 L26 36 L33 44 L20 51 Z" fill="url(#u-wt)" stroke="#B88A58" strokeWidth="1.2" />
+    <path d="M20 51 L33 44 L33 46 L20 53 Z" fill="#9C6F3E" />
+    <path d="M5 38 L20 51 L20 53 L5 40 Z" fill="#B88A58" />
+    <path d="M86 36 L98 29 L98 31 L86 38 Z" fill="#B88A58" />
+
+    {/* Sink in back run center */}
+    <path d="M42 27 L54 23 L59 26 L47 30 Z" fill="#64748B" stroke="#475569" strokeWidth="0.6" />
+
+    {/* Upper cabinets on back wall */}
+    <path d="M28 12 L72 1 L80 6 L36 17 Z" fill="#F8FAFC" stroke="#CBD5E1" strokeWidth="0.8" />
+    <path d="M36 17 L80 6 L80 18 L36 29 Z" fill="#E2E8F0" stroke="#94A3B8" strokeWidth="0.8" />
+
+    {/* Warm LED Under-cabinet glow line */}
+    <line x1="36" y1="29.5" x2="80" y2="18.5" stroke="#F59E0B" strokeWidth="1.6" strokeLinecap="round" opacity="0.85" />
+  </svg>
+);
+
+const LayoutThumbPeninsula = () => (
+  <svg width="96" height="70" viewBox="0 0 120 90" fill="none" className="tpl-illus-svg">
+    <defs>
+      <linearGradient id="p-wt" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#E2C9A6" />
+        <stop offset="100%" stopColor="#C49A6C" />
+      </linearGradient>
+      <linearGradient id="p-isl" x1="0%" y1="0%" x2="100%" y2="100%">
+        <stop offset="0%" stopColor="#10B981" />
+        <stop offset="100%" stopColor="#047857" />
+      </linearGradient>
+      <linearGradient id="p-glass" x1="0%" y1="0%" x2="0%" y2="100%">
+        <stop offset="0%" stopColor="#E0F2FE" stopOpacity="0.85" />
+        <stop offset="100%" stopColor="#BAE6FD" stopOpacity="0.55" />
+      </linearGradient>
+    </defs>
+    {/* Floor shadows */}
+    <ellipse cx="60" cy="46" rx="40" ry="7" fill="#0F172A" fillOpacity="0.06" />
+    <ellipse cx="58" cy="74" rx="32" ry="8" fill="#0F172A" fillOpacity="0.1" />
+
+    {/* Back wall run: tall cabinet + base run */}
+    <path d="M16 29 L76 13 L86 19 L26 35 Z" fill="#F8FAFC" stroke="#CBD5E1" strokeWidth="0.8" />
+    <path d="M16 29 L26 35 L26 47 L16 41 Z" fill="#94A3B8" />
+    <path d="M26 35 L86 19 L86 31 L26 47 Z" fill="#CBD5E1" stroke="#94A3B8" strokeWidth="0.8" />
+
+    {/* Back countertop */}
+    <path d="M14 27 L76 11 L88 18 L26 34 Z" fill="url(#p-wt)" stroke="#B88A58" strokeWidth="1" />
+
+    {/* Back upper cabinets */}
+    <path d="M26 9 L76 0 L86 5 L36 14 Z" fill="#F8FAFC" stroke="#CBD5E1" strokeWidth="0.8" />
+    <path d="M36 14 L86 5 L86 16 L36 25 Z" fill="url(#p-glass)" stroke="#94A3B8" strokeWidth="0.8" />
+    <line x1="36" y1="25.5" x2="86" y2="16.5" stroke="#F59E0B" strokeWidth="1.5" strokeLinecap="round" opacity="0.85" />
+
+    {/* Freestanding Waterfall Kitchen Island */}
+    <path d="M30 54 L72 41 L82 47 L40 60 Z" fill="#F8FAFC" stroke="#CBD5E1" strokeWidth="0.8" />
+    <path d="M30 54 L40 60 L40 73 L30 67 Z" fill="#94A3B8" />
+    <path d="M40 60 L82 47 L82 60 L40 73 Z" fill="#CBD5E1" stroke="#94A3B8" strokeWidth="0.8" />
+
+    {/* Island Waterfall Countertop */}
+    <path d="M28 52 L72 39 L84 46 L40 59 Z" fill="url(#p-isl)" stroke="#065F46" strokeWidth="1.2" />
+    <path d="M28 52 L40 59 L40 73 L28 66 Z" fill="#047857" stroke="#065F46" strokeWidth="0.8" />
+    <path d="M40 59 L84 46 L84 48 L40 61 Z" fill="#059669" />
+  </svg>
+);
+
+const KITCHEN_LAYOUT_CHOICES = [
+  { id: "i" as const, title: "Прямая", badge: "Линейная", Thumb: LayoutThumbI },
+  { id: "l" as const, title: "Угловая", badge: "Г-образная", Thumb: LayoutThumbL },
+  { id: "u" as const, title: "П-образная", badge: "Вместительная", Thumb: LayoutThumbU },
+  { id: "peninsula" as const, title: "С островом", badge: "Современная", Thumb: LayoutThumbPeninsula },
+];
+
 export function ConfigScreen() {
   const t = useT();
   const money = useMoney();
   const settings = useStore((s) => s.settings);
   // Subscribe (no value needed): the material pickers below call materialsFor() during render,
   // so all this has to do is re-render the screen when Каталог changes the list.
-  useStore((s) => s.catalogRev);
-  const showPricing = settings.showPricing;
+  const showPricing = useStore((s) => s.settings.showPricing && (s.settings.pricingItems || s.settings.pricingSqm));
   const quality = settings.quality;
   const cabs = useStore((s) => s.cabs);
   const price = useDesignPrice(cabs); // USD, per the active pricing mode
@@ -233,11 +613,25 @@ export function ConfigScreen() {
   const fittings = useStore((s) => s.fittings);
   const wallSurfaces = useStore((s) => s.wallSurfaces);
   const waterWall = useStore((s) => s.waterWall);
+  const setWaterWall = useStore((s) => s.setWaterWall);
+  const shape = useStore((s) => s.shape);
+  const setShape = useStore((s) => s.setShape);
+  const setRoomWidth = useStore((s) => s.setRoomWidth);
+  const setRoomDepth = useStore((s) => s.setRoomDepth);
+  const setWallLength = useStore((s) => s.setWallLength);
+  const setCeilingValue = useStore((s) => s.setCeilingValue);
+  const addOpening = useStore((s) => s.addOpening);
+  const removeOpening = useStore((s) => s.removeOpening);
+  const setFloorCovering = useStore((s) => s.setFloorCovering);
+  const generateVariants = useStore((s) => s.generateVariants);
+  const applyLayoutTemplate = useStore((s) => s.applyLayoutTemplate);
+  const goTo = useStore((s) => s.goTo);
   const floorCovering = useStore((s) => s.floorCovering);
   const selectCab = useStore((s) => s.selectCab);
   const patchCab = useStore((s) => s.patchCab);
   const patchCabLive = useStore((s) => s.patchCabLive);
   const applyFinishToAll = useStore((s) => s.applyFinishToAll);
+  const applyStylePackage = useStore((s) => s.applyStylePackage);
   const patchAllCabs = useStore((s) => s.patchAllCabs);
   const fillCabGap = useStore((s) => s.fillCabGap);
   const fillWallRow = useStore((s) => s.fillWallRow);
@@ -272,6 +666,7 @@ export function ConfigScreen() {
   const selectMany = useStore((s) => s.selectMany);
   const clearSel = useStore((s) => s.clearSel);
   const toggleSelId = useStore((s) => s.toggleSelId);
+  const enterApp2 = useStore((s) => s.enterApp2);
   const applyToSelected = useStore((s) => s.applyToSelected);
   const applyFinishToSelected = useStore((s) => s.applyFinishToSelected);
   const resizeSelectedWidth = useStore((s) => s.resizeSelectedWidth);
@@ -376,11 +771,85 @@ export function ConfigScreen() {
   const [feEdit, setFeEdit] = useState<{ x: number; y: number; apply: (v: number) => void } | null>(null);
   const [feVal, setFeVal] = useState("");
 
-  // the toolbar hint auto-hides after 3s (room-editor behaviour)
-  useEffect(() => {
-    const t = setTimeout(() => setShowHint(false), 3000);
-    return () => clearTimeout(t);
-  }, []);
+  const [studioTab, setStudioTab] = useState<"cabs" | "room" | "style">("cabs");
+  const [roomEditorOpen, setRoomEditorOpen] = useState(false);
+  const [templateModalOpen, setTemplateModalOpen] = useState(false);
+  const [filterModalOpen, setFilterModalOpen] = useState(false);
+  const [emptyDismissed, setEmptyDismissed] = useState(false);
+  const [tplSetup, setTplSetup] = useState<{
+    active: boolean;
+    stage: "plan" | "3d";
+    layout: KitchenLayout;
+    targetWall: number;
+    wallBand: "single" | "antresol";
+    stylePreset: string;
+    paletteId?: string;
+    fridge?: FridgeType;
+    oven?: OvenType;
+    hood?: HoodType;
+    dishwasher?: boolean;
+    water?: Zone;
+  } | null>(null);
+  const [tplSubTab, setTplSubTab] = useState<"palette" | "layout">("palette");
+  const [tplMinimized, setTplMinimized] = useState(false);
+
+  const [sheetFullscreen, setSheetFullscreen] = useState(false);
+  const [customPalettes, setCustomPalettes] = useState<FinishPaletteOption[]>(() => loadCustomPalettes());
+  const [isCustomOpen, setIsCustomOpen] = useState(false);
+  const [customFacade, setCustomFacade] = useState("#f5f5f0");
+  const [customWorktop, setCustomWorktop] = useState("#d4b896");
+  const [customCarcass, setCustomCarcass] = useState("#f0ede6");
+  const [syncCarcassWithFacade, setSyncCarcassWithFacade] = useState(true);
+  const [customName, setCustomName] = useState("");
+  const [activeFinishPaletteId, setActiveFinishPaletteId] = useState<string | null>(null);
+
+  const dragStartY = useRef<number | null>(null);
+  const hasMoved = useRef(false);
+
+  const handleGripPointerDown = (e: React.PointerEvent) => {
+    dragStartY.current = e.clientY;
+    hasMoved.current = false;
+    const startY = e.clientY;
+
+    const onPointerMove = (evt: PointerEvent) => {
+      const diff = evt.clientY - startY;
+      if (Math.abs(diff) > 5) {
+        hasMoved.current = true;
+      }
+    };
+
+    const onPointerUp = (evt: PointerEvent) => {
+      window.removeEventListener("pointermove", onPointerMove);
+      window.removeEventListener("pointerup", onPointerUp);
+      const endY = evt.clientY;
+      const deltaY = endY - startY;
+      dragStartY.current = null;
+
+      if (deltaY < -25) {
+        // Dragged UP -> open to whole screen
+        setSheetFullscreen(true);
+      } else if (deltaY > 35) {
+        // Dragged DOWN ->
+        if (sheetFullscreen) {
+          setSheetFullscreen(false);
+        } else {
+          closeSheet();
+        }
+      }
+    };
+
+    window.addEventListener("pointermove", onPointerMove);
+    window.addEventListener("pointerup", onPointerUp);
+  };
+
+  const handleGripClick = () => {
+    if (hasMoved.current) return;
+    setSheetFullscreen((cur) => !cur);
+  };
+
+  // Room geometry helpers for unified Room 1 editing
+  const wallSegs = useMemo(() => wallSegments(points, interiorWalls), [points, interiorWalls]);
+
   // drop the selection if its module was deleted out from under us
   useEffect(() => {
     if (picked && !cabs.some((c) => c.id === picked)) setPicked(null);
@@ -394,10 +863,14 @@ export function ConfigScreen() {
   useEffect(() => {
     if (selIds.length === 0 && (sheet === "resize" || sheet === "style")) setSheet(null);
   }, [selIds.length, sheet]);
+  useEffect(() => {
+    if (!sheet) setSheetFullscreen(false);
+  }, [sheet]);
 
   const closeSheet = () => {
     setReplaceId(null); // leaving the catalog cancels any pending replace
     setFillOpen(false);
+    setSheetFullscreen(false);
     setSheetClosing(true);
     setTimeout(() => {
       setSheet(null);
@@ -467,8 +940,19 @@ export function ConfigScreen() {
     else clearSel();
   };
   // a tap in the 3D toggles the module in/out of the selection (no mode — you just keep tapping)
+  // DOUBLE TAP on the same module → enter the App 2 cabinet editor ("smart object" pattern)
+  const lastTapRef = useRef<{ id: string; t: number }>({ id: "", t: 0 });
   const pick3d = (id: string | null) => {
     if (!id) { clearSel(); setPicked(null); return; }
+    const now = Date.now();
+    const last = lastTapRef.current;
+    if (last.id === id && now - last.t < 400) {
+      // DOUBLE TAP → enter App 2 for this cabinet
+      lastTapRef.current = { id: "", t: 0 };
+      enterApp2(id);
+      return;
+    }
+    lastTapRef.current = { id, t: now };
     // (the «Угловой» chip's tap-to-convert mode lived here. The chip is gone — a corner is made
     // AFTER the run is built, by selecting the cabinet that ended up in the corner and picking
     // «Угловой» from the swap strip, which leads that strip for any plain base/wall unit.)
@@ -671,6 +1155,11 @@ export function ConfigScreen() {
   const toggleFront = (key: string): boolean => {
     const cabId = key.includes("#") ? key.slice(0, key.indexOf("#")) : key;
     if (!selIds.includes(cabId)) return false;
+    // If user is double-tapping within 400ms on the same cabinet, fall through to pick3d to enter App 2
+    const now = Date.now();
+    if (lastTapRef.current.id === cabId && now - lastTapRef.current.t < 400) {
+      return false;
+    }
     setOpenIds((cur) => {
       const rest = cur.filter((k) => k !== cabId && k !== key);
       // whole module already open (via the rail button) → a tap on any of its fronts shuts it,
@@ -871,10 +1360,31 @@ export function ConfigScreen() {
       {/* project name on top; the live price ticker keeps its place underneath when the
           seller has pricing on (it's the one number worth watching while editing) */}
       <JourneyBar
-        sub={showPricing ? (
+        sub={showPricing && price > 0 ? (
           <span className="cfg-price">{money(price)}<span className="cfg-price-i" aria-hidden>ⓘ</span></span>
         ) : null}
-        right={<button className="step-next" onClick={next} type="button">{t.footer.toRenderShort}</button>}
+        right={
+          <button
+            className="step-next"
+            onClick={() => goTo("handoff")}
+            type="button"
+            style={{
+              background: "linear-gradient(135deg, #10b981, #059669)",
+              color: "#ffffff",
+              border: "none",
+              fontWeight: "bold",
+              display: "inline-flex",
+              alignItems: "center",
+              gap: 6,
+              boxShadow: "0 2px 8px rgba(16, 185, 129, 0.35)",
+              cursor: "pointer",
+              padding: "7px 15px",
+            }}
+          >
+            <span>Сдача</span>
+            <span>→</span>
+          </button>
+        }
       />
 
       {/* front view: switch which wall run / island is shown + edited */}
@@ -907,10 +1417,16 @@ export function ConfigScreen() {
             mode={mode}
             // redraw when «Стандарт цеха» changes — the build isn't stored on the cabinets
             constructionRev={constructionRev}
-            magnet={g3dMagnet}
-            light="day"
+            light={led.preset ?? "evening"}
             ao={false}
             sun={DEFAULT_SUN}
+            lampCount={led.ceilingCount ?? 4}
+            lampKind={led.ceilingKind ?? "spot"}
+            lampSpread={led.ceilingSpread ?? 0.34}
+            lampTemp={led.temp ?? 4000}
+            lampOffsetMm={led.ceilingOffsetMm ?? 800}
+            customPositions={led.customPositions}
+            ceilingPerimeter={false}
             quality={quality}
             nav
             openIds={openIds}
@@ -1024,6 +1540,19 @@ export function ConfigScreen() {
             onBeginEdit={beginCabEdit}
             onEditDim={onEditDim}
             onDragDim={onDragDim}
+            interactiveTemplate={
+              tplSetup?.active && tplSetup.stage === "plan"
+                ? {
+                    active: true,
+                    onSnapWall: (wallIdx) => {
+                      if (tplSetup.targetWall === wallIdx) return;
+                      setTplSetup((s) => (s ? { ...s, targetWall: wallIdx } : null));
+                      applyLayoutTemplate(tplSetup.layout, wallIdx, tplSetup.wallBand);
+                      flash(`Планировка привязана к Стене ${wallIdx + 1}`);
+                    },
+                  }
+                : undefined
+            }
           />
         ) : (
           <ElevationGrid
@@ -1117,25 +1646,608 @@ export function ConfigScreen() {
           </button>
         )}
 
-        {!sel && showHint && (
-          <div className="plan-hint">{t.config.hint}</div>
+
+        {/* ── EMPTY STATE ONBOARDING (when no cabinets are placed yet) ── */}
+        {cabs.length === 0 && !emptyDismissed && !templateModalOpen && !tplSetup?.active && (
+          <div className="empty-room-prompt">
+            <div className="empty-prompt-card">
+              <div className="empty-prompt-badge">Новая кухня</div>
+              <h2 className="empty-prompt-title">С чего вы хотите начать?</h2>
+              <p className="empty-prompt-sub">
+                Выберите готовый шаблон планировки для вашей комнаты или расставьте шкафы вручную.
+              </p>
+              <div className="empty-prompt-options">
+                <button
+                  type="button"
+                  className="empty-option-btn primary"
+                  onClick={() => setTemplateModalOpen(true)}
+                >
+                  <div className="eob-icon">📐</div>
+                  <div className="eob-content">
+                    <div className="eob-title">Выбрать готовый шаблон</div>
+                    <div className="eob-desc">Прямая, угловая, П-образная или с островом</div>
+                  </div>
+                  <span className="eob-arrow">→</span>
+                </button>
+                <button
+                  type="button"
+                  className="empty-option-btn secondary"
+                  onClick={() => {
+                    setEmptyDismissed(true);
+                    openSheet("cabinets");
+                  }}
+                >
+                  <div className="eob-icon">➕</div>
+                  <div className="eob-content">
+                    <div className="eob-title">Собрать вручную</div>
+                    <div className="eob-desc">Выбирайте и размещайте модули по одному</div>
+                  </div>
+                  <span className="eob-arrow">→</span>
+                </button>
+              </div>
+            </div>
+          </div>
         )}
 
-        {/* bottom-left toggles: 3D/2D view + render style + multi-select */}
-        <div className="scene-ctl cfg-toolset">
-          <button className="round-ctl" onClick={() => toggleMenu("view")} type="button" aria-label={t.config.view}>
-            <ViewIcon />
-          </button>
-          <button className="round-ctl" onClick={() => toggleMenu("mode")} type="button" aria-label={t.config.display}>
-            <ModeIcon />
-          </button>
-          {/* ОТДЕЛКА — the two things on a wall that are not cabinets: the фартук and the strip that
-              closes the row to the ceiling. Kitchen-wide, so it lives here beside view/display
-              rather than in the selection's Style panel. */}
-          <button className={`round-ctl${sheet === "finish" ? " active" : ""}`} onClick={() => openPanel("finish")} type="button" aria-label={t.config.finish}>
-            <GlyphFinish />
-          </button>
-        </div>
+        {/* ── TEMPLATE SELECTION MODAL (2-column 3D illustrated, compact) ── */}
+        {templateModalOpen && (
+          <div className="template-modal-backdrop" onClick={() => setTemplateModalOpen(false)}>
+            <div className="template-modal-card" onClick={(e) => e.stopPropagation()}>
+              <div className="sheet-head">
+                <div className="sheet-title">Выберите шаблон кухни</div>
+                <button className="sheet-x" onClick={() => setTemplateModalOpen(false)} type="button">✕</button>
+              </div>
+              <div className="template-grid">
+                {KITCHEN_LAYOUT_CHOICES.map((tpl) => {
+                  const Thumb = tpl.Thumb;
+                  return (
+                    <button
+                      key={tpl.id}
+                      type="button"
+                      className="template-card-btn"
+                      onClick={() => {
+                        applyLayoutTemplate(tpl.id, 0, "single");
+                        setTplSetup({
+                          active: true,
+                          stage: "plan",
+                          layout: tpl.id,
+                          targetWall: 0,
+                          wallBand: "single",
+                          stylePreset: "classic-triangle",
+                          paletteId: "white-wood",
+                        });
+                        setView("plan");
+                        setTemplateModalOpen(false);
+                        setEmptyDismissed(true);
+                        flash(`Шаблон «${tpl.title}» загружен`);
+                      }}
+                    >
+                      <div className="tpl-card-top">
+                        <span className="tpl-card-badge">{tpl.badge}</span>
+                      </div>
+                      <div className="tpl-card-illus">
+                        <Thumb />
+                      </div>
+                      <div className="tpl-card-title">{tpl.title}</div>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ── STAGE 1: 2D FLOOR PLAN BOTTOM BAR (COMPACT & DOES NOT BLOCK PLAN) ── */}
+        {tplSetup?.active && tplSetup.stage === "plan" && (
+          <div className="tpl-wizard-overlay plan-stage">
+            <div className="tpl-plan-bottom-bar">
+              <div className="tpl-plan-info">
+                <span className="tpl-plan-badge">Стена {(tplSetup.targetWall ?? 0) + 1}</span>
+                <span className="tpl-plan-hint">Нажмите на стену на плане</span>
+              </div>
+
+              <button
+                type="button"
+                className="tpl-rotate-btn"
+                onClick={() => {
+                  const nextWall = ((tplSetup.targetWall ?? 0) + 1) % wallSegs.length;
+                  setTplSetup((s) => (s ? { ...s, targetWall: nextWall } : null));
+                  applyLayoutTemplate(tplSetup.layout, nextWall, tplSetup.wallBand);
+                  flash(`Повернуто к Стене ${nextWall + 1}`);
+                }}
+                title="Повернуть ориентацию гарнитура"
+              >
+                <svg width="17" height="17" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                  <path d="M21.5 2v6h-6M21.34 15.57a10 10 0 1 1-.57-8.38l5.67-5.67" />
+                </svg>
+                <span>Повернуть</span>
+              </button>
+
+              <button
+                type="button"
+                className="tpl-plan-next-btn"
+                onClick={() => {
+                  setTplSetup((s) => (s ? { ...s, stage: "3d" } : null));
+                  setView("3d");
+                }}
+              >
+                <span>Далее к 3D →</span>
+              </button>
+
+              <button
+                type="button"
+                className="tpl-plan-close-btn"
+                onClick={() => setTplSetup(null)}
+                title="Закрыть мастер"
+              >
+                ✕
+              </button>
+            </div>
+          </div>
+        )}
+
+        {/* ── STAGE 2: 3D ROWS & COLOR STYLING (BOTTOM SHEET FOR MOBILE & DESKTOP) ── */}
+        {tplSetup?.active && tplSetup.stage === "3d" && (
+          <div className="tpl-wizard-overlay threed-stage">
+            {tplMinimized ? (
+              <div className="tpl-minimized-bar">
+                {(() => {
+                  const activePal = FINISH_PALETTES.find((p) => p.id === (tplSetup.paletteId ?? "white-wood")) ?? FINISH_PALETTES[0];
+                  const activeComp = KITCHEN_COMPOSITIONS.find((kc) => kc.id === tplSetup.stylePreset) ?? KITCHEN_COMPOSITIONS[0];
+                  return (
+                    <div className="tpl-minimized-pill" onClick={() => setTplMinimized(false)} role="button" tabIndex={0}>
+                      <div className="tpl-pill-left">
+                        <div
+                          className="tpl-pill-swatch"
+                          style={{
+                            background: `linear-gradient(135deg, ${activePal.color1} 0%, ${activePal.color1} 50%, ${activePal.color2} 50%, ${activePal.color2} 100%)`,
+                          }}
+                        />
+                        <div className="tpl-pill-text">
+                          <span className="tpl-pill-title">{activePal.name}</span>
+                          <span className="tpl-pill-sub">
+                            {tplSetup.wallBand === "antresol" ? "3 ряда" : "2 ряда"} · {activeComp.name}
+                          </span>
+                        </div>
+                      </div>
+                      <div className="tpl-pill-btn">
+                        <span>Настроить</span>
+                        <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round" strokeLinejoin="round">
+                          <path d="M18 15l-6-6-6 6" />
+                        </svg>
+                      </div>
+                    </div>
+                  );
+                })()}
+                <button
+                  type="button"
+                  className="tpl-pill-done-btn"
+                  onClick={() => {
+                    setTplSetup(null);
+                    setEmptyDismissed(true);
+                    setTplMinimized(false);
+                    flash("✓ Кухня настроена!");
+                  }}
+                >
+                  ✓ Готово
+                </button>
+              </div>
+            ) : (
+              <div className="tpl-3d-sheet">
+                <div className="tpl-3d-sheet-head">
+                  <div className="tpl-3d-sheet-title-group">
+                    <div className="tpl-3d-sheet-title">Стиль и ряды</div>
+                    <button
+                      type="button"
+                      className="tpl-sheet-collapse-btn"
+                      onClick={() => setTplMinimized(true)}
+                      title="Свернуть для полного 3D обзора"
+                    >
+                      <svg width="13" height="13" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M6 9l6 6 6-6" />
+                      </svg>
+                      <span>3D Обзор</span>
+                    </button>
+                  </div>
+                  <div className="tpl-3d-sheet-actions">
+                    <button
+                      type="button"
+                      className="tpl-sheet-back-btn"
+                      onClick={() => {
+                        setTplSetup((s) => (s ? { ...s, stage: "plan" } : null));
+                        setView("plan");
+                        setTplMinimized(false);
+                      }}
+                    >
+                      ← План
+                    </button>
+                    <button
+                      type="button"
+                      className="tpl-sheet-done-btn"
+                      onClick={() => {
+                        setTplSetup(null);
+                        setEmptyDismissed(true);
+                        setTplMinimized(false);
+                        flash("✓ Кухня настроена!");
+                      }}
+                    >
+                      ✓ Готово
+                    </button>
+                  </div>
+                </div>
+
+                {/* Segmented Sub-Tabs */}
+                <div className="tpl-subtabs-bar">
+                  <button
+                    type="button"
+                    className={`tpl-subtab-btn${tplSubTab === "palette" ? " active" : ""}`}
+                    onClick={() => setTplSubTab("palette")}
+                  >
+                    <span>🎨 Палитра отделки</span>
+                  </button>
+                  <button
+                    type="button"
+                    className={`tpl-subtab-btn${tplSubTab === "layout" ? " active" : ""}`}
+                    onClick={() => setTplSubTab("layout")}
+                  >
+                    <span>📐 Компоновка техники</span>
+                  </button>
+                </div>
+
+                {tplSubTab === "palette" ? (
+                  <>
+                    {/* Row toggle inside palette tab */}
+                    <div className="tpl-sheet-row-toggle">
+                      <button
+                        type="button"
+                        className={`tpl-seg-btn${tplSetup.wallBand === "single" ? " active" : ""}`}
+                        onClick={() => {
+                          setTplSetup((s) => (s ? { ...s, wallBand: "single" } : null));
+                          applyLayoutTemplate(tplSetup.layout, tplSetup.targetWall, "single", undefined, {
+                            fridge: tplSetup.fridge,
+                            oven: tplSetup.oven,
+                            hood: tplSetup.hood,
+                            dishwasher: tplSetup.dishwasher,
+                            water: tplSetup.water,
+                            wallBand: "single",
+                          });
+                        }}
+                      >
+                        <span className="seg-icon">🗄️</span>
+                        <span>2 ряда (Стандарт)</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`tpl-seg-btn${tplSetup.wallBand === "antresol" ? " active" : ""}`}
+                        onClick={() => {
+                          setTplSetup((s) => (s ? { ...s, wallBand: "antresol" } : null));
+                          applyLayoutTemplate(tplSetup.layout, tplSetup.targetWall, "antresol", undefined, {
+                            fridge: tplSetup.fridge,
+                            oven: tplSetup.oven,
+                            hood: tplSetup.hood,
+                            dishwasher: tplSetup.dishwasher,
+                            water: tplSetup.water,
+                            wallBand: "antresol",
+                          });
+                        }}
+                      >
+                        <span className="seg-icon">🏢</span>
+                        <span>3 ряда (Антресоль)</span>
+                      </button>
+                    </div>
+
+                    {/* Palette swatches: bigger vertical cards, 3 columns, split circle */}
+                    <div className="tpl-palette-grid">
+                      {FINISH_PALETTES.map((p) => {
+                        const isSelected = (tplSetup.paletteId ?? "white-wood") === p.id;
+                        return (
+                          <button
+                            key={p.id}
+                            type="button"
+                            className={`tpl-palette-card${isSelected ? " active" : ""}`}
+                            onClick={() => {
+                              setTplSetup((s) => (s ? { ...s, paletteId: p.id } : null));
+                              applyFinishToAll({ facade: p.facade, carcass: p.carcass, worktop: p.worktop });
+                              flash(`Палитра: ${p.name}`);
+                            }}
+                          >
+                            <div
+                              className="tpl-split-swatch"
+                              style={{
+                                background: `linear-gradient(135deg, ${p.color1} 0%, ${p.color1} 50%, ${p.color2} 50%, ${p.color2} 100%)`,
+                              }}
+                            />
+                            <span className="tpl-palette-name">{p.name}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  </>
+                ) : (
+                  <>
+                    {/* Compositions section */}
+                    <div className="tpl-sheet-section">
+                      <div className="tpl-sheet-sec-header">
+                        <div className="tpl-sheet-sec-lbl">Варианты техники:</div>
+                        <button
+                          type="button"
+                          className="tpl-filter-open-btn"
+                          onClick={() => setFilterModalOpen(true)}
+                          title="Настроить технику и опции"
+                        >
+                          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round" strokeLinejoin="round">
+                            <line x1="4" y1="21" x2="4" y2="14" />
+                            <line x1="4" y1="10" x2="4" y2="3" />
+                            <line x1="12" y1="21" x2="12" y2="12" />
+                            <line x1="12" y1="8" x2="12" y2="3" />
+                            <line x1="20" y1="21" x2="20" y2="16" />
+                            <line x1="20" y1="12" x2="20" y2="3" />
+                            <line x1="1" y1="14" x2="7" y2="14" />
+                            <line x1="9" y1="8" x2="15" y2="8" />
+                            <line x1="17" y1="16" x2="23" y2="16" />
+                          </svg>
+                          <span>Параметры</span>
+                        </button>
+                      </div>
+
+                      <div className="tpl-presets-grid">
+                        {KITCHEN_COMPOSITIONS.map((kc) => {
+                          const isSelected = tplSetup.stylePreset === kc.id;
+                          return (
+                            <button
+                              key={kc.id}
+                              type="button"
+                              className={`tpl-compact-preset-card${isSelected ? " active" : ""}`}
+                              onClick={() => {
+                                setTplSetup((s) => (s ? {
+                                  ...s,
+                                  wallBand: kc.wallBand,
+                                  stylePreset: kc.id,
+                                  fridge: kc.fridge,
+                                  oven: kc.oven,
+                                  hood: kc.hood,
+                                  dishwasher: kc.dishwasher,
+                                  water: kc.water ?? s.water,
+                                } : null));
+                                applyLayoutTemplate(tplSetup.layout, tplSetup.targetWall, kc.wallBand, undefined, {
+                                  fridge: kc.fridge,
+                                  oven: kc.oven,
+                                  hood: kc.hood,
+                                  dishwasher: kc.dishwasher,
+                                  water: kc.water,
+                                  wallBand: kc.wallBand,
+                                });
+                                flash(`Компоновка: ${kc.name}`);
+                              }}
+                            >
+                              <div className="tpl-compact-name">{kc.name}</div>
+                              <div className="tpl-compact-feature">{kc.subtitle}</div>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    </div>
+
+                    {/* Row toggle inside layout tab too */}
+                    <div className="tpl-sheet-row-toggle">
+                      <button
+                        type="button"
+                        className={`tpl-seg-btn${tplSetup.wallBand === "single" ? " active" : ""}`}
+                        onClick={() => {
+                          setTplSetup((s) => (s ? { ...s, wallBand: "single" } : null));
+                          applyLayoutTemplate(tplSetup.layout, tplSetup.targetWall, "single", undefined, {
+                            fridge: tplSetup.fridge,
+                            oven: tplSetup.oven,
+                            hood: tplSetup.hood,
+                            dishwasher: tplSetup.dishwasher,
+                            water: tplSetup.water,
+                            wallBand: "single",
+                          });
+                        }}
+                      >
+                        <span className="seg-icon">🗄️</span>
+                        <span>2 ряда (Стандарт)</span>
+                      </button>
+                      <button
+                        type="button"
+                        className={`tpl-seg-btn${tplSetup.wallBand === "antresol" ? " active" : ""}`}
+                        onClick={() => {
+                          setTplSetup((s) => (s ? { ...s, wallBand: "antresol" } : null));
+                          applyLayoutTemplate(tplSetup.layout, tplSetup.targetWall, "antresol", undefined, {
+                            fridge: tplSetup.fridge,
+                            oven: tplSetup.oven,
+                            hood: tplSetup.hood,
+                            dishwasher: tplSetup.dishwasher,
+                            water: tplSetup.water,
+                            wallBand: "antresol",
+                          });
+                        }}
+                      >
+                        <span className="seg-icon">🏢</span>
+                        <span>3 ряда (Антресоль)</span>
+                      </button>
+                    </div>
+                  </>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* ── POPUP: LAYOUT OPTIONS & APPLIANCES FILTER MODAL ── */}
+        {filterModalOpen && tplSetup && (
+          <div className="template-modal-backdrop" onClick={() => setFilterModalOpen(false)}>
+            <div className="tpl-filter-modal-card" onClick={(e) => e.stopPropagation()}>
+              <div className="sheet-head">
+                <div className="sheet-title">Параметры и техника кухни</div>
+                <button className="sheet-x" onClick={() => setFilterModalOpen(false)} type="button">✕</button>
+              </div>
+
+              <div className="tpl-filter-modal-body">
+                {/* Rows / WallBand */}
+                <div className="filter-group">
+                  <div className="filter-group-lbl">Количество рядов:</div>
+                  <div className="filter-btn-row">
+                    <button
+                      type="button"
+                      className={`filter-opt-btn${tplSetup.wallBand === "single" ? " active" : ""}`}
+                      onClick={() => setTplSetup((s) => (s ? { ...s, wallBand: "single" } : null))}
+                    >
+                      🗄️ 2 ряда (Стандарт)
+                    </button>
+                    <button
+                      type="button"
+                      className={`filter-opt-btn${tplSetup.wallBand === "antresol" ? " active" : ""}`}
+                      onClick={() => setTplSetup((s) => (s ? { ...s, wallBand: "antresol" } : null))}
+                    >
+                      🏢 3 ряда (Антресоль)
+                    </button>
+                  </div>
+                </div>
+
+                {/* Fridge */}
+                <div className="filter-group">
+                  <div className="filter-group-lbl">Холодильник:</div>
+                  <div className="filter-btn-row">
+                    <button
+                      type="button"
+                      className={`filter-opt-btn${(tplSetup.fridge ?? "integ") === "integ" ? " active" : ""}`}
+                      onClick={() => setTplSetup((s) => (s ? { ...s, fridge: "integ" } : null))}
+                    >
+                      Встроенный в пенал
+                    </button>
+                    <button
+                      type="button"
+                      className={`filter-opt-btn${tplSetup.fridge === "free" ? " active" : ""}`}
+                      onClick={() => setTplSetup((s) => (s ? { ...s, fridge: "free" } : null))}
+                    >
+                      Отдельно стоящий
+                    </button>
+                    <button
+                      type="button"
+                      className={`filter-opt-btn${tplSetup.fridge === "none" ? " active" : ""}`}
+                      onClick={() => setTplSetup((s) => (s ? { ...s, fridge: "none" } : null))}
+                    >
+                      Без холодильника
+                    </button>
+                  </div>
+                </div>
+
+                {/* Oven placement */}
+                <div className="filter-group">
+                  <div className="filter-group-lbl">Духовой шкаф:</div>
+                  <div className="filter-btn-row">
+                    <button
+                      type="button"
+                      className={`filter-opt-btn${(tplSetup.oven ?? "tall") === "tall" ? " active" : ""}`}
+                      onClick={() => setTplSetup((s) => (s ? { ...s, oven: "tall" } : null))}
+                    >
+                      В высокой колонне (на уровне глаз)
+                    </button>
+                    <button
+                      type="button"
+                      className={`filter-opt-btn${tplSetup.oven === "under" ? " active" : ""}`}
+                      onClick={() => setTplSetup((s) => (s ? { ...s, oven: "under" } : null))}
+                    >
+                      Под варочной панелью
+                    </button>
+                  </div>
+                </div>
+
+                {/* Hood */}
+                <div className="filter-group">
+                  <div className="filter-group-lbl">Вытяжка:</div>
+                  <div className="filter-btn-row">
+                    <button
+                      type="button"
+                      className={`filter-opt-btn${(tplSetup.hood ?? "integ") === "integ" ? " active" : ""}`}
+                      onClick={() => setTplSetup((s) => (s ? { ...s, hood: "integ" } : null))}
+                    >
+                      Встроенная (скрытая в шкаф)
+                    </button>
+                    <button
+                      type="button"
+                      className={`filter-opt-btn${tplSetup.hood === "dome" ? " active" : ""}`}
+                      onClick={() => setTplSetup((s) => (s ? { ...s, hood: "dome" } : null))}
+                    >
+                      Купольная / Наклонная (открытая)
+                    </button>
+                  </div>
+                </div>
+
+                {/* Dishwasher */}
+                <div className="filter-group">
+                  <div className="filter-group-lbl">Посудомоечная машина (ПММ):</div>
+                  <div className="filter-btn-row">
+                    <button
+                      type="button"
+                      className={`filter-opt-btn${(tplSetup.dishwasher ?? true) ? " active" : ""}`}
+                      onClick={() => setTplSetup((s) => (s ? { ...s, dishwasher: true } : null))}
+                    >
+                      ✓ Включить ПММ рядом с мойкой
+                    </button>
+                    <button
+                      type="button"
+                      className={`filter-opt-btn${tplSetup.dishwasher === false ? " active" : ""}`}
+                      onClick={() => setTplSetup((s) => (s ? { ...s, dishwasher: false } : null))}
+                    >
+                      Без посудомойки
+                    </button>
+                  </div>
+                </div>
+
+                {/* Water supply location */}
+                <div className="filter-group">
+                  <div className="filter-group-lbl">Расположение мокрой зоны (мойка):</div>
+                  <div className="filter-btn-row">
+                    <button
+                      type="button"
+                      className={`filter-opt-btn${(tplSetup.water ?? "left") === "left" ? " active" : ""}`}
+                      onClick={() => setTplSetup((s) => (s ? { ...s, water: "left" } : null))}
+                    >
+                      Слева
+                    </button>
+                    <button
+                      type="button"
+                      className={`filter-opt-btn${tplSetup.water === "center" ? " active" : ""}`}
+                      onClick={() => setTplSetup((s) => (s ? { ...s, water: "center" } : null))}
+                    >
+                      По центру
+                    </button>
+                    <button
+                      type="button"
+                      className={`filter-opt-btn${tplSetup.water === "right" ? " active" : ""}`}
+                      onClick={() => setTplSetup((s) => (s ? { ...s, water: "right" } : null))}
+                    >
+                      Справа
+                    </button>
+                  </div>
+                </div>
+              </div>
+
+              <div className="tpl-filter-modal-footer">
+                <button
+                  type="button"
+                  className="tpl-filter-apply-btn"
+                  onClick={() => {
+                    applyLayoutTemplate(tplSetup.layout, tplSetup.targetWall, tplSetup.wallBand, undefined, {
+                      fridge: tplSetup.fridge ?? "integ",
+                      oven: tplSetup.oven ?? "tall",
+                      hood: tplSetup.hood ?? "integ",
+                      dishwasher: tplSetup.dishwasher ?? true,
+                      water: tplSetup.water ?? "left",
+                      wallBand: tplSetup.wallBand,
+                    });
+                    setFilterModalOpen(false);
+                    flash("✓ Параметры компоновки применены");
+                  }}
+                >
+                  ✓ Применить параметры
+                </button>
+              </div>
+            </div>
+          </div>
+        )}
 
         {/* CONTEXTUAL band control — a vertical stack (+ · columns · −): add / remove a cabinet in the
             SELECTED module's row, right in the 3D. Only for a gridded module. */}
@@ -1202,7 +2314,15 @@ export function ConfigScreen() {
         {ctlMenu && (
           <>
             <div className="sheet-backdrop" onClick={closeMenu} />
-            <div className={`view-menu pop-anim${menuClosing ? " closing" : ""}`}>
+            <div
+              className={`view-menu pop-anim${menuClosing ? " closing" : ""}`}
+              style={{
+                position: "fixed",
+                bottom: "76px",
+                left: ctlMenu === "mode" ? "76px" : "12px",
+                zIndex: 9999,
+              }}
+            >
               {ctlMenu === "view" ? (
                 <>
                   {view === "3d" && (
@@ -1267,85 +2387,135 @@ export function ConfigScreen() {
         )}
       </div>
 
-      {/* ── BOTTOM TOOLBAR ── TWO fixed rows, so its height never changes and the 3D canvas above
-          never resizes under your finger (the old layout swapped a hint box for a swap strip to
-          fake that; now it's structural):
-            row 1 — «Добавить шкаф» when nothing is selected, the QUICK EDIT BAR when one module is
-            row 2 — the five band chips, ALWAYS. Adding is the constant job on this screen, so the
-                    way to add never disappears just because something is selected.
-          The drag-grip is gone (with it the collapse gesture): it read as a sheet you were meant to
-          pull, and the toolbar is not a sheet — it's the screen's own furniture. */}
-      <div className="toolbar">
-        <div className="toolbar-head">
-          {quickBar ? (
-            <QuickEditBar
-              cab={sel!}
-              style={runStyle}
-              onStyle={() => openPanel("style")}
-              onMore={() => openPanel("resize")}
-            />
-          ) : (
-            <span className="toolbar-title">{t.config.addCab}</span>
-          )}
-        </div>
-
-        {/* Row 2 follows what row 1 is talking about: nothing selected → the five ADD bands;
-            a module selected → what that module could become instead. */}
-        {selIds.length >= 1 && swapItems.length > 0 ? (
-          /* QUICK SWAP — swap the selected module(s) for another type, filtered to ITS ROW: a base
-             offers base cabinets + base appliances, a wall unit offers wall cabinets + hood. Also
-             how the end cabinet becomes a CORNER (its band's «Угловой» leads the strip). */
-          <div className="swap-strip" aria-label={t.fe.replace}>
-            {swapItems.map((tpl) => {
-              const on = isCurrent(tpl);
-              return (
+      {/* ── 5-BUTTON BOTTOM DOCK (like in Render step) ── */}
+      <div className="rnd-bar">
+        {/* Related Cabinets Carousel when a cabinet is selected */}
+        {sel && (
+          <div className="cfg-quick-swap-carousel">
+            <div className="cfg-quick-swap-head">
+              <span className="cfg-quick-swap-title">{labelFor(sel)}: подходящие модули</span>
+              <button
+                type="button"
+                className="quick-sel-close"
+                onClick={clearSel}
+                aria-label="Снять выделение"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="cfg-quick-swap-strip">
+              {swapItemsRaw.map((tpl) => (
                 <button
                   key={tpl.id}
-                  className={`swap-chip${on ? " on" : ""}`}
-                  onClick={() => (multi ? swapSel(tpl) : swapTo(tpl))}
                   type="button"
-                  aria-pressed={on}
+                  className="cfg-quick-swap-card"
+                  onClick={() => swapSel(tpl)}
+                  title={`Заменить на: ${tpl.name}`}
                 >
-                  <AddThumb id={tpl.id} glyph={tpl.glyph} cab={tpl.cab} />
-                  <span className="swap-name">{tpl.name}</span>
-                </button>
-              );
-            })}
-            <button key="__more__" className="swap-chip swap-more" onClick={() => openSheet("cabinets")} type="button">
-              <span className="swap-more-icon">⋯</span>
-              <span className="swap-name">{t.config.more}</span>
-            </button>
-          </div>
-        ) : (
-          /* THE PLACE PANEL — five band chips (Нижние / Навесные / Антресоль / Пеналы / Свободно).
-             Tapping a chip arms that band and lights its wall cells; «Свободно» opens the
-             free-standing picker. */
-          <div className="place-panel">
-            <div className="place-chips">
-              {PLACE_ROWS.map((row) => (
-                <button
-                  key={row.key}
-                  className={`place-chip${row.key !== "extra" && placeRow === row.key ? " on" : ""}`}
-                  onClick={() => (row.key === "extra" ? openSheet("extra") : pickPlaceRow(row.key))}
-                  type="button"
-                >
-                  <AddThumb id={row.png} glyph={row.items[0]?.glyph ?? "▢"} />
-                  <span className="place-chip-name">{row.label}</span>
+                  <span className="cfg-quick-swap-thumb">
+                    <AddThumb id={tpl.id} glyph={tpl.glyph} cab={tpl.cab} />
+                  </span>
+                  <span className="cfg-quick-swap-name">{tpl.name}</span>
                 </button>
               ))}
+              <button
+                type="button"
+                className="cfg-quick-swap-card more"
+                onClick={() => openSheet("cabinets")}
+                title="Все шкафы"
+              >
+                <span className="cfg-quick-swap-more-icon">⋯</span>
+                <span className="cfg-quick-swap-name">Все шкафы</span>
+              </button>
             </div>
           </div>
         )}
+
+        <div className="rnd-tabbar">
+          {/* 1. 3D / 2D View Button */}
+          <button
+            type="button"
+            className={`rnd-tab ${ctlMenu === "view" ? "on" : ""}`}
+            onClick={() => toggleMenu("view")}
+          >
+            <span className="rnd-tab-ico">
+              {view === "3d" ? <Icon3D /> : <IconPlan />}
+            </span>
+            <span className="rnd-tab-lbl">{view === "3d" ? "3D Вид" : "2D План"}</span>
+          </button>
+
+          {/* 2. Transparency / X-ray Button */}
+          <button
+            type="button"
+            className={`rnd-tab ${ctlMenu === "mode" || mode !== "real" ? "on" : ""}`}
+            onClick={() => toggleMenu("mode")}
+          >
+            <span className="rnd-tab-ico">
+              <IconTransparent />
+            </span>
+            <span className="rnd-tab-lbl">Прозрачность</span>
+          </button>
+
+          {/* 3. Plus Button: Raised Center Primary (opens cabinet catalog) */}
+          <button
+            type="button"
+            className="rnd-tab rnd-tab-snap"
+            onClick={() => openSheet("cabinets")}
+          >
+            <span className="rnd-tab-ico rnd-tab-ico-snap">
+              <svg width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.5" strokeLinecap="round">
+                <path d="M12 5v14M5 12h14" />
+              </svg>
+            </span>
+            <span className="rnd-tab-lbl" style={{ fontWeight: 700 }}>Добавить</span>
+          </button>
+
+          {/* 4. "Отделка" (Finishes & Materials) */}
+          <button
+            type="button"
+            className={`rnd-tab ${sheet === "finish" ? "on" : ""}`}
+            onClick={() => setSheet((cur) => (cur === "finish" ? null : "finish"))}
+          >
+            <span className="rnd-tab-ico">
+              <GlyphFinish />
+            </span>
+            <span className="rnd-tab-lbl">Отделка</span>
+          </button>
+
+          {/* 5. "Render" Button */}
+          <button
+            type="button"
+            className="rnd-tab"
+            onClick={() => goTo("preview")}
+          >
+            <span className="rnd-tab-ico">
+              <IconCamera />
+            </span>
+            <span className="rnd-tab-lbl">Рендер</span>
+          </button>
+        </div>
       </div>
 
-      {sheet && !(panelOpen && selIds.length === 0) && (
+      {sheet && !((sheet === "resize" || (sheet === "style" && !sel)) && selIds.length === 0) && (
         <>
           {/* NON-modal edit panels (resize/style/cabinets) get NO backdrop — the 3D above stays live
               and the left buttons stay tappable. The catalog / full editor keep their dimming backdrop. */}
           {!panelOpen && <div className={`sheet-backdrop dim${sheetClosing ? " closing" : ""}`} onClick={closeSheet} />}
-          <div className={`bottom-sheet${panelOpen ? " panel" : ""}${sheet === "pickCab" || sheet === "pickAppl" || sheet === "dining" || sheet === "extra" || sheet === "editor" || sheet === "style" || sheet === "cabinets" || sheet === "resize" || sheet === "finish" ? " tall" : ""}${sheetClosing ? " closing" : ""}`}>
+          <div className={`bottom-sheet${panelOpen ? " panel" : ""}${sheetFullscreen ? " fullscreen" : ""}${sheet === "pickCab" || sheet === "pickAppl" || sheet === "dining" || sheet === "extra" || sheet === "editor" || sheet === "style" || sheet === "cabinets" || sheet === "resize" || sheet === "finish" ? " tall" : ""}${sheetClosing ? " closing" : ""}`}>
             {/* the edit panels are attached (non-modal) — no drag-grip; the catalog/editor keep theirs */}
-            {!panelOpen && <div className="sheet-grip" />}
+            {!panelOpen && (
+              <div
+                className={`sheet-grip-area${sheetFullscreen ? " expanded" : ""}`}
+                onPointerDown={handleGripPointerDown}
+                onClick={handleGripClick}
+                role="button"
+                tabIndex={0}
+                aria-label={sheetFullscreen ? "Свернуть панель вниз" : "Развернуть панель на весь экран"}
+                title={sheetFullscreen ? "Потяните вниз или нажмите, чтобы свернуть/закрыть" : "Потяните вверх или нажмите, чтобы открыть на весь экран"}
+              >
+                <div className={`sheet-grip${sheetFullscreen ? " expanded" : ""}`} />
+              </div>
+            )}
 
             {(sheet === "pickCab" || sheet === "pickAppl" || sheet === "dining" || sheet === "extra") && (() => {
               const groups = sheet === "pickCab" ? CABINET_GROUPS : sheet === "pickAppl" ? APPLIANCE_GROUPS : sheet === "dining" ? FURNITURE_GROUPS : FREE_GROUPS;
@@ -1773,9 +2943,269 @@ export function ConfigScreen() {
                 <>
                   <div className="sheet-head">
                     <div className="sheet-title">{t.config.finish}</div>
-                    <button className="sheet-x" onClick={closeSheet} type="button" aria-label={t.config.close}>✕</button>
+                    <div className="sheet-head-actions">
+                      <button
+                        className="sheet-expand-btn"
+                        onClick={() => setSheetFullscreen((p) => !p)}
+                        type="button"
+                        title={sheetFullscreen ? "Свернуть панель" : "Развернуть на весь экран"}
+                      >
+                        {sheetFullscreen ? (
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                            <path d="M4 14h6v6M20 10h-6V4M14 10l7-7M10 14l-7 7" />
+                          </svg>
+                        ) : (
+                          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.2" strokeLinecap="round">
+                            <path d="M15 3h6v6M9 21H3v-6M21 3l-7 7M3 21l7-7" />
+                          </svg>
+                        )}
+                      </button>
+                      <button className="sheet-x" onClick={closeSheet} type="button" aria-label={t.config.close}>✕</button>
+                    </div>
                   </div>
                   <div className="cfg-sheet-body style-body">
+                    {/* ── ГОТОВЫЕ ПАЛИТРЫ КУХНИ (Kitchen Color Palettes) ── */}
+                    <div className="finish-palettes-section">
+                      <div className="finish-palettes-title">
+                        <span>🎨</span>
+                        <span>Готовые палитры кухни</span>
+                      </div>
+                      <div className="finish-palettes-hint">
+                        Применяет цвета фасадов, столешницы и корпуса ко всем шкафам
+                      </div>
+
+                      <div className="finish-palettes-grid">
+                        {[...FINISH_PALETTES, ...customPalettes].map((p) => {
+                          const isSelected = activeFinishPaletteId === p.id;
+                          return (
+                            <button
+                              key={p.id}
+                              type="button"
+                              className={`finish-palette-card${isSelected ? " active" : ""}`}
+                              onClick={() => {
+                                setActiveFinishPaletteId(p.id);
+                                applyFinishToAll({ facade: p.facade, carcass: p.carcass, worktop: p.worktop });
+                                flash(`Палитра «${p.name}» применена ко всей кухне`);
+                              }}
+                            >
+                              {p.isCustom && (
+                                <span
+                                  className="custom-pal-del"
+                                  onClick={(e) => {
+                                    e.stopPropagation();
+                                    const next = customPalettes.filter((cp) => cp.id !== p.id);
+                                    setCustomPalettes(next);
+                                    saveCustomPalettes(next);
+                                    if (activeFinishPaletteId === p.id) setActiveFinishPaletteId(null);
+                                    flash(`Палитра «${p.name}» удалена`);
+                                  }}
+                                  title="Удалить палитру"
+                                >
+                                  ✕
+                                </span>
+                              )}
+                              <div
+                                className="tpl-split-swatch"
+                                style={{
+                                  background: `linear-gradient(135deg, ${p.color1} 0%, ${p.color1} 50%, ${p.color2} 50%, ${p.color2} 100%)`,
+                                }}
+                              />
+                              <span className="finish-palette-name">{p.name}</span>
+                              {isSelected && <span className="finish-palette-check">✓</span>}
+                            </button>
+                          );
+                        })}
+
+                        {/* "+ Свой цвет" button to toggle custom creator */}
+                        <button
+                          type="button"
+                          className={`finish-palette-card custom-add-card${isCustomOpen ? " active" : ""}`}
+                          onClick={() => setIsCustomOpen((o) => !o)}
+                          title="Создать свою комбинацию цветов"
+                        >
+                          <div className="custom-add-icon">
+                            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2.4" strokeLinecap="round">
+                              <line x1="12" y1="5" x2="12" y2="19" />
+                              <line x1="5" y1="12" x2="19" y2="12" />
+                            </svg>
+                          </div>
+                          <span className="finish-palette-name">+ Свой цвет</span>
+                        </button>
+                      </div>
+
+                      {/* Custom palette builder */}
+                      {isCustomOpen && (
+                        <div className="custom-palette-builder">
+                          <div className="custom-builder-head">
+                            <span className="custom-builder-title">Своя комбинация цветов:</span>
+                            <button
+                              type="button"
+                              className="custom-close-btn"
+                              onClick={() => setIsCustomOpen(false)}
+                              title="Закрыть конструктор"
+                            >
+                              ✕
+                            </button>
+                          </div>
+
+                          <div className="custom-preview-box">
+                            <div
+                              className="tpl-split-swatch"
+                              style={{
+                                width: "42px",
+                                height: "42px",
+                                minWidth: "42px",
+                                minHeight: "42px",
+                                background: `linear-gradient(135deg, ${customFacade} 0%, ${customFacade} 50%, ${customWorktop} 50%, ${customWorktop} 100%)`,
+                              }}
+                            />
+                            <div style={{ display: "flex", flexDirection: "column", gap: "2px" }}>
+                              <span style={{ fontSize: "12px", fontWeight: 700, color: "#1e293b" }}>
+                                {customName.trim() || "Пользовательская палитра"}
+                              </span>
+                              <span style={{ fontSize: "11px", color: "#64748b" }}>
+                                Фасады {customFacade} · Столешница {customWorktop}
+                              </span>
+                            </div>
+                          </div>
+
+                          {/* 1. Фасады */}
+                          <div className="custom-picker-row">
+                            <div className="custom-picker-lbl">
+                              <span>Цвет фасадов:</span>
+                              <span style={{ fontFamily: "monospace", fontSize: "11px", color: "#64748b" }}>{customFacade}</span>
+                            </div>
+                            <div className="custom-color-control">
+                              <input
+                                type="color"
+                                className="custom-color-input"
+                                value={customFacade}
+                                onChange={(e) => setCustomFacade(e.target.value)}
+                              />
+                              <div className="custom-quick-swatches">
+                                {[
+                                  { c: "#F8F8F6", t: "Белый" },
+                                  { c: "#EDEDE6", t: "Кремовый" },
+                                  { c: "#D8CEBE", t: "Кашемир" },
+                                  { c: "#738276", t: "Шалфей" },
+                                  { c: "#1B4D3E", t: "Изумруд" },
+                                  { c: "#3A3D40", t: "Графит" },
+                                  { c: "#1C1D1F", t: "Черный" },
+                                  { c: "#3E2723", t: "Шоколад" },
+                                ].map((sw) => (
+                                  <button
+                                    key={sw.c}
+                                    type="button"
+                                    className={`quick-swatch-btn${customFacade.toLowerCase() === sw.c.toLowerCase() ? " active" : ""}`}
+                                    style={{ background: sw.c }}
+                                    onClick={() => setCustomFacade(sw.c)}
+                                    title={sw.t}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 2. Столешница */}
+                          <div className="custom-picker-row">
+                            <div className="custom-picker-lbl">
+                              <span>Цвет столешницы:</span>
+                              <span style={{ fontFamily: "monospace", fontSize: "11px", color: "#64748b" }}>{customWorktop}</span>
+                            </div>
+                            <div className="custom-color-control">
+                              <input
+                                type="color"
+                                className="custom-color-input"
+                                value={customWorktop}
+                                onChange={(e) => setCustomWorktop(e.target.value)}
+                              />
+                              <div className="custom-quick-swatches">
+                                {[
+                                  { c: "#D4B896", t: "Дуб" },
+                                  { c: "#5C4033", t: "Орех" },
+                                  { c: "#F3F4F6", t: "Мрамор" },
+                                  { c: "#EFEDEA", t: "Светлый камень" },
+                                  { c: "#2B2D30", t: "Гранит" },
+                                  { c: "#6E7072", t: "Бетон" },
+                                  { c: "#E5DAC8", t: "Беленый дуб" },
+                                  { c: "#1A1A1A", t: "Черный сланец" },
+                                ].map((sw) => (
+                                  <button
+                                    key={sw.c}
+                                    type="button"
+                                    className={`quick-swatch-btn${customWorktop.toLowerCase() === sw.c.toLowerCase() ? " active" : ""}`}
+                                    style={{ background: sw.c }}
+                                    onClick={() => setCustomWorktop(sw.c)}
+                                    title={sw.t}
+                                  />
+                                ))}
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* 3. Название палитры */}
+                          <div className="custom-picker-row" style={{ marginBottom: "8px" }}>
+                            <input
+                              type="text"
+                              className="custom-name-input"
+                              placeholder="Название (например, Мой стиль)"
+                              value={customName}
+                              onChange={(e) => setCustomName(e.target.value)}
+                              maxLength={24}
+                            />
+                          </div>
+
+                          {/* Actions */}
+                          <div className="custom-builder-actions">
+                            <button
+                              type="button"
+                              className="custom-apply-btn"
+                              onClick={() => {
+                                const fNum = parseInt(customFacade.replace("#", ""), 16);
+                                const wNum = parseInt(customWorktop.replace("#", ""), 16);
+                                const cNum = syncCarcassWithFacade ? fNum : parseInt(customCarcass.replace("#", ""), 16);
+                                applyFinishToAll({ facade: fNum, carcass: cNum, worktop: wNum });
+                                flash("Свои цвета применены ко всей кухне!");
+                              }}
+                            >
+                              ✓ Применить к кухне
+                            </button>
+                            <button
+                              type="button"
+                              className="custom-save-btn"
+                              onClick={() => {
+                                const fNum = parseInt(customFacade.replace("#", ""), 16);
+                                const wNum = parseInt(customWorktop.replace("#", ""), 16);
+                                const cNum = syncCarcassWithFacade ? fNum : parseInt(customCarcass.replace("#", ""), 16);
+                                const name = customName.trim() || `Своя ${customPalettes.length + 1}`;
+                                const newPal: FinishPaletteOption = {
+                                  id: `custom-${Date.now()}`,
+                                  name,
+                                  color1: customFacade,
+                                  color2: customWorktop,
+                                  facade: fNum,
+                                  carcass: cNum,
+                                  worktop: wNum,
+                                  isCustom: true,
+                                };
+                                const updated = [...customPalettes, newPal];
+                                setCustomPalettes(updated);
+                                saveCustomPalettes(updated);
+                                setActiveFinishPaletteId(newPal.id);
+                                applyFinishToAll({ facade: fNum, carcass: cNum, worktop: wNum });
+                                setCustomName("");
+                                setIsCustomOpen(false);
+                                flash(`Палитра «${name}» сохранена и применена!`);
+                              }}
+                            >
+                              ★ Сохранить
+                            </button>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    <div className="fin-sep" />
                     {/* ФАРТУК */}
                     <div className="fin-row">
                       <div className="fin-label">
@@ -1993,8 +3423,61 @@ export function ConfigScreen() {
             })()}
 
             {/* ── ШКАФЫ ── Наполнение / Сохранить on top, a type filter, and the cabinet grid. Tapping
-                a type swaps the whole selection to it. */}
-            {sheet === "cabinets" && selIds.length >= 1 && (() => {
+                a type swaps the whole selection to it. When nothing selected, shows the 5 PLACE_ROWS bands. */}
+            {sheet === "cabinets" && (() => {
+              if (selIds.length === 0) {
+                const activeBand = PLACE_ROWS.find((r) => r.key === placeRow) ?? PLACE_ROWS[0];
+                return (
+                  <>
+                    <div className="sheet-head">
+                      <div className="sheet-title">Добавить модуль в проект</div>
+                      <button className="sheet-x" onClick={closeSheet} type="button" aria-label={t.config.close}>✕</button>
+                    </div>
+
+                    {/* 5 Row Categories: Нижние, Навесные, 3-й ряд (Антресоль), Пеналы, Свободно */}
+                    <div className="cfg-place-rows-bar">
+                      {PLACE_ROWS.map((row) => {
+                        const isCurrent = placeRow === row.key;
+                        return (
+                          <button
+                            key={row.key}
+                            type="button"
+                            className={`cfg-place-row-chip${isCurrent ? " on" : ""}`}
+                            onClick={() => pickPlaceRow(row.key)}
+                          >
+                            <span className="cfg-row-thumb">
+                              <AddThumb id={row.png} glyph={row.items[0]?.glyph ?? "▢"} />
+                            </span>
+                            <span className="cfg-row-label">{row.label}</span>
+                            {isCurrent && <span className="cfg-row-active-dot" />}
+                          </button>
+                        );
+                      })}
+                    </div>
+
+                    <div className="cfg-sheet-body">
+                      <div className="cfg-band-heading">
+                        <span className="cfg-band-title">{activeBand.label} ({activeBand.items.length})</span>
+                        <span className="cfg-band-hint">
+                          {placeRow === "extra"
+                            ? "Нажмите на модуль, чтобы разместить его в комнате"
+                            : "Нажмите на модуль для выбора или коснитесь ячейки на стене в 3D"}
+                        </span>
+                      </div>
+                      <div className="cab-grid">
+                        {activeBand.items.map((tpl) => (
+                          <button key={tpl.id} className="cab-cell" onClick={() => addItem(tpl)} type="button">
+                            <AddThumb id={tpl.id} glyph={tpl.glyph} cab={tpl.cab} />
+                            <span className="cab-cname">{tpl.name}</span>
+                            {tpl.sub && <span className="cab-csub" style={{ fontSize: 11, color: "#888", display: "block" }}>{tpl.sub}</span>}
+                          </button>
+                        ))}
+                      </div>
+                    </div>
+                  </>
+                );
+              }
+
               const cat = CAB_CATS.find((c) => c.id === cabFilter) ?? CAB_CATS[0];
               const items = CABINET_GROUPS.flatMap((g) => g.items).filter((tpl) => cat.ok(tpl.cab));
               return (
@@ -2081,6 +3564,15 @@ export function ConfigScreen() {
             onBlur={commitFe}
           />
           <button className="num-step" type="button" aria-label="+50 мм" onPointerDown={(e) => e.preventDefault()} onClick={() => stepFe(50)}>+</button>
+        </div>
+      )}
+
+      {/* ── ROOM EDITOR OVERLAY ── the full-featured RoomScene from Phase A, rendered on top of
+          the constructor when the user clicks "1. Стены & Комната". Both editors share the same
+          Zustand store, so room edits instantly flow into the cabinet layout. */}
+      {roomEditorOpen && (
+        <div className="room-editor-overlay">
+          <RoomScene embedded onDone={() => setRoomEditorOpen(false)} />
         </div>
       )}
     </div>

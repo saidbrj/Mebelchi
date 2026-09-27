@@ -1,0 +1,53 @@
+{
+  "id": "blum.lift.aventos-hf",
+  "uid": "01J8K2QF7M3NRA9V0110",
+  "version": "1.0.0",
+  "schema": 1,
+  "kind": "lift",
+  "origin": {
+    "source": "marketplace",
+    "publisher": "blum",
+    "signed": true
+  },
+  "name": {
+    "ru": "Aventos HF складной подъёмник",
+    "en": "Aventos HF bi-fold lift",
+    "uz": "Aventos HF ko'targich"
+  },
+  "fields": {
+    "ceilingSweepMm": {
+      "type": "number",
+      "value": 80,
+      "unit": "mm",
+      "domain": {
+        "min": 20,
+        "max": 150
+      },
+      "frame": {
+        "of": "carcass",
+        "datum": "top",
+        "direction": "z",
+        "sign": "outward-positive",
+        "compose": "max"
+      }
+    },
+    "maxFrontWeightKg": {
+      "type": "number",
+      "value": 12,
+      "unit": "kg",
+      "domain": {
+        "min": 4,
+        "max": 30
+      }
+    },
+    "minFrontHeightMm": {
+      "type": "number",
+      "value": 480,
+      "unit": "mm",
+      "domain": {
+        "min": 300,
+        "max": 1200
+      }
+    }
+  }
+}

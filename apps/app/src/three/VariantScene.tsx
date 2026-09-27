@@ -42,6 +42,8 @@ import { registerCapture } from "../lib/thumbnailCapture";
 
 export interface SceneApi {
   setKitchen: (cabs: Cabinet[], style: KitchenStyle) => void;
+  /** Rebuild room walls, floor, openings, and fittings when room geometry changes */
+  rebuildRoom: () => void;
   /** Draw each wall's SHEET onto the wall itself — its column and row lines (model/grid.ts).
    *
    *  This is the thing that makes an empty room not empty: the walls are already divided into cells
@@ -65,6 +67,10 @@ export interface SceneApi {
   setLampKind: (k: CeilingLightKind) => void;
   /** how far across the room they spread (0..1 of the span) */
   setLampSpread: (v: number) => void;
+  setLampTemp: (k: number) => void;
+  setWallOffset: (mm: number) => void;
+  setCustomPositions: (pos: { x: number; z: number }[] | null) => void;
+  setPerimeterLed: (on: boolean) => void;
   /** turn the reflective floor on/off (rebuilds the room's mirror) */
   setReflect: (v: boolean) => void;
   /** render style changed («Линии» ⇄ realistic): re-skin the room + flip the paper background */
@@ -462,6 +468,10 @@ export function VariantScene({
   lampCount = 4,
   lampKind = "spot",
   lampSpread = 0.34,
+  lampTemp,
+  lampOffsetMm,
+  customPositions,
+  ceilingPerimeter,
   reflect = false,
   quality = "auto",
   onSelectCab,
@@ -542,6 +552,10 @@ export function VariantScene({
   lampKind?: CeilingLightKind;
   /** how far across the room the fixtures spread, 0..1 of the span */
   lampSpread?: number;
+  lampTemp?: number;
+  lampOffsetMm?: number;
+  customPositions?: { x: number; z: number }[];
+  ceilingPerimeter?: boolean;
   /** a REFLECTIVE floor. Costs a second render of the scene, so it only ever appears on a settled
    *  frame — the same bargain ambient occlusion gets. See three/reflect.ts. */
   reflect?: boolean;
@@ -1429,6 +1443,26 @@ export function VariantScene({
     const rig = buildRig(scene, renderer, { preset: presetRef.current, tier: tierRef.current, shadowPx });
     if (sunRef.current) rig.setSun(sunRef.current.azimuth, sunRef.current.elevation);
     rig.setLampCount(lampRef.current);
+    rig.setForceFixturesVisible(false);
+    rig.setShowGuides(false);
+    if (propsRef.current.led) {
+      const l = propsRef.current.led;
+      if (l.sunAzimuth != null && l.sunElevation != null) {
+        rig.setSun(l.sunAzimuth, l.sunElevation);
+      }
+      const isFixtures = l.lightingMode === "fixtures";
+      if (isFixtures) {
+        if (l.ceilingKind) rig.setLampKind(l.ceilingKind);
+        rig.setLampCount(l.ceilingCount ?? 4);
+        rig.setLampTemp(l.temp ?? 4000);
+        rig.setWallOffset(l.ceilingOffsetMm ?? 800);
+        rig.setCustomPositions(l.customPositions ?? null);
+        rig.setPerimeterLed(l.ceilingPerimeter ?? false, propsRef.current.points, propsRef.current.ceiling / 1000);
+      } else {
+        rig.setLampCount(0);
+        rig.setPerimeterLed(false);
+      }
+    }
     let mirror: Mirror | null = null;
     // AMBIENT OCCLUSION — the darkness in the crevices, which no lamp can produce (three/post.ts).
     // `draw()` is the ONLY way this scene renders from here on: straight to the canvas when AO is off,
@@ -1586,6 +1620,27 @@ export function VariantScene({
       // the daylight comes through the window the seller actually drew, and the shadow frustum is cut
       // to this room's walls (it used to be a fixed ±4m box, so a big room lost its shadows)
       rig.aim({ points: s.points, openings: s.openings, ceiling: s.ceiling });
+      if (s.led) {
+        if (s.led.sunAzimuth != null && s.led.sunElevation != null) {
+          rig.setSun(s.led.sunAzimuth, s.led.sunElevation);
+        }
+        const isFixtures = s.led.lightingMode === "fixtures";
+        if (isFixtures) {
+          if (s.led.ceilingKind) rig.setLampKind(s.led.ceilingKind);
+          rig.setLampCount(s.led.ceilingCount ?? 4);
+          rig.setLampTemp(s.led.temp ?? 4000);
+          rig.setWallOffset(s.led.ceilingOffsetMm ?? 800);
+          rig.setCustomPositions(s.led.customPositions ?? null);
+          rig.setForceFixturesVisible(false);
+          rig.setShowGuides(false);
+          rig.setPerimeterLed(s.led.ceilingPerimeter ?? false, s.points, s.ceiling / 1000);
+        } else {
+          rig.setLampCount(0);
+          rig.setForceFixturesVisible(false);
+          rig.setShowGuides(false);
+          rig.setPerimeterLed(false);
+        }
+      }
       invalidate();
     };
 
@@ -3063,6 +3118,10 @@ export function VariantScene({
 
     apiRef.current = {
       setKitchen,
+      rebuildRoom: () => {
+        buildRoom();
+        invalidate();
+      },
       setLattice,
       setView,
       setSelected,
@@ -3085,6 +3144,22 @@ export function VariantScene({
       },
       setLampSpread: (v) => {
         rig.setLampSpread(v);
+        invalidate();
+      },
+      setLampTemp: (k) => {
+        rig.setLampTemp(k);
+        invalidate();
+      },
+      setWallOffset: (mm) => {
+        rig.setWallOffset(mm);
+        invalidate();
+      },
+      setCustomPositions: (pos) => {
+        rig.setCustomPositions(pos);
+        invalidate();
+      },
+      setPerimeterLed: (on) => {
+        rig.setPerimeterLed(on, propsRef.current.points, propsRef.current.ceiling / 1000);
         invalidate();
       },
       setReflect: (v) => {
@@ -3268,6 +3343,12 @@ export function VariantScene({
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
+  // Room geometry changes (points, ceiling, openings, walls, fittings, floor, surfaces) → rebuild the 3D room
+  useEffect(() => {
+    apiRef.current?.rebuildRoom();
+    apiRef.current?.setKitchen(cabs, style);
+  }, [points, ceiling, openings, coveringColor, floorId, interiorWalls, fittings, wallSurfaces]);
+
   // switching variant / render style / selection → rebuild the kitchen group (the
   // fresh materials pick up the current render mode + highlight)
   //
@@ -3275,7 +3356,7 @@ export function VariantScene({
   // panels are DERIVED inside the rebuild, so the spec changing is the only signal needed.
   useEffect(() => {
     apiRef.current?.setKitchen(cabs, style);
-  }, [cabs, style, layout, mode, constructionRev, panels, led, ceiling, fittings, openings]);
+  }, [cabs, style, layout, mode, constructionRev, panels, led, ceiling, fittings, openings, points, waterWall, reveal]);
 
   // The render style also re-skins the ROOM (line-art vs photoreal) and flips the paper background —
   // both live in buildRoom, which the kitchen rebuild above doesn't touch.
@@ -3301,11 +3382,19 @@ export function VariantScene({
 
   useEffect(() => {
     if (sun) apiRef.current?.setSun(sun.azimuth, sun.elevation);
-  }, [sun]);
+  }, [sun?.azimuth, sun?.elevation]);
 
   useEffect(() => {
     apiRef.current?.setLampCount(lampCount);
   }, [lampCount]);
+
+  useEffect(() => {
+    if (led?.lightingMode) {
+      const isFixtures = led.lightingMode === "fixtures";
+      apiRef.current?.setLampCount(isFixtures ? (lampCount ?? led.ceilingCount ?? 4) : 0);
+      apiRef.current?.setPerimeterLed(isFixtures ? (ceilingPerimeter ?? led.ceilingPerimeter ?? false) : false);
+    }
+  }, [led?.lightingMode, lampCount, ceilingPerimeter, led?.ceilingCount, led?.ceilingPerimeter]);
 
   useEffect(() => {
     apiRef.current?.setLampKind(lampKind);
@@ -3314,6 +3403,26 @@ export function VariantScene({
   useEffect(() => {
     apiRef.current?.setLampSpread(lampSpread);
   }, [lampSpread]);
+
+  useEffect(() => {
+    const t = lampTemp ?? led?.temp;
+    if (t) apiRef.current?.setLampTemp(t);
+  }, [lampTemp, led?.temp]);
+
+  useEffect(() => {
+    const off = lampOffsetMm ?? led?.ceilingOffsetMm;
+    if (off !== undefined) apiRef.current?.setWallOffset(off);
+  }, [lampOffsetMm, led?.ceilingOffsetMm]);
+
+  useEffect(() => {
+    const pos = customPositions ?? led?.customPositions;
+    apiRef.current?.setCustomPositions(pos ?? null);
+  }, [customPositions, led?.customPositions]);
+
+  useEffect(() => {
+    const p = ceilingPerimeter ?? led?.ceilingPerimeter;
+    if (p !== undefined) apiRef.current?.setPerimeterLed(p);
+  }, [ceilingPerimeter, led?.ceilingPerimeter]);
 
   useEffect(() => {
     apiRef.current?.setReflect(reflect);
