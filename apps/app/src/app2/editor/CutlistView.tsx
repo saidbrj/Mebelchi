@@ -211,7 +211,7 @@ export function CutlistView({
         style={{
           background: "#fff",
           borderBottom: "1px solid #e5e3de",
-          padding: isMobile ? "8px 12px" : "10px 20px",
+          padding: isMobile ? "54px 12px 10px 12px" : "10px 20px",
           display: "flex",
           flexWrap: "wrap",
           justifyContent: "space-between",
@@ -221,13 +221,13 @@ export function CutlistView({
         }}
       >
         {/* Left: View Tabs */}
-        <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexWrap: "wrap" }}>
           <div
             style={{
               display: "flex",
               background: "#edeae3",
-              borderRadius: 8,
-              padding: 2,
+              borderRadius: 20,
+              padding: 3,
             }}
           >
             <button
@@ -237,15 +237,17 @@ export function CutlistView({
                 background: activeTab === "nesting" ? "#fff" : "transparent",
                 color: activeTab === "nesting" ? "#1c1f22" : "#666",
                 border: "none",
-                borderRadius: 6,
-                padding: "6px 12px",
+                borderRadius: 18,
+                padding: isMobile ? "7px 12px" : "6px 14px",
                 fontSize: 12,
                 fontWeight: activeTab === "nesting" ? 700 : 500,
                 cursor: "pointer",
-                boxShadow: activeTab === "nesting" ? "0 1px 2px rgba(0,0,0,0.08)" : "none",
+                boxShadow: activeTab === "nesting" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
                 display: "flex",
                 alignItems: "center",
                 gap: 5,
+                minHeight: 34,
+                WebkitTapHighlightColor: "transparent",
               }}
             >
               <span>⊞</span>
@@ -258,15 +260,17 @@ export function CutlistView({
                 background: activeTab === "bom" ? "#fff" : "transparent",
                 color: activeTab === "bom" ? "#1c1f22" : "#666",
                 border: "none",
-                borderRadius: 6,
-                padding: "6px 12px",
+                borderRadius: 18,
+                padding: isMobile ? "7px 12px" : "6px 14px",
                 fontSize: 12,
                 fontWeight: activeTab === "bom" ? 700 : 500,
                 cursor: "pointer",
-                boxShadow: activeTab === "bom" ? "0 1px 2px rgba(0,0,0,0.08)" : "none",
+                boxShadow: activeTab === "bom" ? "0 1px 3px rgba(0,0,0,0.08)" : "none",
                 display: "flex",
                 alignItems: "center",
                 gap: 5,
+                minHeight: 34,
+                WebkitTapHighlightColor: "transparent",
               }}
             >
               <span>📋</span>
@@ -274,8 +278,8 @@ export function CutlistView({
             </button>
           </div>
 
-          {/* Sheet Format Selector (Desktop) */}
-          {!isMobile && activeTab === "nesting" && (
+          {/* Sheet Format Selector (Desktop & Mobile) */}
+          {activeTab === "nesting" && (
             <select
               value={sheetSizeIdx}
               onChange={(e) => {
@@ -285,16 +289,18 @@ export function CutlistView({
               style={{
                 background: "#f8f7f4",
                 border: "1px solid #d9d5cc",
-                borderRadius: 6,
-                padding: "5px 8px",
+                borderRadius: 14,
+                padding: "6px 10px",
                 fontSize: 11,
                 color: "#444",
                 cursor: "pointer",
+                minHeight: 34,
+                maxWidth: isMobile ? 180 : "none",
               }}
             >
               {SHEET_SIZES.map((s, i) => (
                 <option key={s.label} value={i}>
-                  {s.label}
+                  {isMobile ? `${s.w}×${s.h} мм` : s.label}
                 </option>
               ))}
             </select>
@@ -302,7 +308,7 @@ export function CutlistView({
         </div>
 
         {/* Right: Export Actions */}
-        <div style={{ display: "flex", alignItems: "center", gap: 8 }}>
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
           <button
             type="button"
             onClick={handleCopyTSV}
@@ -310,15 +316,18 @@ export function CutlistView({
               background: copied ? "#16a34a" : "#fff",
               color: copied ? "#fff" : "#1c1f22",
               border: `1px solid ${copied ? "#16a34a" : "#d9d5cc"}`,
-              borderRadius: 6,
-              padding: "6px 10px",
+              borderRadius: 14,
+              padding: "7px 12px",
               fontSize: 11,
               fontWeight: 600,
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
               gap: 5,
+              minHeight: 34,
               transition: "all 0.15s ease",
+              boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+              WebkitTapHighlightColor: "transparent",
             }}
             title="Скопировать таблицу для Excel / Google Sheets"
           >
@@ -333,14 +342,17 @@ export function CutlistView({
               background: "#fff",
               color: "#1c1f22",
               border: "1px solid #d9d5cc",
-              borderRadius: 6,
-              padding: "6px 10px",
+              borderRadius: 14,
+              padding: "7px 12px",
               fontSize: 11,
               fontWeight: 600,
               cursor: "pointer",
               display: "flex",
               alignItems: "center",
               gap: 5,
+              minHeight: 34,
+              boxShadow: "0 1px 2px rgba(0,0,0,0.04)",
+              WebkitTapHighlightColor: "transparent",
             }}
             title="Скачать CSV для Базис-Раскрой / Астра / Excel"
           >
@@ -356,14 +368,15 @@ export function CutlistView({
                 background: "#fff",
                 color: "#1c1f22",
                 border: "1px solid #d9d5cc",
-                borderRadius: 6,
-                padding: "6px 10px",
+                borderRadius: 14,
+                padding: "7px 12px",
                 fontSize: 11,
                 fontWeight: 600,
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
                 gap: 5,
+                minHeight: 34,
               }}
               title="Печать карты раскроя"
             >
@@ -379,13 +392,16 @@ export function CutlistView({
         style={{
           background: "#fff",
           borderBottom: "1px solid #e5e3de",
-          padding: "8px 16px",
+          padding: isMobile ? "8px 12px" : "8px 16px",
           display: "flex",
           alignItems: "center",
           gap: isMobile ? 12 : 24,
           overflowX: "auto",
+          WebkitOverflowScrolling: "touch",
           fontSize: 12,
           flexShrink: 0,
+          whiteSpace: "nowrap",
+          scrollbarWidth: "none",
         }}
       >
         <div style={{ display: "flex", alignItems: "center", gap: 6 }}>
@@ -444,19 +460,20 @@ export function CutlistView({
               flex: 1,
               display: "flex",
               flexDirection: isMobile ? "column" : "row",
-              overflow: "hidden",
+              overflow: isMobile ? "auto" : "hidden",
             }}
           >
             {/* Sheet Canvas Area */}
             <div
               style={{
-                flex: 1,
+                flex: isMobile ? "0 0 auto" : 1,
                 display: "flex",
                 flexDirection: "column",
-                overflow: "auto",
-                padding: isMobile ? 12 : 20,
+                overflow: isMobile ? "visible" : "auto",
+                padding: isMobile ? "12px 10px" : 20,
                 alignItems: "center",
                 justifyContent: "flex-start",
+                width: isMobile ? "100%" : "auto",
               }}
             >
               {/* Sheet Stepper Header */}
@@ -793,28 +810,47 @@ export function CutlistView({
           </div>
         ) : (
           /* ── Tabular Specification (BOM) View ── */
-          <div style={{ flex: 1, overflow: "auto", padding: isMobile ? 12 : 24 }}>
+          <div style={{ flex: 1, overflow: "auto", padding: isMobile ? "10px 8px" : 24, paddingBottom: "max(16px, env(safe-area-inset-bottom, 16px))" }}>
             <div
               style={{
                 maxWidth: 1100,
                 margin: "0 auto",
                 background: "#fff",
-                borderRadius: 12,
+                borderRadius: 14,
                 border: "1px solid #e5e3de",
                 boxShadow: "0 1px 4px rgba(0,0,0,0.04)",
                 overflow: "hidden",
               }}
             >
-              <table
-                style={{
-                  width: "100%",
-                  borderCollapse: "collapse",
-                  textAlign: "left",
-                  fontSize: 13,
-                }}
-              >
-                <thead>
-                  <tr style={{ background: "#f8f7f4", borderBottom: "1px solid #e5e3de" }}>
+              {isMobile && (
+                <div
+                  style={{
+                    padding: "8px 12px",
+                    background: "#fafaf8",
+                    borderBottom: "1px solid #e5e3de",
+                    fontSize: 11,
+                    color: "#888",
+                    display: "flex",
+                    alignItems: "center",
+                    gap: 6,
+                  }}
+                >
+                  <span>↔</span>
+                  <span>Прокрутите таблицу вправо для просмотра всех колонок</span>
+                </div>
+              )}
+              <div style={{ width: "100%", overflowX: "auto", WebkitOverflowScrolling: "touch" }}>
+                <table
+                  style={{
+                    width: "100%",
+                    minWidth: 640,
+                    borderCollapse: "collapse",
+                    textAlign: "left",
+                    fontSize: 13,
+                  }}
+                >
+                  <thead>
+                    <tr style={{ background: "#f8f7f4", borderBottom: "1px solid #e5e3de" }}>
                     <th style={{ padding: "10px 12px", width: 40, color: "#666" }}>№</th>
                     <th style={{ padding: "10px 12px", color: "#1c1f22", fontWeight: 700 }}>Наименование</th>
                     <th style={{ padding: "10px 12px", color: "#1c1f22", fontWeight: 700 }}>Длина (мм)</th>
@@ -884,6 +920,7 @@ export function CutlistView({
                   })}
                 </tbody>
               </table>
+              </div>
             </div>
           </div>
         )}

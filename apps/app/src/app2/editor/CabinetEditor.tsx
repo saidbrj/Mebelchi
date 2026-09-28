@@ -534,6 +534,38 @@ export function CabinetEditor({ initialSession, onExit, cabTitle, cabSubtitle }:
     }
   }, []);
 
+  const handleAddShelfQuick = useCallback(() => {
+    const targetSpace = sel?.kind === "space"
+      ? allOpenings.find((o) => o.id === sel.id)
+      : allOpenings.slice().sort((a, b) => (b.box.max[1] - b.box.min[1]) - (a.box.max[1] - a.box.min[1]))[0];
+    if (targetSpace) {
+      addPart("shelf", targetSpace.id);
+    } else {
+      setMsg("Нет свободного пространства для полки");
+    }
+  }, [allOpenings, sel, addPart]);
+
+  const handleAddDividerQuick = useCallback(() => {
+    const targetSpace = sel?.kind === "space"
+      ? allOpenings.find((o) => o.id === sel.id)
+      : allOpenings.slice().sort((a, b) => (b.box.max[0] - b.box.min[0]) - (a.box.max[0] - a.box.min[0]))[0];
+    if (targetSpace) {
+      addPart("divider", targetSpace.id);
+    } else {
+      setMsg("Нет свободного пространства для перегородки");
+    }
+  }, [allOpenings, sel, addPart]);
+
+  const handleCycleBackMount = useCallback(() => {
+    const next = backMount === "groove" ? "overlay" : backMount === "overlay" ? "none" : "groove";
+    setBackMount(next);
+  }, [backMount, setBackMount]);
+
+  const handleCycleDoors = useCallback(() => {
+    const next = frontCount === 0 ? 1 : frontCount === 1 ? 2 : 0;
+    setDoorCount(next);
+  }, [frontCount, setDoorCount]);
+
   // ── Pointer handling with 1-finger 3D Drag & Snap ──
   useEffect(() => {
     const el = stageRef.current;
@@ -857,9 +889,9 @@ export function CabinetEditor({ initialSession, onExit, cabTitle, cabSubtitle }:
       {/* ── Header ── */}
       <header
         style={{
-          minHeight: 52,
+          minHeight: isMobile ? 48 : 52,
           padding: isMobile
-            ? "max(8px, env(safe-area-inset-top, 8px)) 12px 8px 12px"
+            ? "max(6px, env(safe-area-inset-top, 6px)) 12px 6px 12px"
             : "0 16px",
           background: "#fff",
           borderBottom: "1px solid #e5e3de",
@@ -872,7 +904,8 @@ export function CabinetEditor({ initialSession, onExit, cabTitle, cabSubtitle }:
           gap: 8,
         }}
       >
-        <div style={{ display: "flex", alignItems: "center", gap: isMobile ? 8 : 12, minWidth: 0 }}>
+        {/* Left: Back / Done Button */}
+        <div style={{ display: "flex", alignItems: "center", gap: 10, minWidth: 0, flexShrink: 0 }}>
           <button
             type="button"
             onClick={() => onExit(session)}
@@ -880,8 +913,8 @@ export function CabinetEditor({ initialSession, onExit, cabTitle, cabSubtitle }:
               background: "#1c1f22",
               color: "#fff",
               border: "none",
-              borderRadius: 8,
-              padding: isMobile ? "8px 12px" : "8px 16px",
+              borderRadius: isMobile ? 20 : 8,
+              padding: isMobile ? "7px 13px" : "8px 16px",
               fontSize: isMobile ? 12 : 13,
               fontWeight: 600,
               cursor: "pointer",
@@ -891,21 +924,65 @@ export function CabinetEditor({ initialSession, onExit, cabTitle, cabSubtitle }:
               flexShrink: 0,
               boxShadow: "0 1px 4px rgba(0,0,0,0.15)",
               WebkitTapHighlightColor: "transparent",
+              minHeight: 36,
             }}
           >
-            <span>←</span>
+            <span style={{ fontSize: 13 }}>←</span>
             <span>Готово</span>
           </button>
 
-          <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+          {!isMobile && (
+            <div style={{ display: "flex", flexDirection: "column", minWidth: 0 }}>
+              <span
+                style={{
+                  fontSize: 14,
+                  fontWeight: 700,
+                  color: "#1c1f22",
+                  whiteSpace: "nowrap",
+                  overflow: "hidden",
+                  textOverflow: "ellipsis",
+                }}
+              >
+                {cabTitle ?? "Редактор шкафа"}
+              </span>
+              {unit && (
+                <span
+                  style={{
+                    fontSize: 11,
+                    color: "#777",
+                    fontFamily: "ui-monospace, monospace",
+                    whiteSpace: "nowrap",
+                  }}
+                >
+                  {unit.w} × {unit.h} × {unit.d} мм{cabSubtitle ? ` · ${cabSubtitle}` : ""}
+                </span>
+              )}
+            </div>
+          )}
+        </div>
+
+        {/* Mobile Center: Title & Dimensions Badge */}
+        {isMobile && (
+          <div
+            style={{
+              display: "flex",
+              flexDirection: "column",
+              alignItems: "center",
+              justifyContent: "center",
+              minWidth: 0,
+              flex: 1,
+              padding: "0 4px",
+            }}
+          >
             <span
               style={{
-                fontSize: isMobile ? 13 : 14,
+                fontSize: 13,
                 fontWeight: 700,
                 color: "#1c1f22",
                 whiteSpace: "nowrap",
                 overflow: "hidden",
                 textOverflow: "ellipsis",
+                maxWidth: 180,
               }}
             >
               {cabTitle ?? "Редактор шкафа"}
@@ -913,141 +990,146 @@ export function CabinetEditor({ initialSession, onExit, cabTitle, cabSubtitle }:
             {unit && (
               <span
                 style={{
-                  fontSize: 11,
+                  fontSize: 10,
                   color: "#777",
                   fontFamily: "ui-monospace, monospace",
                   whiteSpace: "nowrap",
                 }}
               >
-                {unit.w} × {unit.h} × {unit.d} мм{cabSubtitle ? ` · ${cabSubtitle}` : ""}
+                {unit.w} × {unit.h} × {unit.d} мм
               </span>
             )}
           </div>
-        </div>
+        )}
 
-        {/* ── Mode Switcher: Конструкция vs Стыки ── */}
-        <div
-          style={{
-            display: "flex",
-            alignItems: "center",
-            background: "#f0ede6",
-            padding: 3,
-            borderRadius: 9,
-            border: "1px solid #e2ded5",
-            gap: 2,
-          }}
-        >
-          <button
-            type="button"
-            onClick={() => handleModeChange("layout")}
+        {/* Desktop Center: Mode Switcher (only shown in header on desktop) */}
+        {!isMobile && (
+          <div
             style={{
-              background: viewMode === "layout" ? "#fff" : "transparent",
-              color: viewMode === "layout" ? "#1c1f22" : "#666",
-              border: "none",
-              borderRadius: 7,
-              padding: isMobile ? "5px 8px" : "6px 12px",
-              fontSize: isMobile ? 11 : 12,
-              fontWeight: viewMode === "layout" ? 700 : 500,
-              cursor: "pointer",
-              boxShadow: viewMode === "layout" ? "0 1px 2px rgba(0,0,0,0.08)" : "none",
-              transition: "all 0.15s ease",
-            }}
-          >
-            Конструкция
-          </button>
-          <button
-            type="button"
-            onClick={() => handleModeChange("joints")}
-            style={{
-              background: viewMode === "joints" ? "#e8590c" : "transparent",
-              color: viewMode === "joints" ? "#fff" : "#666",
-              border: "none",
-              borderRadius: 7,
-              padding: isMobile ? "5px 8px" : "6px 12px",
-              fontSize: isMobile ? 11 : 12,
-              fontWeight: viewMode === "joints" ? 700 : 500,
-              cursor: "pointer",
-              boxShadow: viewMode === "joints" ? "0 1px 2px rgba(232,89,12,0.3)" : "none",
               display: "flex",
               alignItems: "center",
-              gap: 5,
-              transition: "all 0.15s ease",
+              background: "#f0ede6",
+              padding: 3,
+              borderRadius: 9,
+              border: "1px solid #e2ded5",
+              gap: 2,
             }}
           >
-            <span>Стыки</span>
-            <span
-              style={{
-                background: viewMode === "joints" ? "rgba(255,255,255,0.25)" : "#e2ded5",
-                color: viewMode === "joints" ? "#fff" : "#444",
-                borderRadius: 10,
-                padding: "1px 5px",
-                fontSize: 10,
-                fontWeight: 700,
-              }}
-            >
-              {jointList.length}
-            </span>
-          </button>
-          <button
-            type="button"
-            onClick={() => handleModeChange("cutlist")}
-            style={{
-              background: viewMode === "cutlist" ? "#0284c7" : "transparent",
-              color: viewMode === "cutlist" ? "#fff" : "#666",
-              border: "none",
-              borderRadius: 7,
-              padding: isMobile ? "5px 8px" : "6px 12px",
-              fontSize: isMobile ? 11 : 12,
-              fontWeight: viewMode === "cutlist" ? 700 : 500,
-              cursor: "pointer",
-              boxShadow: viewMode === "cutlist" ? "0 1px 2px rgba(2,132,199,0.3)" : "none",
-              display: "flex",
-              alignItems: "center",
-              gap: 5,
-              transition: "all 0.15s ease",
-            }}
-          >
-            <span>Раскрой</span>
-            <span
-              style={{
-                background: viewMode === "cutlist" ? "rgba(255,255,255,0.25)" : "#e2ded5",
-                color: viewMode === "cutlist" ? "#fff" : "#444",
-                borderRadius: 10,
-                padding: "1px 5px",
-                fontSize: 10,
-                fontWeight: 700,
-              }}
-            >
-              {cutListParts.length}
-            </span>
-          </button>
-        </div>
-
-        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
-          {isMobile && (
             <button
               type="button"
-              onClick={() => setShowLayersSheet(true)}
+              onClick={() => handleModeChange("layout")}
+              style={{
+                background: viewMode === "layout" ? "#fff" : "transparent",
+                color: viewMode === "layout" ? "#1c1f22" : "#666",
+                border: "none",
+                borderRadius: 7,
+                padding: "6px 12px",
+                fontSize: 12,
+                fontWeight: viewMode === "layout" ? 700 : 500,
+                cursor: "pointer",
+                boxShadow: viewMode === "layout" ? "0 1px 2px rgba(0,0,0,0.08)" : "none",
+                transition: "all 0.15s ease",
+              }}
+            >
+              Конструкция
+            </button>
+            <button
+              type="button"
+              onClick={() => handleModeChange("joints")}
+              style={{
+                background: viewMode === "joints" ? "#e8590c" : "transparent",
+                color: viewMode === "joints" ? "#fff" : "#666",
+                border: "none",
+                borderRadius: 7,
+                padding: "6px 12px",
+                fontSize: 12,
+                fontWeight: viewMode === "joints" ? 700 : 500,
+                cursor: "pointer",
+                boxShadow: viewMode === "joints" ? "0 1px 2px rgba(232,89,12,0.3)" : "none",
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+                transition: "all 0.15s ease",
+              }}
+            >
+              <span>Стыки</span>
+              <span
+                style={{
+                  background: viewMode === "joints" ? "rgba(255,255,255,0.25)" : "#e2ded5",
+                  color: viewMode === "joints" ? "#fff" : "#444",
+                  borderRadius: 10,
+                  padding: "1px 5px",
+                  fontSize: 10,
+                  fontWeight: 700,
+                }}
+              >
+                {jointList.length}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleModeChange("cutlist")}
+              style={{
+                background: viewMode === "cutlist" ? "#0284c7" : "transparent",
+                color: viewMode === "cutlist" ? "#fff" : "#666",
+                border: "none",
+                borderRadius: 7,
+                padding: "6px 12px",
+                fontSize: 12,
+                fontWeight: viewMode === "cutlist" ? 700 : 500,
+                cursor: "pointer",
+                boxShadow: viewMode === "cutlist" ? "0 1px 2px rgba(2,132,199,0.3)" : "none",
+                display: "flex",
+                alignItems: "center",
+                gap: 5,
+                transition: "all 0.15s ease",
+              }}
+            >
+              <span>Раскрой</span>
+              <span
+                style={{
+                  background: viewMode === "cutlist" ? "rgba(255,255,255,0.25)" : "#e2ded5",
+                  color: viewMode === "cutlist" ? "#fff" : "#444",
+                  borderRadius: 10,
+                  padding: "1px 5px",
+                  fontSize: 10,
+                  fontWeight: 700,
+                }}
+              >
+                {cutListParts.length}
+              </span>
+            </button>
+          </div>
+        )}
+
+        {/* Right Actions */}
+        <div style={{ display: "flex", alignItems: "center", gap: 6, flexShrink: 0 }}>
+          {isMobile && history.length > 0 && (
+            <button
+              type="button"
+              onClick={doUndo}
               style={{
                 background: "#f0ede6",
                 border: "1px solid #d9d5cc",
-                borderRadius: 8,
-                padding: "7px 10px",
+                borderRadius: 18,
+                width: 36,
+                height: 36,
                 color: "#1c1f22",
-                fontSize: 12,
-                fontWeight: 600,
+                fontSize: 15,
+                fontWeight: 700,
                 cursor: "pointer",
                 display: "flex",
                 alignItems: "center",
-                gap: 4,
+                justifyContent: "center",
+                WebkitTapHighlightColor: "transparent",
               }}
+              title="Отменить действие"
             >
-              <span>📑</span>
-              <span>{allParts.length}</span>
+              ↺
             </button>
           )}
 
-          {frontCount > 0 && (
+          {!isMobile && frontCount > 0 && (
             <button
               type="button"
               onClick={() => setDoorsOpen((v) => !v)}
@@ -1055,7 +1137,7 @@ export function CabinetEditor({ initialSession, onExit, cabTitle, cabSubtitle }:
                 background: doorsOpen ? "#fef3c7" : "#f0ede6",
                 border: `1px solid ${doorsOpen ? "#f59e0b" : "#d9d5cc"}`,
                 borderRadius: 8,
-                padding: isMobile ? "7px 10px" : "7px 12px",
+                padding: "7px 12px",
                 color: doorsOpen ? "#92400e" : "#1c1f22",
                 fontSize: 12,
                 fontWeight: 600,
@@ -1077,22 +1159,141 @@ export function CabinetEditor({ initialSession, onExit, cabTitle, cabSubtitle }:
             style={{
               background: "transparent",
               border: "1px solid #d9d5cc",
-              borderRadius: 8,
-              padding: isMobile ? "7px 10px" : "7px 14px",
+              borderRadius: isMobile ? 18 : 8,
+              padding: isMobile ? "6px 11px" : "7px 14px",
               color: "#888",
               fontSize: 12,
               fontWeight: 500,
               cursor: "pointer",
               transition: "all 0.15s ease",
+              minHeight: 36,
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              WebkitTapHighlightColor: "transparent",
             }}
+            title="Отменить всё"
           >
-            {isMobile ? "Отмена" : "Отменить всё"}
+            {isMobile ? "✕" : "Отменить всё"}
           </button>
         </div>
       </header>
 
       {/* ── Main Area ── */}
       <div style={{ flex: 1, display: "flex", overflow: "hidden", position: "relative" }}>
+        {/* ── Mobile Floating Mode Switcher (Always accessible on top of 3D and Cutlist) ── */}
+        {isMobile && (
+          <div
+            style={{
+              position: "absolute",
+              top: 10,
+              left: "50%",
+              transform: "translateX(-50%)",
+              display: "flex",
+              alignItems: "center",
+              background: "rgba(255, 255, 255, 0.94)",
+              backdropFilter: "blur(20px)",
+              WebkitBackdropFilter: "blur(20px)",
+              padding: 3,
+              borderRadius: 24,
+              border: "1px solid rgba(0, 0, 0, 0.08)",
+              boxShadow: "0 4px 16px rgba(0, 0, 0, 0.08)",
+              zIndex: 50,
+              gap: 3,
+              pointerEvents: "auto",
+            }}
+          >
+            <button
+              type="button"
+              onClick={() => handleModeChange("layout")}
+              style={{
+                background: viewMode === "layout" ? "#1c1f22" : "transparent",
+                color: viewMode === "layout" ? "#fff" : "#666",
+                border: "none",
+                borderRadius: 20,
+                padding: "6px 12px",
+                fontSize: 11,
+                fontWeight: viewMode === "layout" ? 700 : 500,
+                cursor: "pointer",
+                boxShadow: viewMode === "layout" ? "0 2px 6px rgba(0,0,0,0.15)" : "none",
+                transition: "all 0.15s ease",
+                minHeight: 32,
+                display: "flex",
+                alignItems: "center",
+              }}
+            >
+              Конструкция
+            </button>
+            <button
+              type="button"
+              onClick={() => handleModeChange("joints")}
+              style={{
+                background: viewMode === "joints" ? "#e8590c" : "transparent",
+                color: viewMode === "joints" ? "#fff" : "#666",
+                border: "none",
+                borderRadius: 20,
+                padding: "6px 10px",
+                fontSize: 11,
+                fontWeight: viewMode === "joints" ? 700 : 500,
+                cursor: "pointer",
+                boxShadow: viewMode === "joints" ? "0 2px 6px rgba(232,89,12,0.3)" : "none",
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+                transition: "all 0.15s ease",
+                minHeight: 32,
+              }}
+            >
+              <span>Стыки</span>
+              <span
+                style={{
+                  background: viewMode === "joints" ? "rgba(255,255,255,0.3)" : "#e2ded5",
+                  color: viewMode === "joints" ? "#fff" : "#444",
+                  borderRadius: 10,
+                  padding: "1px 5px",
+                  fontSize: 9,
+                  fontWeight: 700,
+                }}
+              >
+                {jointList.length}
+              </span>
+            </button>
+            <button
+              type="button"
+              onClick={() => handleModeChange("cutlist")}
+              style={{
+                background: viewMode === "cutlist" ? "#0284c7" : "transparent",
+                color: viewMode === "cutlist" ? "#fff" : "#666",
+                border: "none",
+                borderRadius: 20,
+                padding: "6px 10px",
+                fontSize: 11,
+                fontWeight: viewMode === "cutlist" ? 700 : 500,
+                cursor: "pointer",
+                boxShadow: viewMode === "cutlist" ? "0 2px 6px rgba(2,132,199,0.3)" : "none",
+                display: "flex",
+                alignItems: "center",
+                gap: 4,
+                transition: "all 0.15s ease",
+                minHeight: 32,
+              }}
+            >
+              <span>Раскрой</span>
+              <span
+                style={{
+                  background: viewMode === "cutlist" ? "rgba(255,255,255,0.3)" : "#e2ded5",
+                  color: viewMode === "cutlist" ? "#fff" : "#444",
+                  borderRadius: 10,
+                  padding: "1px 5px",
+                  fontSize: 9,
+                  fontWeight: 700,
+                }}
+              >
+                {cutListParts.length}
+              </span>
+            </button>
+          </div>
+        )}
         {/* ── Cutlist & Nesting Workshop ── */}
         {viewMode === "cutlist" && (
           <CutlistView
@@ -1290,14 +1491,14 @@ export function CabinetEditor({ initialSession, onExit, cabTitle, cabSubtitle }:
           <div
             style={{
               position: "absolute",
-              top: isMobile ? 12 : "auto",
-              bottom: isMobile ? "auto" : 16,
-              right: 14,
+              bottom: isMobile ? (selPart || selSpace ? 185 : 90) : 16,
+              right: isMobile ? 12 : 14,
               display: "flex",
               alignItems: "center",
               gap: 6,
               pointerEvents: "auto",
               zIndex: 30,
+              transition: "bottom 0.2s ease",
             }}
           >
             {/* View Selector Pill with Dropdown */}
@@ -1317,7 +1518,7 @@ export function CabinetEditor({ initialSession, onExit, cabTitle, cabSubtitle }:
                   display: "flex",
                   alignItems: "center",
                   gap: 6,
-                  height: 32,
+                  height: 34,
                   boxShadow: "0 2px 8px rgba(0,0,0,0.08)",
                   backdropFilter: "blur(12px)",
                   WebkitTapHighlightColor: "transparent",
@@ -1336,11 +1537,10 @@ export function CabinetEditor({ initialSession, onExit, cabTitle, cabSubtitle }:
                   style={{
                     position: "absolute",
                     right: 0,
-                    bottom: isMobile ? "auto" : 38,
-                    top: isMobile ? 38 : "auto",
+                    bottom: 40,
                     background: "rgba(255, 255, 255, 0.98)",
                     border: "1px solid #e2ded5",
-                    borderRadius: 12,
+                    borderRadius: 14,
                     boxShadow: "0 8px 24px rgba(0,0,0,0.15)",
                     padding: 4,
                     width: 215,
@@ -1781,12 +1981,18 @@ export function CabinetEditor({ initialSession, onExit, cabTitle, cabSubtitle }:
                       type="button"
                       onClick={() => setSel(null)}
                       style={{
-                        background: "none",
+                        background: "#f0ede6",
                         border: "none",
-                        fontSize: 16,
-                        color: "#999",
+                        borderRadius: 16,
+                        width: 30,
+                        height: 30,
+                        fontSize: 14,
+                        color: "#666",
                         cursor: "pointer",
-                        padding: 4,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        WebkitTapHighlightColor: "transparent",
                       }}
                     >
                       ✕
@@ -1827,14 +2033,21 @@ export function CabinetEditor({ initialSession, onExit, cabTitle, cabSubtitle }:
                           background: "#fff1f0",
                           border: "1px solid #ffccc7",
                           color: "#cf1322",
-                          borderRadius: 8,
-                          padding: "8px 12px",
+                          borderRadius: 12,
+                          padding: "10px 12px",
                           fontSize: 12,
                           fontWeight: 600,
                           cursor: "pointer",
+                          minHeight: 42,
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 6,
+                          WebkitTapHighlightColor: "transparent",
                         }}
                       >
-                        🗑 Убрать деталь
+                        <span>🗑</span>
+                        <span>Убрать деталь</span>
                       </button>
                     )}
                     <button
@@ -1845,14 +2058,21 @@ export function CabinetEditor({ initialSession, onExit, cabTitle, cabSubtitle }:
                         background: "#f0ede6",
                         border: "1px solid #d9d5cc",
                         color: "#333",
-                        borderRadius: 8,
-                        padding: "8px 12px",
+                        borderRadius: 12,
+                        padding: "10px 12px",
                         fontSize: 12,
                         fontWeight: 600,
                         cursor: "pointer",
+                        minHeight: 42,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 6,
+                        WebkitTapHighlightColor: "transparent",
                       }}
                     >
-                      📑 Все детали ({allParts.length})
+                      <span>📑</span>
+                      <span>Все детали ({allParts.length})</span>
                     </button>
                   </div>
                 </div>
@@ -1890,12 +2110,18 @@ export function CabinetEditor({ initialSession, onExit, cabTitle, cabSubtitle }:
                         setMenu(null);
                       }}
                       style={{
-                        background: "none",
+                        background: "#f0ede6",
                         border: "none",
-                        fontSize: 16,
-                        color: "#999",
+                        borderRadius: 16,
+                        width: 30,
+                        height: 30,
+                        fontSize: 14,
+                        color: "#666",
                         cursor: "pointer",
-                        padding: 4,
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        WebkitTapHighlightColor: "transparent",
                       }}
                     >
                       ✕
@@ -1911,7 +2137,7 @@ export function CabinetEditor({ initialSession, onExit, cabTitle, cabSubtitle }:
                         background: "#e8590c",
                         color: "#fff",
                         border: "none",
-                        borderRadius: 8,
+                        borderRadius: 12,
                         padding: "10px 14px",
                         fontSize: 13,
                         fontWeight: 600,
@@ -1920,6 +2146,9 @@ export function CabinetEditor({ initialSession, onExit, cabTitle, cabSubtitle }:
                         alignItems: "center",
                         justifyContent: "center",
                         gap: 6,
+                        minHeight: 44,
+                        boxShadow: "0 2px 8px rgba(232,89,12,0.25)",
+                        WebkitTapHighlightColor: "transparent",
                       }}
                     >
                       <span>━</span>
@@ -1933,7 +2162,7 @@ export function CabinetEditor({ initialSession, onExit, cabTitle, cabSubtitle }:
                         background: "#1c1f22",
                         color: "#fff",
                         border: "none",
-                        borderRadius: 8,
+                        borderRadius: 12,
                         padding: "10px 14px",
                         fontSize: 13,
                         fontWeight: 600,
@@ -1942,6 +2171,9 @@ export function CabinetEditor({ initialSession, onExit, cabTitle, cabSubtitle }:
                         alignItems: "center",
                         justifyContent: "center",
                         gap: 6,
+                        minHeight: 44,
+                        boxShadow: "0 2px 8px rgba(0,0,0,0.15)",
+                        WebkitTapHighlightColor: "transparent",
                       }}
                     >
                       <span>┃</span>
@@ -1951,58 +2183,201 @@ export function CabinetEditor({ initialSession, onExit, cabTitle, cabSubtitle }:
                 </div>
               )}
 
-              {/* Default Floating Layers Button when nothing is selected */}
+              {/* Default Floating Quick Action Deck when nothing is selected */}
               {viewMode === "layout" && !selPart && !selSpace && (
-                <div style={{ display: "flex", justifyContent: "center", gap: 8 }}>
-                  {frontCount > 0 && (
+                <div
+                  style={{
+                    pointerEvents: "auto",
+                    background: "rgba(255, 255, 255, 0.96)",
+                    backdropFilter: "blur(20px)",
+                    WebkitBackdropFilter: "blur(20px)",
+                    borderRadius: 22,
+                    padding: "10px 12px",
+                    boxShadow: "0 8px 30px rgba(0,0,0,0.12)",
+                    border: "1px solid rgba(0,0,0,0.08)",
+                    display: "flex",
+                    flexDirection: "column",
+                    gap: 8,
+                    animation: "fadeIn 0.2s ease",
+                  }}
+                >
+                  {/* Quick Action Chips Row */}
+                  <div
+                    style={{
+                      display: "flex",
+                      alignItems: "center",
+                      gap: 6,
+                      overflowX: "auto",
+                      WebkitOverflowScrolling: "touch",
+                      paddingBottom: 2,
+                    }}
+                  >
+                    {/* + Полка */}
                     <button
                       type="button"
-                      onClick={() => setDoorsOpen((v) => !v)}
+                      onClick={handleAddShelfQuick}
                       style={{
-                        pointerEvents: "auto",
-                        background: doorsOpen ? "#fef3c7" : "rgba(255, 255, 255, 0.96)",
-                        backdropFilter: "blur(10px)",
-                        border: `1px solid ${doorsOpen ? "#f59e0b" : "rgba(0,0,0,0.12)"}`,
-                        borderRadius: 24,
-                        padding: "12px 18px",
-                        boxShadow: "0 6px 20px rgba(0,0,0,0.14)",
-                        fontSize: 14,
+                        flex: "1 0 auto",
+                        background: "#fff",
+                        border: "1px solid #d9d5cc",
+                        borderRadius: 14,
+                        padding: "8px 12px",
+                        fontSize: 12,
                         fontWeight: 600,
-                        color: doorsOpen ? "#92400e" : "#1c1f22",
+                        color: "#1c1f22",
                         cursor: "pointer",
                         display: "flex",
                         alignItems: "center",
-                        gap: 6,
+                        justifyContent: "center",
+                        gap: 5,
+                        minHeight: 42,
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
                         WebkitTapHighlightColor: "transparent",
                       }}
                     >
-                      <span>{doorsOpen ? "🚪 Закрыть" : "🚪 Открыть"}</span>
+                      <span style={{ color: "#e8590c", fontSize: 14, fontWeight: 700 }}>━</span>
+                      <span>+ Полка</span>
                     </button>
+
+                    {/* + Стойка */}
+                    <button
+                      type="button"
+                      onClick={handleAddDividerQuick}
+                      style={{
+                        flex: "1 0 auto",
+                        background: "#fff",
+                        border: "1px solid #d9d5cc",
+                        borderRadius: 14,
+                        padding: "8px 12px",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: "#1c1f22",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 5,
+                        minHeight: 42,
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+                        WebkitTapHighlightColor: "transparent",
+                      }}
+                    >
+                      <span style={{ color: "#e8590c", fontSize: 14, fontWeight: 700 }}>┃</span>
+                      <span>+ Стойка</span>
+                    </button>
+
+                    {/* 🚪 Фасад */}
+                    <button
+                      type="button"
+                      onClick={handleCycleDoors}
+                      style={{
+                        flex: "1 0 auto",
+                        background: frontCount > 0 ? "#fff7ed" : "#fff",
+                        border: `1px solid ${frontCount > 0 ? "#fdba74" : "#d9d5cc"}`,
+                        borderRadius: 14,
+                        padding: "8px 12px",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: frontCount > 0 ? "#c2410c" : "#1c1f22",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 5,
+                        minHeight: 42,
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+                        WebkitTapHighlightColor: "transparent",
+                      }}
+                      title="Переключить створки (0 / 1 / 2)"
+                    >
+                      <span>🚪</span>
+                      <span>{frontCount === 0 ? "Без фасада" : frontCount === 1 ? "1 створка" : "2 створки"}</span>
+                    </button>
+
+                    {/* 📐 Задник */}
+                    <button
+                      type="button"
+                      onClick={handleCycleBackMount}
+                      style={{
+                        flex: "1 0 auto",
+                        background: backMount !== "none" ? "#f0fdf4" : "#fff",
+                        border: `1px solid ${backMount !== "none" ? "#86efac" : "#d9d5cc"}`,
+                        borderRadius: 14,
+                        padding: "8px 12px",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        color: backMount !== "none" ? "#166534" : "#666",
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 5,
+                        minHeight: 42,
+                        boxShadow: "0 1px 3px rgba(0,0,0,0.04)",
+                        WebkitTapHighlightColor: "transparent",
+                      }}
+                      title="Переключить тип задней стенки"
+                    >
+                      <span>📐</span>
+                      <span>{backMount === "groove" ? "В паз" : backMount === "overlay" ? "Накладной" : "Без задника"}</span>
+                    </button>
+
+                    {/* 📑 Слои */}
+                    <button
+                      type="button"
+                      onClick={() => setShowLayersSheet(true)}
+                      style={{
+                        flex: "0 0 auto",
+                        background: "#1c1f22",
+                        color: "#fff",
+                        border: "none",
+                        borderRadius: 14,
+                        padding: "8px 14px",
+                        fontSize: 12,
+                        fontWeight: 600,
+                        cursor: "pointer",
+                        display: "flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        gap: 5,
+                        minHeight: 42,
+                        boxShadow: "0 2px 6px rgba(0,0,0,0.15)",
+                        WebkitTapHighlightColor: "transparent",
+                      }}
+                    >
+                      <span>📑</span>
+                      <span>{allParts.length}</span>
+                    </button>
+                  </div>
+
+                  {/* Secondary Row if doors exist */}
+                  {frontCount > 0 && (
+                    <div style={{ display: "flex", gap: 8, paddingTop: 2 }}>
+                      <button
+                        type="button"
+                        onClick={() => setDoorsOpen((v) => !v)}
+                        style={{
+                          flex: 1,
+                          background: doorsOpen ? "#fef3c7" : "#f8f7f4",
+                          border: `1px solid ${doorsOpen ? "#f59e0b" : "#e5e3de"}`,
+                          borderRadius: 12,
+                          padding: "8px 14px",
+                          fontSize: 12,
+                          fontWeight: 600,
+                          color: doorsOpen ? "#92400e" : "#444",
+                          cursor: "pointer",
+                          display: "flex",
+                          alignItems: "center",
+                          justifyContent: "center",
+                          gap: 6,
+                          minHeight: 38,
+                          WebkitTapHighlightColor: "transparent",
+                        }}
+                      >
+                        <span>{doorsOpen ? "🚪 Закрыть створки" : "🚪 Распахнуть створки"}</span>
+                      </button>
+                    </div>
                   )}
-                  <button
-                    type="button"
-                    onClick={() => setShowLayersSheet(true)}
-                    style={{
-                      pointerEvents: "auto",
-                      background: "rgba(255, 255, 255, 0.96)",
-                      backdropFilter: "blur(10px)",
-                      border: "1px solid rgba(0,0,0,0.12)",
-                      borderRadius: 24,
-                      padding: "12px 20px",
-                      boxShadow: "0 6px 20px rgba(0,0,0,0.14)",
-                      fontSize: 14,
-                      fontWeight: 600,
-                      color: "#1c1f22",
-                      cursor: "pointer",
-                      display: "flex",
-                      alignItems: "center",
-                      gap: 8,
-                      WebkitTapHighlightColor: "transparent",
-                    }}
-                  >
-                    <span style={{ fontSize: 16 }}>📑</span>
-                    <span>Детали и слои ({allParts.length})</span>
-                  </button>
                 </div>
               )}
             </div>
@@ -2630,10 +3005,10 @@ export function CabinetEditor({ initialSession, onExit, cabTitle, cabSubtitle }:
             style={{
               position: "relative",
               background: "#fff",
-              borderRadius: "24px 24px 0 0",
-              boxShadow: "0 -4px 24px rgba(0,0,0,0.18)",
-              padding: "12px 16px max(16px, env(safe-area-inset-bottom, 16px)) 16px",
-              maxHeight: "72vh",
+              borderRadius: "28px 28px 0 0",
+              boxShadow: "0 -8px 32px rgba(0,0,0,0.18)",
+              padding: "14px 18px max(18px, env(safe-area-inset-bottom, 18px)) 18px",
+              maxHeight: "75vh",
               display: "flex",
               flexDirection: "column",
               zIndex: 1,
@@ -2642,7 +3017,7 @@ export function CabinetEditor({ initialSession, onExit, cabTitle, cabSubtitle }:
             {/* Grab handle */}
             <div
               style={{
-                width: 36,
+                width: 38,
                 height: 4,
                 borderRadius: 2,
                 background: "#d1cfc7",
@@ -2684,14 +3059,15 @@ export function CabinetEditor({ initialSession, onExit, cabTitle, cabSubtitle }:
                   background: "#f0ede6",
                   border: "none",
                   borderRadius: 16,
-                  width: 28,
-                  height: 28,
+                  width: 32,
+                  height: 32,
                   display: "flex",
                   alignItems: "center",
                   justifyContent: "center",
-                  fontSize: 13,
+                  fontSize: 14,
                   color: "#666",
                   cursor: "pointer",
+                  WebkitTapHighlightColor: "transparent",
                 }}
               >
                 ✕
@@ -2702,8 +3078,8 @@ export function CabinetEditor({ initialSession, onExit, cabTitle, cabSubtitle }:
             <div
               style={{
                 background: "#fafaf8",
-                borderRadius: 12,
-                padding: 10,
+                borderRadius: 14,
+                padding: 12,
                 marginTop: 10,
                 border: "1px solid #f0ede6",
                 display: "flex",
@@ -2748,15 +3124,17 @@ export function CabinetEditor({ initialSession, onExit, cabTitle, cabSubtitle }:
                       type="button"
                       onClick={() => setDoorCount(opt.count)}
                       style={{
-                        padding: "7px 4px",
-                        borderRadius: 6,
+                        padding: "9px 4px",
+                        borderRadius: 8,
                         border: active ? "1px solid #e8590c" : "1px solid #d9d5cc",
                         background: active ? "#fff7ed" : "#fff",
                         color: active ? "#e8590c" : "#444",
                         fontWeight: active ? 700 : 500,
-                        fontSize: 11,
+                        fontSize: 12,
                         cursor: "pointer",
                         textAlign: "center",
+                        minHeight: 38,
+                        WebkitTapHighlightColor: "transparent",
                       }}
                     >
                       {opt.label}
@@ -2773,8 +3151,8 @@ export function CabinetEditor({ initialSession, onExit, cabTitle, cabSubtitle }:
                     background: doorsOpen ? "#fef3c7" : "#fff",
                     border: `1px solid ${doorsOpen ? "#f59e0b" : "#d9d5cc"}`,
                     color: doorsOpen ? "#92400e" : "#1c1f22",
-                    borderRadius: 6,
-                    padding: "8px 10px",
+                    borderRadius: 8,
+                    padding: "9px 10px",
                     fontSize: 12,
                     fontWeight: 600,
                     cursor: "pointer",
@@ -2782,6 +3160,8 @@ export function CabinetEditor({ initialSession, onExit, cabTitle, cabSubtitle }:
                     alignItems: "center",
                     justifyContent: "center",
                     gap: 6,
+                    minHeight: 38,
+                    WebkitTapHighlightColor: "transparent",
                   }}
                 >
                   <span>{doorsOpen ? "🚪 Закрыть створки" : "🚪 Распахнуть створки"}</span>
@@ -2793,8 +3173,8 @@ export function CabinetEditor({ initialSession, onExit, cabTitle, cabSubtitle }:
             <div
               style={{
                 background: "#fafaf8",
-                borderRadius: 12,
-                padding: 10,
+                borderRadius: 14,
+                padding: 12,
                 marginTop: 10,
                 border: "1px solid #f0ede6",
                 display: "flex",
@@ -2841,15 +3221,17 @@ export function CabinetEditor({ initialSession, onExit, cabTitle, cabSubtitle }:
                       type="button"
                       onClick={() => setBackMount(opt.mode)}
                       style={{
-                        padding: "7px 4px",
-                        borderRadius: 6,
+                        padding: "9px 4px",
+                        borderRadius: 8,
                         border: active ? "1px solid #e8590c" : "1px solid #d9d5cc",
                         background: active ? "#fff7ed" : "#fff",
                         color: active ? "#e8590c" : "#444",
                         fontWeight: active ? 700 : 500,
-                        fontSize: 11,
+                        fontSize: 12,
                         cursor: "pointer",
                         textAlign: "center",
+                        minHeight: 38,
+                        WebkitTapHighlightColor: "transparent",
                       }}
                     >
                       {opt.label}
